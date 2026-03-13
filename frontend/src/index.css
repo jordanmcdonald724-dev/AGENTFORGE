@@ -5,6 +5,23 @@
 @tailwind utilities;
 
 :root {
+  /* Theme CSS Variables - Set dynamically by ThemeContext */
+  --bg-primary: #0a0a0c;
+  --bg-secondary: #18181b;
+  --bg-tertiary: #27272a;
+  --border-color: #3f3f46;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --card-bg: rgba(24, 24, 27, 0.8);
+  --glass-bg: rgba(10, 10, 12, 0.9);
+  
+  /* Shadcn compatible vars */
   --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;
   --card: 240 10% 7%;
@@ -17,12 +34,12 @@
   --secondary-foreground: 0 0% 98%;
   --muted: 240 5% 15%;
   --muted-foreground: 240 5% 65%;
-  --accent: 186 94% 42%;
+  --accent-hsl: 186 94% 42%;
   --accent-foreground: 0 0% 98%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-  --success: 160 84% 40%;
-  --warning: 38 92% 50%;
+  --success-hsl: 160 84% 40%;
+  --warning-hsl: 38 92% 50%;
   --border: 240 5% 18%;
   --input: 240 5% 18%;
   --ring: 217 91% 60%;
@@ -37,11 +54,12 @@
 
 body {
   font-family: 'Outfit', sans-serif;
-  background-color: #09090b;
-  color: #f4f4f5;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -54,28 +72,28 @@ code, pre, .font-mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - Theme aware */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #18181b;
+  background: var(--bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3b82f6;
+  background: var(--accent);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #60a5fa;
+  background: var(--accent-hover);
 }
 
-/* Glow effects */
+/* Glow effects - Theme aware */
 .glow-blue {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 40%, transparent);
 }
 
 .glow-cyan {
@@ -83,15 +101,27 @@ code, pre, .font-mono {
 }
 
 .text-glow {
-  text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
 }
 
-/* Glass effect */
+/* Glass effect - Theme aware */
 .glass {
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--glass-bg);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid color-mix(in srgb, var(--text-primary) 10%, transparent);
 }
+
+/* Theme utility classes */
+.bg-theme-primary { background-color: var(--bg-primary); }
+.bg-theme-secondary { background-color: var(--bg-secondary); }
+.bg-theme-tertiary { background-color: var(--bg-tertiary); }
+.border-theme { border-color: var(--border-color); }
+.text-theme-primary { color: var(--text-primary); }
+.text-theme-secondary { color: var(--text-secondary); }
+.text-theme-muted { color: var(--text-muted); }
+.text-theme-accent { color: var(--accent); }
+.bg-theme-accent { background-color: var(--accent); }
+.hover\:bg-theme-accent:hover { background-color: var(--accent-hover); }
 
 /* Animation keyframes */
 @keyframes pulse-glow {

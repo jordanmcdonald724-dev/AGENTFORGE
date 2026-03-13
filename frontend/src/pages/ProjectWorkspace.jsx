@@ -739,22 +739,22 @@ const ProjectWorkspace = () => {
   const allActions = [...quickActions, ...customActions.map(a => ({ ...a, isCustom: true }))];
 
   return (
-    <div className="h-screen bg-[#09090b] flex flex-col overflow-hidden">
+    <div className="h-screen flex flex-col overflow-hidden transition-colors duration-300" style={{ backgroundColor: 'var(--bg-primary)' }}>
       {/* Header */}
-      <header className="flex-shrink-0 bg-[#0d0d0f]/95 backdrop-blur-lg border-b border-zinc-800 z-50">
+      <header className="flex-shrink-0 backdrop-blur-lg border-b z-50 transition-colors duration-300" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
         <div className="px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} data-testid="back-btn"><ArrowLeft className="w-5 h-5" /></Button>
             <div>
-              <h1 className="font-rajdhani text-lg font-bold text-white flex items-center gap-2">{project?.name}<Badge className={`${phaseConfig.color} text-xs`}><PhaseIcon className="w-3 h-3 mr-1" />{phaseConfig.label}</Badge>{project?.repo_url && <a href={project.repo_url} target="_blank" rel="noopener noreferrer"><Badge className="bg-zinc-800 text-zinc-400 hover:bg-zinc-700"><Github className="w-3 h-3 mr-1" />GitHub</Badge></a>}</h1>
-              <p className="text-xs text-zinc-500">{project?.type?.replace('_', ' ')} {project?.engine_version && `• ${project.engine_version}`}</p>
+              <h1 className="font-rajdhani text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>{project?.name}<Badge className={`${phaseConfig.color} text-xs`}><PhaseIcon className="w-3 h-3 mr-1" />{phaseConfig.label}</Badge>{project?.repo_url && <a href={project.repo_url} target="_blank" rel="noopener noreferrer"><Badge className="bg-zinc-800 text-zinc-400 hover:bg-zinc-700"><Github className="w-3 h-3 mr-1" />GitHub</Badge></a>}</h1>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{project?.type?.replace('_', ' ')} {project?.engine_version && `• ${project.engine_version}`}</p>
             </div>
           </div>
           
           <div className="hidden lg:flex items-center gap-2">
             {agents.map((agent) => {
               const AgentIcon = getAgentIcon(agent.role);
-              return (<button key={agent.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${selectedAgent === agent.id ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'}`} onClick={() => setSelectedAgent(selectedAgent === agent.id ? null : agent.id)}><div className={`w-2 h-2 rounded-full ${getStatusColor(agent.status)}`} /><AgentIcon className="w-3.5 h-3.5" /><span className="text-xs font-medium">{agent.name}</span></button>);
+              return (<button key={agent.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all`} style={{ backgroundColor: selectedAgent === agent.id ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'var(--bg-tertiary)', borderColor: selectedAgent === agent.id ? 'var(--accent)' : 'var(--border-color)', color: selectedAgent === agent.id ? 'var(--accent)' : 'var(--text-secondary)' }} onClick={() => setSelectedAgent(selectedAgent === agent.id ? null : agent.id)}><div className={`w-2 h-2 rounded-full ${getStatusColor(agent.status)}`} /><AgentIcon className="w-3.5 h-3.5" /><span className="text-xs font-medium">{agent.name}</span></button>);
             })}
           </div>
 
@@ -1054,24 +1054,24 @@ const ProjectWorkspace = () => {
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={45} minSize={30}>
-            <div className="h-full flex flex-col bg-[#0a0a0c]">
+            <div className="h-full flex flex-col transition-colors duration-300" style={{ backgroundColor: 'var(--bg-primary)' }}>
               {/* Quick Actions */}
               <AnimatePresence>
                 {showQuickActions && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b border-zinc-800 overflow-hidden">
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b overflow-hidden transition-colors duration-300" style={{ borderColor: 'var(--border-color)' }}>
                     <div className="p-3">
                       <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-rajdhani font-bold text-white text-sm flex items-center gap-2"><Rocket className="w-4 h-4 text-blue-400" />Quick Actions</h3>
+                        <h3 className="font-rajdhani font-bold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><Rocket className="w-4 h-4" style={{ color: 'var(--accent)' }} />Quick Actions</h3>
                         <div className="flex gap-2">
                           <Dialog open={customActionDialog} onOpenChange={setCustomActionDialog}>
                             <DialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><Plus className="w-4 h-4" /></Button></DialogTrigger>
-                            <DialogContent className="bg-[#18181b] border-zinc-700">
-                              <DialogHeader><DialogTitle className="font-rajdhani text-white">Create Custom Action</DialogTitle></DialogHeader>
+                            <DialogContent className="border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+                              <DialogHeader><DialogTitle className="font-rajdhani" style={{ color: 'var(--text-primary)' }}>Create Custom Action</DialogTitle></DialogHeader>
                               <div className="space-y-3 py-4">
-                                <Input placeholder="Action name" value={newCustomAction.name} onChange={(e) => setNewCustomAction({ ...newCustomAction, name: e.target.value })} className="bg-zinc-900 border-zinc-700" />
-                                <Input placeholder="Description" value={newCustomAction.description} onChange={(e) => setNewCustomAction({ ...newCustomAction, description: e.target.value })} className="bg-zinc-900 border-zinc-700" />
-                                <Textarea placeholder="Prompt template (use {engine_type} for variables)" value={newCustomAction.prompt} onChange={(e) => setNewCustomAction({ ...newCustomAction, prompt: e.target.value })} className="bg-zinc-900 border-zinc-700 min-h-[100px]" />
-                                <div className="flex items-center gap-2"><input type="checkbox" id="global" checked={newCustomAction.is_global} onChange={(e) => setNewCustomAction({ ...newCustomAction, is_global: e.target.checked })} /><label htmlFor="global" className="text-sm text-zinc-400">Available in all projects</label></div>
+                                <Input placeholder="Action name" value={newCustomAction.name} onChange={(e) => setNewCustomAction({ ...newCustomAction, name: e.target.value })} className="border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
+                                <Input placeholder="Description" value={newCustomAction.description} onChange={(e) => setNewCustomAction({ ...newCustomAction, description: e.target.value })} className="border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
+                                <Textarea placeholder="Prompt template (use {engine_type} for variables)" value={newCustomAction.prompt} onChange={(e) => setNewCustomAction({ ...newCustomAction, prompt: e.target.value })} className="border min-h-[100px]" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
+                                <div className="flex items-center gap-2"><input type="checkbox" id="global" checked={newCustomAction.is_global} onChange={(e) => setNewCustomAction({ ...newCustomAction, is_global: e.target.checked })} /><label htmlFor="global" className="text-sm" style={{ color: 'var(--text-secondary)' }}>Available in all projects</label></div>
                               </div>
                               <DialogFooter><Button onClick={createCustomAction} className="bg-blue-500 hover:bg-blue-600">Create Action</Button></DialogFooter>
                             </DialogContent>
@@ -1097,31 +1097,31 @@ const ProjectWorkspace = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {!showQuickActions && <Button variant="ghost" size="sm" className="mx-3 mt-2 text-xs text-zinc-500" onClick={() => setShowQuickActions(true)}><ChevronDown className="w-3 h-3 mr-1" />Show Quick Actions</Button>}
-              {chainProgress && <div className="px-4 py-2 bg-blue-500/10 border-b border-blue-500/30"><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 text-blue-400 animate-spin" /><span className="text-xs text-blue-400">Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
+              {!showQuickActions && <Button variant="ghost" size="sm" className="mx-3 mt-2 text-xs" style={{ color: 'var(--text-muted)' }} onClick={() => setShowQuickActions(true)}><ChevronDown className="w-3 h-3 mr-1" />Show Quick Actions</Button>}
+              {chainProgress && <div className="px-4 py-2 border-b" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /><span className="text-xs" style={{ color: 'var(--accent)' }}>Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                 {/* Clean Grouped Dropdown Navigation */}
-                <div className="flex-shrink-0 border-b border-zinc-800 px-4 py-2 flex items-center gap-3">
+                <div className="flex-shrink-0 border-b px-4 py-2 flex items-center gap-3 transition-colors duration-300" style={{ borderColor: 'var(--border-color)' }}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800 min-w-[180px] justify-between" data-testid="panel-selector">
+                      <Button variant="outline" className="min-w-[180px] justify-between transition-colors duration-300" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }} data-testid="panel-selector">
                         <span className="flex items-center gap-2">
                           {(() => {
                             const ActiveIcon = Object.values(PANEL_GROUPS).flatMap(g => g.panels).find(p => p.id === activeTab)?.icon || MessageSquare;
-                            return <ActiveIcon className="w-4 h-4 text-cyan-400" />;
+                            return <ActiveIcon className="w-4 h-4" style={{ color: 'var(--accent)' }} />;
                           })()}
                           <span className="text-sm">
                             {Object.values(PANEL_GROUPS).flatMap(g => g.panels).find(p => p.id === activeTab)?.label || "Chat"}
                           </span>
                         </span>
-                        <ChevronDown className="w-4 h-4 text-zinc-500" />
+                        <ChevronDown className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56 bg-zinc-900 border-zinc-700" align="start">
+                    <DropdownMenuContent className="w-56 transition-colors duration-300" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }} align="start">
                       {Object.entries(PANEL_GROUPS).map(([groupKey, group]) => (
                         <div key={groupKey}>
-                          <DropdownMenuLabel className="text-xs text-zinc-500 flex items-center gap-2">
+                          <DropdownMenuLabel className="text-xs flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                             <group.icon className="w-3 h-3" />
                             {group.label}
                           </DropdownMenuLabel>
@@ -1132,24 +1132,28 @@ const ProjectWorkspace = () => {
                               <DropdownMenuItem
                                 key={panel.id}
                                 onClick={() => setActiveTab(panel.id)}
-                                className={`cursor-pointer ${isActive ? 'bg-cyan-500/10 text-cyan-400' : 'text-zinc-300 hover:text-white'}`}
+                                className="cursor-pointer"
+                                style={{ 
+                                  backgroundColor: isActive ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent',
+                                  color: isActive ? 'var(--accent)' : 'var(--text-secondary)'
+                                }}
                                 data-testid={`panel-${panel.id}`}
                               >
-                                <PanelIcon className={`w-4 h-4 mr-2 ${isActive ? 'text-cyan-400' : 'text-zinc-500'}`} />
+                                <PanelIcon className="w-4 h-4 mr-2" style={{ color: isActive ? 'var(--accent)' : 'var(--text-muted)' }} />
                                 {panel.label}
                                 {panel.id === "warroom" && warRoomMessages.length > 0 && (
-                                  <Badge className="ml-auto text-[10px] bg-cyan-500/20 text-cyan-400">{warRoomMessages.length}</Badge>
+                                  <Badge className="ml-auto text-[10px]" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>{warRoomMessages.length}</Badge>
                                 )}
                                 {panel.id === "blueprints" && blueprints.length > 0 && (
                                   <Badge className="ml-auto text-[10px] bg-purple-500/20 text-purple-400">{blueprints.length}</Badge>
                                 )}
                                 {panel.id === "tasks" && tasks.length > 0 && (
-                                  <Badge className="ml-auto text-[10px] bg-zinc-700 text-zinc-300">{tasks.length}</Badge>
+                                  <Badge className="ml-auto text-[10px]" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>{tasks.length}</Badge>
                                 )}
                               </DropdownMenuItem>
                             );
                           })}
-                          <DropdownMenuSeparator className="bg-zinc-800" />
+                          <DropdownMenuSeparator style={{ backgroundColor: 'var(--border-color)' }} />
                         </div>
                       ))}
                     </DropdownMenuContent>
@@ -1167,7 +1171,15 @@ const ProjectWorkspace = () => {
                         variant="ghost"
                         size="sm"
                         onClick={() => setActiveTab(id)}
-                        className={`h-8 px-3 ${activeTab === id ? 'bg-zinc-800 text-cyan-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        key={id}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveTab(id)}
+                        className="h-8 px-3"
+                        style={{ 
+                          backgroundColor: activeTab === id ? 'var(--bg-tertiary)' : 'transparent',
+                          color: activeTab === id ? 'var(--accent)' : 'var(--text-muted)'
+                        }}
                         data-testid={`quick-${id}`}
                       >
                         <Icon className="w-4 h-4 mr-1.5" />
@@ -1180,20 +1192,20 @@ const ProjectWorkspace = () => {
                 {/* Chat Tab */}
                 <TabsContent value="chat" className="flex-1 flex flex-col m-0 overflow-hidden">
                   <ScrollArea className="flex-1 p-4"><div className="space-y-4">
-                    {messages.length === 0 && !streamingContent ? (<div className="text-center py-12"><Sparkles className="w-12 h-12 mx-auto mb-4 text-blue-400/50" /><h3 className="font-rajdhani text-xl text-white mb-2">Ready to Build</h3><p className="text-sm text-zinc-500 max-w-md mx-auto mb-4">Describe your project or use Quick Actions above.</p></div>) : (<>
+                    {messages.length === 0 && !streamingContent ? (<div className="text-center py-12"><Sparkles className="w-12 h-12 mx-auto mb-4" style={{ color: 'color-mix(in srgb, var(--accent) 50%, transparent)' }} /><h3 className="font-rajdhani text-xl mb-2" style={{ color: 'var(--text-primary)' }}>Ready to Build</h3><p className="text-sm max-w-md mx-auto mb-4" style={{ color: 'var(--text-muted)' }}>Describe your project or use Quick Actions above.</p></div>) : (<>
                       {messages.map((msg) => {
                         const isUser = msg.agent_role === "user";
                         const AgentIcon = getAgentIcon(msg.agent_role);
                         const agent = agents.find(a => a.id === msg.agent_id);
-                        return (<motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>{!isUser && <Avatar className="w-8 h-8 border border-zinc-700 flex-shrink-0 mt-1"><AvatarImage src={agent?.avatar} /><AvatarFallback className="bg-zinc-800"><AgentIcon className={`w-4 h-4 ${getAgentColor(msg.agent_role)}`} /></AvatarFallback></Avatar>}<div className={`max-w-[85%] ${isUser ? 'ml-auto' : ''}`}>{!isUser && <div className="flex items-center gap-2 mb-1"><span className="font-rajdhani font-bold text-sm text-blue-400">{msg.agent_name}</span><Badge variant="outline" className="text-[10px] border-zinc-700 text-zinc-500">{msg.agent_role}</Badge></div>}<div className={`rounded-lg px-4 py-3 ${isUser ? 'bg-blue-500 text-white' : 'bg-zinc-800/50 border border-zinc-700/50'}`}>{isUser ? <p className="text-sm whitespace-pre-wrap">{msg.content}</p> : parseMessageContent(msg.content, msg.id, msg.delegations)}</div></div></motion.div>);
+                        return (<motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>{!isUser && <Avatar className="w-8 h-8 flex-shrink-0 mt-1" style={{ borderColor: 'var(--border-color)' }}><AvatarImage src={agent?.avatar} /><AvatarFallback style={{ backgroundColor: 'var(--bg-tertiary)' }}><AgentIcon className={`w-4 h-4 ${getAgentColor(msg.agent_role)}`} /></AvatarFallback></Avatar>}<div className={`max-w-[85%] ${isUser ? 'ml-auto' : ''}`}>{!isUser && <div className="flex items-center gap-2 mb-1"><span className="font-rajdhani font-bold text-sm" style={{ color: 'var(--accent)' }}>{msg.agent_name}</span><Badge variant="outline" className="text-[10px]" style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>{msg.agent_role}</Badge></div>}<div className="rounded-lg px-4 py-3" style={{ backgroundColor: isUser ? 'var(--accent)' : 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: isUser ? 'white' : 'var(--text-primary)' }}>{isUser ? <p className="text-sm whitespace-pre-wrap">{msg.content}</p> : parseMessageContent(msg.content, msg.id, msg.delegations)}</div></div></motion.div>);
                       })}
-                      {streamingContent && streamingAgent && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3"><Avatar className="w-8 h-8 border border-zinc-700 mt-1"><AvatarFallback className="bg-zinc-800"><Bot className="w-4 h-4 text-blue-400 animate-pulse" /></AvatarFallback></Avatar><div className="max-w-[85%]"><div className="flex items-center gap-2 mb-1"><span className="font-rajdhani font-bold text-sm text-blue-400">{streamingAgent.name}</span><Badge className="text-[10px] bg-amber-500/20 text-amber-400 animate-pulse">streaming</Badge></div><div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-4 py-3">{parseMessageContent(streamingContent, 'streaming')}</div></div></motion.div>)}
+                      {streamingContent && streamingAgent && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3"><Avatar className="w-8 h-8 mt-1" style={{ borderColor: 'var(--border-color)' }}><AvatarFallback style={{ backgroundColor: 'var(--bg-tertiary)' }}><Bot className="w-4 h-4 animate-pulse" style={{ color: 'var(--accent)' }} /></AvatarFallback></Avatar><div className="max-w-[85%]"><div className="flex items-center gap-2 mb-1"><span className="font-rajdhani font-bold text-sm" style={{ color: 'var(--accent)' }}>{streamingAgent.name}</span><Badge className="text-[10px] animate-pulse" style={{ backgroundColor: 'color-mix(in srgb, var(--warning) 20%, transparent)', color: 'var(--warning)' }}>streaming</Badge></div><div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>{parseMessageContent(streamingContent, 'streaming')}</div></div></motion.div>)}
                     </>)}
-                    {sending && !streamingContent && <div className="flex gap-3"><div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center"><Loader2 className="w-4 h-4 text-blue-400 animate-spin" /></div><div className="bg-zinc-800/50 rounded-lg px-4 py-3"><div className="typing-indicator"><span></span><span></span><span></span></div></div></div>}
+                    {sending && !streamingContent && <div className="flex gap-3"><div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-tertiary)' }}><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /></div><div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)' }}><div className="typing-indicator"><span></span><span></span><span></span></div></div></div>}
                     <div ref={chatEndRef} />
                   </div></ScrollArea>
-                  <div className="flex-shrink-0 p-4 border-t border-zinc-800">
-                    {selectedAgent && <div className="mb-2 flex items-center gap-2"><span className="text-xs text-zinc-500">Speaking to:</span><Badge className="bg-blue-500/20 text-blue-400 border-0">{agents.find(a => a.id === selectedAgent)?.name}</Badge><Button variant="ghost" size="sm" className="h-5 px-2" onClick={() => setSelectedAgent(null)}><X className="w-3 h-3" /></Button></div>}
+                  <div className="flex-shrink-0 p-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                    {selectedAgent && <div className="mb-2 flex items-center gap-2"><span className="text-xs" style={{ color: 'var(--text-muted)' }}>Speaking to:</span><Badge style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>{agents.find(a => a.id === selectedAgent)?.name}</Badge><Button variant="ghost" size="sm" className="h-5 px-2" onClick={() => setSelectedAgent(null)}><X className="w-3 h-3" /></Button></div>}
                     <div className="flex gap-2"><Textarea placeholder={project?.phase === "clarification" ? "Describe your project..." : "What next?"} value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageStreaming(); }}} className="bg-zinc-900 border-zinc-700 min-h-[80px] resize-none text-sm" data-testid="chat-input" /><Button onClick={sendMessageStreaming} disabled={sending || !chatInput.trim()} className="bg-blue-500 hover:bg-blue-600 px-4 self-end" data-testid="send-btn">{sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}</Button></div>
                   </div>
                 </TabsContent>

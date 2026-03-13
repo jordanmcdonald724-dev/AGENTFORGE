@@ -83,6 +83,8 @@ export function ThemeProvider({ children }) {
     localStorage.setItem('agentforge-theme', theme);
     const t = themes[theme];
     const root = document.documentElement;
+    
+    // Core theme colors
     root.style.setProperty('--bg-primary', t.bg);
     root.style.setProperty('--bg-secondary', t.bgSecondary);
     root.style.setProperty('--bg-tertiary', t.bgTertiary);
@@ -92,6 +94,15 @@ export function ThemeProvider({ children }) {
     root.style.setProperty('--text-muted', t.textMuted);
     root.style.setProperty('--accent', t.accent);
     root.style.setProperty('--accent-hover', t.accentHover);
+    
+    // Status colors
+    root.style.setProperty('--success', t.success);
+    root.style.setProperty('--warning', t.warning);
+    root.style.setProperty('--error', t.error);
+    
+    // Glass/Card backgrounds
+    root.style.setProperty('--card-bg', t.card);
+    root.style.setProperty('--glass-bg', t.glass);
   }, [theme]);
 
   return (
