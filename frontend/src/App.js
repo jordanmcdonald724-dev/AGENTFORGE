@@ -3,6 +3,7 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
+import { ThemeProvider } from "@/context/ThemeContext";
 import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
 import ProjectWorkspace from "@/pages/ProjectWorkspace";
@@ -12,16 +13,18 @@ export const API = `${BACKEND_URL}/api`;
 
 function App() {
   return (
-    <div className="app-container">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/project/:projectId" element={<ProjectWorkspace />} />
-        </Routes>
-      </BrowserRouter>
-      <Toaster position="bottom-right" theme="dark" />
-    </div>
+    <ThemeProvider>
+      <div className="app-container">
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/project/:projectId" element={<ProjectWorkspace />} />
+          </Routes>
+        </BrowserRouter>
+        <Toaster position="bottom-right" theme="dark" />
+      </div>
+    </ThemeProvider>
   );
 }
 

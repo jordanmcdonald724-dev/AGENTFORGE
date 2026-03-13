@@ -19,13 +19,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useTheme } from "@/context/ThemeContext";
+import ThemeSelector from "@/components/ThemeSelector";
 import { 
   ArrowLeft, Send, Bot, Code2, Layers, Users, Shield, Zap, Plus, Loader2, FileCode, ListTodo, MessageSquare,
   Folder, FolderOpen, ChevronRight, ChevronDown, Save, Download, Trash2, Palette, Copy, Check, X, Image,
   Sparkles, ArrowRightCircle, Github, Play, Eye, Gamepad2, Package, Heart, Volume2, Layout, MessageCircle,
   Rocket, ChevronUp, RefreshCw, Brain, Wand2, CopyPlus, Search, Replace, Radio, AlertTriangle, Clock,
   Pause, Square, SkipForward, Swords, Mountain, Car, Sun, Map, Hammer, Coins, Ghost, Timer, Camera, Wifi,
-  Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music, Terminal, Command
+  Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music, Terminal, Command, Settings, Moon, Menu
 } from "lucide-react";
 import { API } from "@/App";
 import BlueprintEditor from "@/components/BlueprintEditor";
