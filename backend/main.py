@@ -44,6 +44,18 @@ from routes.builds import router as builds_router
 from routes.collaboration import router as collaboration_router
 from routes.sandbox import router as sandbox_router
 from routes.command_center import router as command_center_router
+from routes.celery_routes import router as celery_router
+from routes.k8s import router as k8s_router
+from routes.notifications import router as notifications_router
+from routes.audio import router as audio_router
+from routes.deploy import router as deploy_router
+from routes.assets import router as assets_router
+from routes.blueprints import router as blueprints_router
+from routes.memory import router as memory_router
+from routes.chains import router as chains_router
+from routes.preview import router as preview_router
+from routes.refactor import router as refactor_router
+from routes.exploration import router as exploration_router
 
 
 @asynccontextmanager
@@ -84,6 +96,18 @@ app.include_router(builds_router, prefix="/api", tags=["builds"])
 app.include_router(collaboration_router, prefix="/api", tags=["collaboration"])
 app.include_router(sandbox_router, prefix="/api", tags=["sandbox"])
 app.include_router(command_center_router, prefix="/api", tags=["command_center"])
+app.include_router(celery_router, prefix="/api", tags=["celery"])
+app.include_router(k8s_router, prefix="/api", tags=["kubernetes"])
+app.include_router(notifications_router, prefix="/api", tags=["notifications"])
+app.include_router(audio_router, prefix="/api", tags=["audio"])
+app.include_router(deploy_router, prefix="/api", tags=["deploy"])
+app.include_router(assets_router, prefix="/api", tags=["assets"])
+app.include_router(blueprints_router, prefix="/api", tags=["blueprints"])
+app.include_router(memory_router, prefix="/api", tags=["memory"])
+app.include_router(chains_router, prefix="/api", tags=["chains"])
+app.include_router(preview_router, prefix="/api", tags=["preview"])
+app.include_router(refactor_router, prefix="/api", tags=["refactor"])
+app.include_router(exploration_router, prefix="/api", tags=["exploration"])
 
 
 if __name__ == "__main__":

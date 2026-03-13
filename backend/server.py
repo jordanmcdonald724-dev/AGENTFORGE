@@ -7979,6 +7979,37 @@ async def get_active_reality_pipelines():
 # Include router
 app.include_router(api_router)
 
+# Include modular routers from /routes directory
+try:
+    from routes.celery_routes import router as celery_router
+    from routes.k8s import router as k8s_router
+    from routes.notifications import router as notifications_router
+    from routes.audio import router as audio_router
+    from routes.deploy import router as deploy_router
+    from routes.assets import router as assets_router
+    from routes.blueprints import router as blueprints_router
+    from routes.memory import router as memory_router
+    from routes.chains import router as chains_router
+    from routes.preview import router as preview_router
+    from routes.refactor import router as refactor_router
+    from routes.exploration import router as exploration_router
+    
+    app.include_router(celery_router, prefix="/api", tags=["celery"])
+    app.include_router(k8s_router, prefix="/api", tags=["kubernetes"])
+    app.include_router(notifications_router, prefix="/api", tags=["notifications"])
+    app.include_router(audio_router, prefix="/api", tags=["audio"])
+    app.include_router(deploy_router, prefix="/api", tags=["deploy"])
+    app.include_router(assets_router, prefix="/api", tags=["assets"])
+    app.include_router(blueprints_router, prefix="/api", tags=["blueprints"])
+    app.include_router(memory_router, prefix="/api", tags=["memory"])
+    app.include_router(chains_router, prefix="/api", tags=["chains"])
+    app.include_router(preview_router, prefix="/api", tags=["preview"])
+    app.include_router(refactor_router, prefix="/api", tags=["refactor"])
+    app.include_router(exploration_router, prefix="/api", tags=["exploration"])
+    logger.info("Successfully loaded modular routers from /routes")
+except Exception as e:
+    logger.warning(f"Could not load modular routers: {e}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
