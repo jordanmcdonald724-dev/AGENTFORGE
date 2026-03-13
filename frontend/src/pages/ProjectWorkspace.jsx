@@ -462,9 +462,10 @@ const ProjectWorkspace = () => {
                       <Plus className="w-4 h-4 mr-1" /> Add Task
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-[#18181b] border-zinc-700">
+                  <DialogContent className="bg-[#18181b] border-zinc-700" aria-describedby="new-task-desc">
                     <DialogHeader>
                       <DialogTitle className="font-rajdhani text-white">New Task</DialogTitle>
+                      <p id="new-task-desc" className="sr-only">Create a new task with title, description and priority</p>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                       <Input

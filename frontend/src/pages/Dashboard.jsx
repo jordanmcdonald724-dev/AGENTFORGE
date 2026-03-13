@@ -170,11 +170,12 @@ const Dashboard = () => {
                 <Plus className="w-4 h-4 mr-2" /> New Project
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-[#18181b] border-zinc-700">
+            <DialogContent className="bg-[#18181b] border-zinc-700" aria-describedby="create-project-desc">
               <DialogHeader>
                 <DialogTitle className="font-rajdhani text-xl text-white">
                   CREATE NEW PROJECT
                 </DialogTitle>
+                <p id="create-project-desc" className="sr-only">Create a new project with name, description and type</p>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div>
