@@ -4,7 +4,7 @@
 Build a web application that functions as an "AI agent dev team" backed by fal.ai. A platform for building full web pages, applications, and AAA-quality games with a team of specialized AI agents under user control. Features include Git repository management, high-level code editor, and Ubisoft studio-style workflow.
 
 ## Product Overview
-AgentForge is a personal AI Development Studio with 6 specialized agents that work together to build projects, now with overnight autonomous builds, simulation mode, and open world game systems.
+AgentForge is a personal AI Development Studio with 6 specialized agents that work together to build projects. Now featuring overnight autonomous builds with scheduling, simulation mode, and comprehensive open world game systems.
 
 ## Tech Stack
 - **Backend:** FastAPI, MongoDB (motor), Python
@@ -52,14 +52,32 @@ AgentForge is a personal AI Development Studio with 6 specialized agents that wo
 - [x] Project duplication (clone with files)
 - [x] Custom Quick Actions (user-defined automation)
 
-### v3.0 - Autonomous Builds & Simulation (December 2025)
+### v3.0 - Autonomous Builds & Simulation
 - [x] **Simulation Mode (Dry Run)** - Predicts build time, file count, size, warnings before building
 - [x] **AI War Room** - Dedicated tab showing real-time agent communications
-- [x] **Autonomous Overnight Builds** - 8hr+ builds with stage progress tracking
+- [x] **Autonomous Builds** - Full builds with stage progress tracking
 - [x] **Open World Game Systems** - 15 complete game systems for UE5 and Unity
 - [x] **Modular File Generation** - Split large files into logical modules
 
-## Open World Systems (15 Total)
+### v3.1 - Overnight Scheduling (December 2025)
+- [x] **Build Scheduling** - Schedule builds to start at specific time (before bed)
+- [x] **Extended Build Time** - Minimum 12+ hours (now 15h 30m)
+- [x] **Start Now / Cancel** - UI controls for scheduled builds
+- [x] **COMMANDER Sleep Messages** - "Get some rest, I'll handle this"
+
+## Build System
+
+### Build Stages (8 stages, 15h 30m total)
+1. Project Setup & Configuration (30m) - 6 tasks
+2. Core Framework & Architecture (90m) - 8 tasks
+3. Game Systems Implementation (180m) - 7 tasks
+4. AI & NPC Systems (150m) - 9 tasks
+5. UI/UX Framework (120m) - 10 tasks
+6. World Building & Environment (150m) - 9 tasks
+7. Audio & Effects Integration (90m) - 9 tasks
+8. Polish, Testing & Documentation (120m) - 9 tasks
+
+### Open World Systems (15 Total)
 1. Terrain & World - Procedural terrain, biomes, world streaming
 2. NPC Population - Spawning, schedules, factions
 3. Quest System - Objectives, tracking, rewards
@@ -76,46 +94,29 @@ AgentForge is a personal AI Development Studio with 6 specialized agents that wo
 14. Photo Mode - Camera, filters, screenshots
 15. Multiplayer - Networking, sessions, co-op
 
-## Build Stages (8 Per Engine)
-1. Project Setup (15m)
-2. Core Framework (45m)
-3. Game Systems (120m)
-4. AI & NPCs (90m)
-5. UI/UX (60m)
-6. World Building (90m)
-7. Audio Integration (45m)
-8. Polish & Testing (60m)
-
 ## API Endpoints
 
-### Core
-- `GET /api/` - API info (v3.0.0)
-- `GET /api/health` - Health check
-- `GET /api/agents` - List agents
-
-### Simulation & Builds (v3.0)
+### Simulation & Builds
 - `GET /api/systems/open-world` - List 15 game systems
-- `GET /api/build-stages/{engine}` - Get build stages for engine
+- `GET /api/build-stages/{engine}` - Get build stages (930 minutes total)
 - `POST /api/simulate` - Run simulation/dry run
-- `POST /api/builds/start` - Start autonomous build
+- `POST /api/builds/start` - Start or schedule autonomous build
 - `GET /api/builds/{project_id}/current` - Get current build
+- `GET /api/builds/scheduled` - Get builds ready to start
+- `POST /api/builds/{build_id}/start-scheduled` - Start scheduled build
 - `POST /api/builds/{build_id}/pause` - Pause build
 - `POST /api/builds/{build_id}/resume` - Resume build
 - `POST /api/builds/{build_id}/cancel` - Cancel build
-- `POST /api/builds/{build_id}/run-full` - Execute all stages
 
-### War Room (v3.0)
+### War Room
 - `GET /api/war-room/{project_id}` - Get agent communications
 - `POST /api/war-room/message` - Post to war room
 - `DELETE /api/war-room/{project_id}` - Clear war room
 
-### Projects, Files, Chat, etc.
-- All v2.x endpoints still active
-
 ## Database Collections
 - `projects`, `agents`, `files`, `messages`, `tasks`, `images`, `plans`, `memories`, `custom_actions`
 - `simulations` - Simulation results
-- `builds` - Autonomous build jobs
+- `builds` - Autonomous build jobs (supports scheduled_at)
 - `war_room` - Agent communications
 
 ## Environment Variables
@@ -127,7 +128,8 @@ AgentForge is a personal AI Development Studio with 6 specialized agents that wo
 ## Testing Status
 - v2.3: Backend 100% (24/24), Frontend 100%
 - v3.0: Backend 100% (17/17), Frontend 100%
-- Total: 41 tests passed
+- v3.1: Backend 100% (10/10), Frontend 100%
+- Total: 51+ tests passed
 
 ## Future/Backlog (P1/P2)
 - [ ] Real-time collaboration (multiple users)
@@ -137,5 +139,5 @@ AgentForge is a personal AI Development Studio with 6 specialized agents that wo
 - [ ] Version history with diff viewer
 - [ ] Audio asset generation integration
 - [ ] Deployment pipeline (one-click deploy)
-- [ ] Build scheduling (start builds at specific time)
 - [ ] Email/Discord notifications for build completion
+- [ ] Build queue (multiple scheduled builds)
