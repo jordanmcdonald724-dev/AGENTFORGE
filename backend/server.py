@@ -4720,7 +4720,9 @@ async def send_notification(project_id: str, title: str, message: str, notificat
         return
     
     # Send Discord notification
-    if settings.get("discord_enabled") and settings.get("discord_webhook_url"):
+    # First check for user's custom webhook, then fall back to server default
+    discord_webhook = settings.get("discord_webhook_url") or os.environ.get('DISCORD_WEBHOOK_URL')
+    if settings.get("discord_enabled") and discord_webhook:
         try:
             color = {"info": 0x3498db, "complete": 0x2ecc71, "milestone": 0xf39c12, "error": 0xe74c3c}.get(notification_type, 0x3498db)
             embed = {
@@ -4731,16 +4733,71 @@ async def send_notification(project_id: str, title: str, message: str, notificat
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             async with httpx.AsyncClient() as client:
-                await client.post(
-                    settings["discord_webhook_url"],
-                    json={"embeds": [embed]}
+                response = await client.post(
+                    discord_webhook,
+                    json={"embeds": [embed]},
+                    timeout=10.0
                 )
+                if response.status_code in [200, 204]:
+                    logger.info(f"Discord notification sent for {project_name}")
         except Exception as e:
             logger.error(f"Discord notification failed: {e}")
     
-    # Send Email notification (simplified - would use SendGrid/Resend in production)
+    # Send Email notification using SendGrid or Resend
     if settings.get("email_enabled") and settings.get("email_address"):
-        # Store notification for email summary (batch sending)
+        email_sent = False
+        
+        # Try SendGrid first
+        sendgrid_key = os.environ.get('SENDGRID_API_KEY')
+        if sendgrid_key and not email_sent:
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        "https://api.sendgrid.com/v3/mail/send",
+                        headers={
+                            "Authorization": f"Bearer {sendgrid_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "personalizations": [{"to": [{"email": settings["email_address"]}]}],
+                            "from": {"email": "notifications@agentforge.dev", "name": "AgentForge"},
+                            "subject": f"[AgentForge] {title}",
+                            "content": [{"type": "text/plain", "value": f"{message}\n\nProject: {project_name}"}]
+                        },
+                        timeout=10.0
+                    )
+                    if response.status_code in [200, 202]:
+                        email_sent = True
+                        logger.info(f"Email sent via SendGrid to {settings['email_address']}")
+            except Exception as e:
+                logger.error(f"SendGrid email failed: {e}")
+        
+        # Try Resend if SendGrid failed
+        resend_key = os.environ.get('RESEND_API_KEY')
+        if resend_key and not email_sent:
+            try:
+                async with httpx.AsyncClient() as client:
+                    response = await client.post(
+                        "https://api.resend.com/emails",
+                        headers={
+                            "Authorization": f"Bearer {resend_key}",
+                            "Content-Type": "application/json"
+                        },
+                        json={
+                            "from": "AgentForge <notifications@agentforge.dev>",
+                            "to": [settings["email_address"]],
+                            "subject": f"[AgentForge] {title}",
+                            "text": f"{message}\n\nProject: {project_name}"
+                        },
+                        timeout=10.0
+                    )
+                    if response.status_code in [200, 201]:
+                        email_sent = True
+                        logger.info(f"Email sent via Resend to {settings['email_address']}")
+            except Exception as e:
+                logger.error(f"Resend email failed: {e}")
+        
+        # Store notification for history regardless
         await db.pending_emails.insert_one({
             "id": str(uuid.uuid4()),
             "project_id": project_id,
@@ -4748,6 +4805,7 @@ async def send_notification(project_id: str, title: str, message: str, notificat
             "title": title,
             "message": message,
             "notification_type": notification_type,
+            "sent": email_sent,
             "created_at": datetime.now(timezone.utc).isoformat()
         })
 
@@ -4924,6 +4982,17 @@ async def generate_audio_pack(project_id: str, pack_type: str = "basic_sfx"):
 async def get_deployment_platforms():
     """Get available deployment platforms"""
     return list(DEPLOYMENT_PLATFORMS.values())
+
+@api_router.get("/deploy/config")
+async def get_deployment_config():
+    """Check which deployment platforms are configured with server-side keys"""
+    return {
+        "vercel": bool(os.environ.get('VERCEL_TOKEN')),
+        "railway": bool(os.environ.get('RAILWAY_TOKEN')),
+        "itch": bool(os.environ.get('ITCH_API_KEY')),
+        "discord_notifications": bool(os.environ.get('DISCORD_WEBHOOK_URL')),
+        "email_notifications": bool(os.environ.get('SENDGRID_API_KEY') or os.environ.get('RESEND_API_KEY'))
+    }
 
 @api_router.get("/deploy/{project_id}")
 async def get_project_deployments(project_id: str):
@@ -5143,6 +5212,152 @@ async def delete_deployment(deployment_id: str):
     """Delete a deployment record"""
     await db.deployments.delete_one({"id": deployment_id})
     return {"success": True}
+
+# ============ QUICK DEPLOY (Using Server-Side Keys) ============
+
+@api_router.post("/deploy/{project_id}/quick/vercel")
+async def quick_deploy_vercel(project_id: str, project_name: str):
+    """Quick deploy to Vercel using server-side API key"""
+    vercel_token = os.environ.get('VERCEL_TOKEN')
+    if not vercel_token:
+        raise HTTPException(status_code=400, detail="Vercel API key not configured on server")
+    
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+    
+    deployment = Deployment(
+        project_id=project_id,
+        platform="vercel",
+        project_name=project_name,
+        status="deploying"
+    )
+    
+    try:
+        vercel_files = []
+        for f in files:
+            if f.get("filepath") and f.get("content"):
+                vercel_files.append({
+                    "file": f["filepath"].lstrip('/'),
+                    "data": base64.b64encode(f["content"].encode()).decode()
+                })
+        
+        async with httpx.AsyncClient() as client:
+            headers = {"Authorization": f"Bearer {vercel_token}"}
+            
+            deploy_response = await client.post(
+                "https://api.vercel.com/v13/deployments",
+                headers=headers,
+                json={
+                    "name": project_name.lower().replace(' ', '-'),
+                    "files": vercel_files,
+                    "target": "production"
+                },
+                timeout=60.0
+            )
+            
+            if deploy_response.status_code in [200, 201]:
+                data = deploy_response.json()
+                deployment.status = "live"
+                deployment.deploy_url = f"https://{data.get('url', project_name.lower().replace(' ', '-') + '.vercel.app')}"
+                deployment.admin_url = f"https://vercel.com/dashboard"
+                deployment.deployed_at = datetime.now(timezone.utc)
+                deployment.logs.append(f"Deployed successfully at {deployment.deploy_url}")
+            else:
+                deployment.status = "failed"
+                deployment.logs.append(f"Deployment failed: {deploy_response.text}")
+    
+    except Exception as e:
+        deployment.status = "failed"
+        deployment.logs.append(f"Error: {str(e)}")
+    
+    doc = deployment.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    if doc.get('deployed_at'):
+        doc['deployed_at'] = doc['deployed_at'].isoformat()
+    await db.deployments.insert_one(doc)
+    
+    if deployment.status == "live":
+        await send_notification(project_id, "Vercel Deployment Complete!", f"Your project is live at {deployment.deploy_url}", "complete")
+    else:
+        await send_notification(project_id, "Deployment Failed", "Check the deployment logs for details", "error")
+    
+    return serialize_doc(doc)
+
+
+@api_router.post("/deploy/{project_id}/quick/railway")
+async def quick_deploy_railway(project_id: str, project_name: str):
+    """Quick deploy to Railway using server-side API key"""
+    railway_token = os.environ.get('RAILWAY_TOKEN')
+    if not railway_token:
+        raise HTTPException(status_code=400, detail="Railway API key not configured on server")
+    
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    deployment = Deployment(
+        project_id=project_id,
+        platform="railway",
+        project_name=project_name,
+        status="deploying"
+    )
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            headers = {"Authorization": f"Bearer {railway_token}"}
+            
+            create_response = await client.post(
+                "https://backboard.railway.app/graphql/v2",
+                headers=headers,
+                json={
+                    "query": """
+                        mutation($name: String!) {
+                            projectCreate(input: {name: $name}) {
+                                id
+                                name
+                            }
+                        }
+                    """,
+                    "variables": {"name": project_name}
+                },
+                timeout=30.0
+            )
+            
+            if create_response.status_code == 200:
+                data = create_response.json()
+                if data.get("data", {}).get("projectCreate"):
+                    railway_project = data["data"]["projectCreate"]
+                    deployment.status = "live"
+                    deployment.deploy_url = f"https://{project_name.lower().replace(' ', '-')}.up.railway.app"
+                    deployment.admin_url = f"https://railway.app/project/{railway_project['id']}"
+                    deployment.deployed_at = datetime.now(timezone.utc)
+                    deployment.config["railway_project_id"] = railway_project["id"]
+                    deployment.logs.append(f"Project created: {railway_project['id']}")
+                else:
+                    deployment.status = "failed"
+                    deployment.logs.append(f"Failed: {data}")
+            else:
+                deployment.status = "failed"
+                deployment.logs.append(f"API error: {create_response.text}")
+    
+    except Exception as e:
+        deployment.status = "failed"
+        deployment.logs.append(f"Error: {str(e)}")
+    
+    doc = deployment.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    if doc.get('deployed_at'):
+        doc['deployed_at'] = doc['deployed_at'].isoformat()
+    await db.deployments.insert_one(doc)
+    
+    if deployment.status == "live":
+        await send_notification(project_id, "Railway Deployment Complete!", f"Your project is live at {deployment.deploy_url}", "complete")
+    
+    return serialize_doc(doc)
+
 
 # ========== BUILD SANDBOX ENDPOINTS ==========
 

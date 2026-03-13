@@ -107,13 +107,15 @@ The monolithic `server.py` (7,400+ lines) has been partially refactored into a m
 - `FAL_KEY` - fal.ai (LLM + images)
 - `GITHUB_TOKEN` - GitHub push
 - `EMERGENT_LLM_KEY` - OpenAI TTS
+- `VERCEL_TOKEN` - Vercel deployment ✅ NEW
+- `RAILWAY_TOKEN` - Railway deployment ✅ NEW
+- `ITCH_API_KEY` - Itch.io deployment ✅ NEW
+- `SENDGRID_API_KEY` - Email notifications ✅ NEW
+- `RESEND_API_KEY` - Email notifications (backup) ✅ NEW
+- `DISCORD_WEBHOOK_URL` - Discord notifications ✅ NEW
 
-### Mocked/Needs API Keys
-- Vercel deployment
-- Railway deployment
-- Itch.io deployment
-- Email notifications (SendGrid/Resend)
-- Discord notifications
+### Integration Status
+All deployment and notification integrations are now LIVE (no longer mocked):
 
 ---
 
