@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
@@ -79,6 +80,56 @@ const SYSTEM_ICONS = {
   day_night_cycle: Sun, combat_system: Swords, crafting_system: Hammer, economy_system: Coins,
   stealth_system: Ghost, mount_system: Gamepad2, building_system: Layers, skill_tree: Sparkles,
   fast_travel: Timer, photo_mode: Camera, multiplayer: Wifi
+};
+
+// Panel configuration for grouped dropdown navigation
+const PANEL_GROUPS = {
+  core: {
+    label: "Core",
+    icon: MessageSquare,
+    panels: [
+      { id: "chat", label: "Chat", icon: MessageSquare },
+      { id: "warroom", label: "War Room", icon: Radio },
+      { id: "tasks", label: "Tasks", icon: ListTodo },
+    ]
+  },
+  build: {
+    label: "Build",
+    icon: Code2,
+    panels: [
+      { id: "blueprints", label: "Blueprints", icon: GitBranch },
+      { id: "queue", label: "Build Queue", icon: Calendar },
+      { id: "sandbox", label: "Sandbox", icon: Terminal },
+      { id: "command", label: "Command Center", icon: Command },
+    ]
+  },
+  assets: {
+    label: "Assets",
+    icon: Package,
+    panels: [
+      { id: "images", label: "Images", icon: Image },
+      { id: "audio", label: "Audio", icon: Music },
+      { id: "assets", label: "Asset Pipeline", icon: Package },
+    ]
+  },
+  advanced: {
+    label: "Advanced",
+    icon: Sparkles,
+    panels: [
+      { id: "game-engine", label: "Game Engine", icon: Gamepad2 },
+      { id: "hardware", label: "Hardware", icon: Joystick },
+      { id: "research", label: "Research", icon: Globe },
+    ]
+  },
+  ops: {
+    label: "Operations",
+    icon: Rocket,
+    panels: [
+      { id: "deploy", label: "Deploy", icon: Rocket },
+      { id: "collab", label: "Collaboration", icon: Users },
+      { id: "notifications", label: "Alerts", icon: Bell },
+    ]
+  }
 };
 
 const ProjectWorkspace = () => {
@@ -980,6 +1031,20 @@ const ProjectWorkspace = () => {
 
             <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}><DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><Image className="w-4 h-4" /></Button></DialogTrigger><DialogContent className="bg-[#18181b] border-zinc-700"><DialogHeader><DialogTitle className="font-rajdhani text-white">Generate Asset</DialogTitle></DialogHeader><div className="space-y-4 py-4"><Textarea placeholder="Describe..." value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} className="bg-zinc-900 border-zinc-700 min-h-[100px]" /><Select value={imageCategory} onValueChange={setImageCategory}><SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="concept">Concept Art</SelectItem><SelectItem value="character">Character</SelectItem><SelectItem value="environment">Environment</SelectItem><SelectItem value="ui">UI</SelectItem><SelectItem value="texture">Texture</SelectItem></SelectContent></Select></div><DialogFooter><Button onClick={generateImage} disabled={generatingImage} className="bg-blue-500 hover:bg-blue-600">{generatingImage ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}Generate</Button></DialogFooter></DialogContent></Dialog>
 
+            {/* Theme Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="border-zinc-700" data-testid="theme-btn">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-64 bg-zinc-900 border-zinc-700" align="end">
+                <DropdownMenuLabel className="text-zinc-400">Appearance</DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-zinc-800" />
+                <ThemeSelector />
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button variant="outline" size="sm" className="border-zinc-700" onClick={exportProject}><Download className="w-4 h-4" /></Button>
           </div>
         </div>
@@ -1036,24 +1101,81 @@ const ProjectWorkspace = () => {
               {chainProgress && <div className="px-4 py-2 bg-blue-500/10 border-b border-blue-500/30"><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 text-blue-400 animate-spin" /><span className="text-xs text-blue-400">Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                <TabsList className="flex-shrink-0 bg-transparent border-b border-zinc-800 rounded-none px-4 h-11 overflow-x-auto">
-                  <TabsTrigger value="chat" className="data-[state=active]:bg-zinc-800"><MessageSquare className="w-4 h-4 mr-2" />Chat</TabsTrigger>
-                  <TabsTrigger value="warroom" className="data-[state=active]:bg-zinc-800" data-testid="warroom-tab"><Radio className="w-4 h-4 mr-2" />War Room{warRoomMessages.length > 0 && <Badge variant="secondary" className="ml-2 text-xs bg-cyan-500/20 text-cyan-400">{warRoomMessages.length}</Badge>}</TabsTrigger>
-                  <TabsTrigger value="blueprints" className="data-[state=active]:bg-zinc-800" data-testid="blueprints-tab"><GitBranch className="w-4 h-4 mr-2" />Blueprints{blueprints.length > 0 && <Badge variant="secondary" className="ml-2 text-xs bg-purple-500/20 text-purple-400">{blueprints.length}</Badge>}</TabsTrigger>
-                  <TabsTrigger value="queue" className="data-[state=active]:bg-zinc-800" data-testid="queue-tab"><Calendar className="w-4 h-4 mr-2" />Queue</TabsTrigger>
-                  <TabsTrigger value="collab" className="data-[state=active]:bg-zinc-800" data-testid="collab-tab"><Users className="w-4 h-4 mr-2" />Collab</TabsTrigger>
-                  <TabsTrigger value="tasks" className="data-[state=active]:bg-zinc-800"><ListTodo className="w-4 h-4 mr-2" />Tasks{tasks.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{tasks.length}</Badge>}</TabsTrigger>
-                  <TabsTrigger value="images" className="data-[state=active]:bg-zinc-800"><Image className="w-4 h-4 mr-2" />Images</TabsTrigger>
-                  <TabsTrigger value="audio" className="data-[state=active]:bg-zinc-800" data-testid="audio-tab"><Music className="w-4 h-4 mr-2" />Audio</TabsTrigger>
-                  <TabsTrigger value="assets" className="data-[state=active]:bg-zinc-800" data-testid="assets-tab"><Package className="w-4 h-4 mr-2" />Assets</TabsTrigger>
-                  <TabsTrigger value="sandbox" className="data-[state=active]:bg-zinc-800" data-testid="sandbox-tab"><Terminal className="w-4 h-4 mr-2" />Sandbox</TabsTrigger>
-                  <TabsTrigger value="command" className="data-[state=active]:bg-zinc-800" data-testid="command-tab"><Command className="w-4 h-4 mr-2" />Command</TabsTrigger>
-                  <TabsTrigger value="deploy" className="data-[state=active]:bg-zinc-800" data-testid="deploy-tab"><Rocket className="w-4 h-4 mr-2" />Deploy</TabsTrigger>
-                  <TabsTrigger value="notifications" className="data-[state=active]:bg-zinc-800" data-testid="notifications-tab"><Bell className="w-4 h-4 mr-2" />Alerts</TabsTrigger>
-                  <TabsTrigger value="game-engine" className="data-[state=active]:bg-zinc-800" data-testid="game-engine-tab"><Gamepad2 className="w-4 h-4 mr-2" />Game Engine</TabsTrigger>
-                  <TabsTrigger value="hardware" className="data-[state=active]:bg-zinc-800" data-testid="hardware-tab"><Joystick className="w-4 h-4 mr-2" />Hardware</TabsTrigger>
-                  <TabsTrigger value="research" className="data-[state=active]:bg-zinc-800" data-testid="research-tab"><Globe className="w-4 h-4 mr-2" />Research</TabsTrigger>
-                </TabsList>
+                {/* Clean Grouped Dropdown Navigation */}
+                <div className="flex-shrink-0 border-b border-zinc-800 px-4 py-2 flex items-center gap-3">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="border-zinc-700 bg-zinc-900/50 hover:bg-zinc-800 min-w-[180px] justify-between" data-testid="panel-selector">
+                        <span className="flex items-center gap-2">
+                          {(() => {
+                            const ActiveIcon = Object.values(PANEL_GROUPS).flatMap(g => g.panels).find(p => p.id === activeTab)?.icon || MessageSquare;
+                            return <ActiveIcon className="w-4 h-4 text-cyan-400" />;
+                          })()}
+                          <span className="text-sm">
+                            {Object.values(PANEL_GROUPS).flatMap(g => g.panels).find(p => p.id === activeTab)?.label || "Chat"}
+                          </span>
+                        </span>
+                        <ChevronDown className="w-4 h-4 text-zinc-500" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56 bg-zinc-900 border-zinc-700" align="start">
+                      {Object.entries(PANEL_GROUPS).map(([groupKey, group]) => (
+                        <div key={groupKey}>
+                          <DropdownMenuLabel className="text-xs text-zinc-500 flex items-center gap-2">
+                            <group.icon className="w-3 h-3" />
+                            {group.label}
+                          </DropdownMenuLabel>
+                          {group.panels.map((panel) => {
+                            const PanelIcon = panel.icon;
+                            const isActive = activeTab === panel.id;
+                            return (
+                              <DropdownMenuItem
+                                key={panel.id}
+                                onClick={() => setActiveTab(panel.id)}
+                                className={`cursor-pointer ${isActive ? 'bg-cyan-500/10 text-cyan-400' : 'text-zinc-300 hover:text-white'}`}
+                                data-testid={`panel-${panel.id}`}
+                              >
+                                <PanelIcon className={`w-4 h-4 mr-2 ${isActive ? 'text-cyan-400' : 'text-zinc-500'}`} />
+                                {panel.label}
+                                {panel.id === "warroom" && warRoomMessages.length > 0 && (
+                                  <Badge className="ml-auto text-[10px] bg-cyan-500/20 text-cyan-400">{warRoomMessages.length}</Badge>
+                                )}
+                                {panel.id === "blueprints" && blueprints.length > 0 && (
+                                  <Badge className="ml-auto text-[10px] bg-purple-500/20 text-purple-400">{blueprints.length}</Badge>
+                                )}
+                                {panel.id === "tasks" && tasks.length > 0 && (
+                                  <Badge className="ml-auto text-[10px] bg-zinc-700 text-zinc-300">{tasks.length}</Badge>
+                                )}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                          <DropdownMenuSeparator className="bg-zinc-800" />
+                        </div>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  
+                  {/* Quick panel shortcuts */}
+                  <div className="hidden md:flex items-center gap-1">
+                    {[
+                      { id: "chat", icon: MessageSquare, label: "Chat" },
+                      { id: "warroom", icon: Radio, label: "War Room" },
+                      { id: "blueprints", icon: GitBranch, label: "Blueprints" },
+                    ].map(({ id, icon: Icon, label }) => (
+                      <Button
+                        key={id}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setActiveTab(id)}
+                        className={`h-8 px-3 ${activeTab === id ? 'bg-zinc-800 text-cyan-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        data-testid={`quick-${id}`}
+                      >
+                        <Icon className="w-4 h-4 mr-1.5" />
+                        <span className="text-xs">{label}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
 
                 {/* Chat Tab */}
                 <TabsContent value="chat" className="flex-1 flex flex-col m-0 overflow-hidden">

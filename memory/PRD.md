@@ -7,7 +7,20 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ✅ ALL FEATURES 100% COMPLETE
 
-### Final Update (March 2025)
+### Latest Update (December 2025)
+**UI/UX Redesign Completed:**
+- ✅ Replaced cluttered horizontal tab bar with **grouped dropdown navigation**
+- ✅ Added **theme selector** with 4 themes (Dark, Light, Midnight Blue, J.A.R.V.I.S.)
+- ✅ Clean premium lab aesthetic maintained (no cyberpunk)
+- ✅ AI profile badges preserved
+- ✅ Quick panel shortcuts for frequently used panels
+
+**New Features Added:**
+- ✅ Game Engine Builder (UE5 + Unity real builds)
+- ✅ Hardware Integration (Arduino, Pi, STM32, Teensy)
+- ✅ Research Mode (arXiv, PapersWithCode, HuggingFace)
+
+### Previous Update (March 2025)
 All requested features implemented and tested at 100%:
 - ✅ Complete modular backend migration (192 endpoints in /routes)
 - ✅ Celery/Redis distributed workers (with memory fallback)
