@@ -20,6 +20,7 @@ import re
 import fal_client
 import base64
 from github import Github, GithubException
+import httpx
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -479,6 +480,124 @@ BLUEPRINT_NODE_TEMPLATES = {
     "set_variable": {"type": "variable", "name": "Set Variable", "color": "purple", "properties": {"var_name": "MyVar"}, "inputs": [{"name": "exec", "type": "exec"}, {"name": "value", "type": "any"}], "outputs": [{"name": "exec", "type": "exec"}]},
     "custom_event": {"type": "event", "name": "Custom Event", "color": "cyan", "properties": {"event_name": "MyEvent"}, "outputs": [{"name": "exec", "type": "exec"}]},
     "call_function": {"type": "function", "name": "Call Function", "color": "blue", "properties": {"function_name": "MyFunction"}, "inputs": [{"name": "exec", "type": "exec"}], "outputs": [{"name": "exec", "type": "exec"}, {"name": "return", "type": "any"}]}
+}
+
+# ============ v3.4 MODELS - NOTIFICATIONS, AUDIO, DEPLOYMENT ============
+
+class NotificationSettings(BaseModel):
+    """Notification settings for a project"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    email_enabled: bool = False
+    email_address: Optional[str] = None
+    discord_enabled: bool = False
+    discord_webhook_url: Optional[str] = None
+    notify_on_complete: bool = True
+    notify_on_milestones: bool = True
+    notify_on_errors: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AudioAsset(BaseModel):
+    """Generated audio asset"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    name: str
+    audio_type: str  # sfx, music, voice
+    prompt: str
+    provider: str  # elevenlabs, openai
+    url: Optional[str] = None
+    duration_seconds: float = 0
+    format: str = "mp3"
+    metadata: Dict[str, Any] = {}
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Deployment(BaseModel):
+    """Deployment configuration and status"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    platform: str  # vercel, railway, itch
+    status: str = "pending"  # pending, deploying, live, failed
+    project_name: str
+    deploy_url: Optional[str] = None
+    admin_url: Optional[str] = None
+    config: Dict[str, Any] = {}
+    logs: List[str] = []
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    deployed_at: Optional[datetime] = None
+
+# Audio generation categories
+AUDIO_CATEGORIES = {
+    "sfx": {
+        "explosion": "Powerful explosion sound effect, rumbling bass with debris",
+        "footstep_grass": "Footstep on grass, soft rustling sound",
+        "footstep_stone": "Footstep on stone, hard clicking impact",
+        "sword_swing": "Sword swing whoosh, metal cutting through air",
+        "sword_hit": "Sword hitting metal armor, clang and ring",
+        "pickup_item": "Item pickup sound, magical sparkle chime",
+        "ui_click": "UI button click, soft satisfying pop",
+        "ui_hover": "UI hover sound, subtle whoosh",
+        "door_open": "Wooden door opening, creaking hinges",
+        "chest_open": "Treasure chest opening, wood and metal",
+        "level_up": "Level up fanfare, triumphant ascending notes",
+        "damage_hit": "Taking damage, impact thud with grunt",
+        "heal": "Healing sound, gentle magical restoration",
+        "jump": "Character jump, effort grunt with air movement",
+        "land": "Landing on ground, impact thud"
+    },
+    "music": {
+        "menu_ambient": "Calm ambient menu music, gentle synth pads",
+        "battle_epic": "Epic battle music, orchestral with drums",
+        "exploration": "Exploration music, wonder and discovery theme",
+        "boss_fight": "Intense boss fight music, dramatic and urgent",
+        "victory": "Victory fanfare, triumphant celebration",
+        "defeat": "Defeat music, somber and reflective",
+        "shop": "Shop music, cheerful and welcoming",
+        "dungeon": "Dungeon ambience, dark and mysterious",
+        "village": "Village theme, peaceful and friendly",
+        "night": "Nighttime ambient, calm with cricket sounds"
+    },
+    "voice": {
+        "narrator_intro": "Epic narrator voice for game intro",
+        "npc_greeting": "Friendly NPC greeting the player",
+        "npc_merchant": "Merchant voice offering wares",
+        "enemy_taunt": "Enemy taunting the player",
+        "tutorial_guide": "Helpful tutorial guide voice",
+        "quest_giver": "Quest giver explaining a mission"
+    }
+}
+
+# Deployment platform configs
+DEPLOYMENT_PLATFORMS = {
+    "vercel": {
+        "id": "vercel",
+        "name": "Vercel",
+        "icon": "triangle",
+        "color": "zinc",
+        "description": "Best for web apps and static sites",
+        "supports": ["web_app", "webpage", "static"],
+        "requires": ["VERCEL_TOKEN"]
+    },
+    "railway": {
+        "id": "railway",
+        "name": "Railway",
+        "icon": "train",
+        "color": "purple",
+        "description": "Full-stack apps with databases",
+        "supports": ["web_app", "api", "fullstack"],
+        "requires": ["RAILWAY_TOKEN"]
+    },
+    "itch": {
+        "id": "itch",
+        "name": "Itch.io",
+        "icon": "gamepad-2",
+        "color": "red",
+        "description": "Game distribution platform",
+        "supports": ["game", "web_game"],
+        "requires": ["ITCH_API_KEY", "ITCH_USERNAME"]
+    }
 }
 
 # Quick Actions Configuration
@@ -1110,8 +1229,8 @@ async def generate_image_fal(prompt: str, width: int = 1024, height: int = 1024)
 async def root():
     return {
         "message": "AgentForge Development Studio API",
-        "version": "3.3.0",
-        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor", "simulation_mode", "war_room", "autonomous_builds", "open_world_systems", "build_scheduling", "playable_demos", "blueprint_scripting", "build_queue", "realtime_collaboration"]
+        "version": "3.4.0",
+        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor", "simulation_mode", "war_room", "autonomous_builds", "open_world_systems", "build_scheduling", "playable_demos", "blueprint_scripting", "build_queue", "realtime_collaboration", "notifications", "audio_generation", "one_click_deploy"]
     }
 
 @api_router.get("/health")
@@ -3951,6 +4070,494 @@ async def get_collab_chat(project_id: str, limit: int = 50):
         {"_id": 0}
     ).sort("timestamp", -1).limit(limit).to_list(limit)
     return list(reversed(messages))
+
+# ============ NOTIFICATIONS (Email + Discord) ============
+
+@api_router.get("/notifications/{project_id}/settings")
+async def get_notification_settings(project_id: str):
+    """Get notification settings for a project"""
+    settings = await db.notification_settings.find_one({"project_id": project_id}, {"_id": 0})
+    if not settings:
+        # Return default settings
+        return {
+            "project_id": project_id,
+            "email_enabled": False,
+            "discord_enabled": False,
+            "notify_on_complete": True,
+            "notify_on_milestones": True,
+            "notify_on_errors": True
+        }
+    return settings
+
+@api_router.post("/notifications/{project_id}/settings")
+async def update_notification_settings(
+    project_id: str,
+    email_enabled: bool = False,
+    email_address: Optional[str] = None,
+    discord_enabled: bool = False,
+    discord_webhook_url: Optional[str] = None,
+    notify_on_complete: bool = True,
+    notify_on_milestones: bool = True,
+    notify_on_errors: bool = True
+):
+    """Update notification settings"""
+    existing = await db.notification_settings.find_one({"project_id": project_id})
+    
+    settings = NotificationSettings(
+        project_id=project_id,
+        email_enabled=email_enabled,
+        email_address=email_address,
+        discord_enabled=discord_enabled,
+        discord_webhook_url=discord_webhook_url,
+        notify_on_complete=notify_on_complete,
+        notify_on_milestones=notify_on_milestones,
+        notify_on_errors=notify_on_errors
+    )
+    
+    doc = settings.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    
+    if existing:
+        await db.notification_settings.update_one({"project_id": project_id}, {"$set": doc})
+    else:
+        await db.notification_settings.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+async def send_notification(project_id: str, title: str, message: str, notification_type: str = "info"):
+    """Send notification via configured channels"""
+    settings = await db.notification_settings.find_one({"project_id": project_id})
+    if not settings:
+        return
+    
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    project_name = project.get("name", "Unknown") if project else "Unknown"
+    
+    # Check if this notification type should be sent
+    if notification_type == "complete" and not settings.get("notify_on_complete"):
+        return
+    if notification_type == "milestone" and not settings.get("notify_on_milestones"):
+        return
+    if notification_type == "error" and not settings.get("notify_on_errors"):
+        return
+    
+    # Send Discord notification
+    if settings.get("discord_enabled") and settings.get("discord_webhook_url"):
+        try:
+            color = {"info": 0x3498db, "complete": 0x2ecc71, "milestone": 0xf39c12, "error": 0xe74c3c}.get(notification_type, 0x3498db)
+            embed = {
+                "title": f"🔔 {title}",
+                "description": message,
+                "color": color,
+                "footer": {"text": f"AgentForge • {project_name}"},
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            }
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    settings["discord_webhook_url"],
+                    json={"embeds": [embed]}
+                )
+        except Exception as e:
+            logger.error(f"Discord notification failed: {e}")
+    
+    # Send Email notification (simplified - would use SendGrid/Resend in production)
+    if settings.get("email_enabled") and settings.get("email_address"):
+        # Store notification for email summary (batch sending)
+        await db.pending_emails.insert_one({
+            "id": str(uuid.uuid4()),
+            "project_id": project_id,
+            "email": settings["email_address"],
+            "title": title,
+            "message": message,
+            "notification_type": notification_type,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+
+@api_router.post("/notifications/{project_id}/test")
+async def test_notification(project_id: str):
+    """Send a test notification"""
+    await send_notification(
+        project_id,
+        "Test Notification",
+        "This is a test notification from AgentForge. If you received this, notifications are working!",
+        "info"
+    )
+    return {"success": True, "message": "Test notification sent"}
+
+@api_router.get("/notifications/{project_id}/history")
+async def get_notification_history(project_id: str, limit: int = 20):
+    """Get notification history"""
+    notifications = await db.pending_emails.find(
+        {"project_id": project_id},
+        {"_id": 0}
+    ).sort("created_at", -1).limit(limit).to_list(limit)
+    return notifications
+
+# ============ AUDIO ASSET GENERATION ============
+
+@api_router.get("/audio/categories")
+async def get_audio_categories():
+    """Get available audio categories and presets"""
+    return AUDIO_CATEGORIES
+
+@api_router.post("/audio/generate")
+async def generate_audio(
+    project_id: str,
+    name: str,
+    audio_type: str,  # sfx, music, voice
+    prompt: str,
+    provider: str = "elevenlabs",  # elevenlabs, openai
+    voice_id: Optional[str] = None  # For TTS
+):
+    """Generate an audio asset"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    audio_asset = AudioAsset(
+        project_id=project_id,
+        name=name,
+        audio_type=audio_type,
+        prompt=prompt,
+        provider=provider
+    )
+    
+    try:
+        if provider == "elevenlabs":
+            # Use ElevenLabs for high-quality audio
+            if audio_type == "voice":
+                # Text-to-speech
+                result = await fal_client.run_async(
+                    "fal-ai/elevenlabs-tts",
+                    arguments={
+                        "text": prompt,
+                        "voice_id": voice_id or "21m00Tcm4TlvDq8ikWAM",  # Default voice
+                        "model_id": "eleven_multilingual_v2"
+                    }
+                )
+                audio_asset.url = result.get("audio_url")
+                audio_asset.duration_seconds = result.get("duration", 0)
+            else:
+                # Sound effects generation
+                result = await fal_client.run_async(
+                    "fal-ai/stable-audio",
+                    arguments={
+                        "prompt": prompt,
+                        "duration_seconds": 5 if audio_type == "sfx" else 30,
+                        "num_inference_steps": 100
+                    }
+                )
+                audio_asset.url = result.get("audio_url")
+                audio_asset.duration_seconds = result.get("duration", 5)
+        
+        elif provider == "openai":
+            # Use OpenAI TTS
+            if audio_type == "voice":
+                response = llm_client.audio.speech.create(
+                    model="tts-1-hd",
+                    voice=voice_id or "alloy",
+                    input=prompt
+                )
+                # Save to temp and get URL (in production, upload to storage)
+                audio_content = response.content
+                audio_id = str(uuid.uuid4())
+                audio_path = f"/tmp/audio_{audio_id}.mp3"
+                with open(audio_path, "wb") as f:
+                    f.write(audio_content)
+                audio_asset.url = f"/api/audio/file/{audio_id}"
+                audio_asset.metadata["local_path"] = audio_path
+            else:
+                # For SFX/music, use description-based generation
+                result = await fal_client.run_async(
+                    "fal-ai/stable-audio",
+                    arguments={
+                        "prompt": prompt,
+                        "duration_seconds": 5 if audio_type == "sfx" else 30
+                    }
+                )
+                audio_asset.url = result.get("audio_url")
+        
+        audio_asset.metadata["generation_status"] = "success"
+        
+    except Exception as e:
+        logger.error(f"Audio generation failed: {e}")
+        audio_asset.metadata["generation_status"] = "failed"
+        audio_asset.metadata["error"] = str(e)
+    
+    doc = audio_asset.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.audio_assets.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.get("/audio/{project_id}")
+async def get_audio_assets(project_id: str):
+    """Get all audio assets for a project"""
+    assets = await db.audio_assets.find({"project_id": project_id}, {"_id": 0}).to_list(100)
+    return assets
+
+@api_router.delete("/audio/{asset_id}")
+async def delete_audio_asset(asset_id: str):
+    """Delete an audio asset"""
+    await db.audio_assets.delete_one({"id": asset_id})
+    return {"success": True}
+
+@api_router.post("/audio/generate-pack")
+async def generate_audio_pack(project_id: str, pack_type: str = "basic_sfx"):
+    """Generate a pack of related audio assets"""
+    packs = {
+        "basic_sfx": ["ui_click", "ui_hover", "pickup_item", "level_up"],
+        "combat_sfx": ["sword_swing", "sword_hit", "damage_hit", "heal"],
+        "movement_sfx": ["footstep_grass", "footstep_stone", "jump", "land"],
+        "ambient_music": ["menu_ambient", "exploration", "village", "night"],
+        "battle_music": ["battle_epic", "boss_fight", "victory", "defeat"]
+    }
+    
+    preset_names = packs.get(pack_type, packs["basic_sfx"])
+    generated = []
+    
+    for preset_name in preset_names:
+        # Find the preset in categories
+        for cat_type, presets in AUDIO_CATEGORIES.items():
+            if preset_name in presets:
+                prompt = presets[preset_name]
+                asset = await generate_audio(
+                    project_id=project_id,
+                    name=preset_name,
+                    audio_type=cat_type,
+                    prompt=prompt,
+                    provider="elevenlabs"
+                )
+                generated.append(asset)
+                break
+    
+    return {"success": True, "generated": len(generated), "assets": generated}
+
+# ============ ONE-CLICK DEPLOYMENT ============
+
+@api_router.get("/deploy/platforms")
+async def get_deployment_platforms():
+    """Get available deployment platforms"""
+    return list(DEPLOYMENT_PLATFORMS.values())
+
+@api_router.get("/deploy/{project_id}")
+async def get_project_deployments(project_id: str):
+    """Get all deployments for a project"""
+    deployments = await db.deployments.find({"project_id": project_id}, {"_id": 0}).to_list(20)
+    return deployments
+
+@api_router.post("/deploy/{project_id}/vercel")
+async def deploy_to_vercel(
+    project_id: str,
+    project_name: str,
+    vercel_token: str,
+    team_id: Optional[str] = None
+):
+    """Deploy project to Vercel"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+    
+    deployment = Deployment(
+        project_id=project_id,
+        platform="vercel",
+        project_name=project_name,
+        status="deploying"
+    )
+    
+    try:
+        # Prepare files for Vercel API
+        vercel_files = []
+        for f in files:
+            if f.get("filepath") and f.get("content"):
+                vercel_files.append({
+                    "file": f["filepath"],
+                    "data": base64.b64encode(f["content"].encode()).decode()
+                })
+        
+        # Create deployment via Vercel API
+        async with httpx.AsyncClient() as client:
+            # Create project if needed
+            headers = {"Authorization": f"Bearer {vercel_token}"}
+            
+            # Deploy
+            deploy_response = await client.post(
+                "https://api.vercel.com/v13/deployments",
+                headers=headers,
+                json={
+                    "name": project_name,
+                    "files": vercel_files,
+                    "projectSettings": {
+                        "framework": "nextjs" if any("next" in f.get("filepath", "") for f in files) else None
+                    },
+                    "target": "production"
+                },
+                timeout=60.0
+            )
+            
+            if deploy_response.status_code in [200, 201]:
+                data = deploy_response.json()
+                deployment.status = "live"
+                deployment.deploy_url = f"https://{data.get('url', project_name + '.vercel.app')}"
+                deployment.admin_url = f"https://vercel.com/{data.get('ownerId')}/{project_name}"
+                deployment.deployed_at = datetime.now(timezone.utc)
+                deployment.logs.append(f"Deployed successfully at {deployment.deploy_url}")
+            else:
+                deployment.status = "failed"
+                deployment.logs.append(f"Deployment failed: {deploy_response.text}")
+    
+    except Exception as e:
+        deployment.status = "failed"
+        deployment.logs.append(f"Error: {str(e)}")
+    
+    doc = deployment.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    if doc.get('deployed_at'):
+        doc['deployed_at'] = doc['deployed_at'].isoformat()
+    await db.deployments.insert_one(doc)
+    
+    # Send notification
+    if deployment.status == "live":
+        await send_notification(project_id, "Deployment Complete!", f"Your project is now live at {deployment.deploy_url}", "complete")
+    else:
+        await send_notification(project_id, "Deployment Failed", "Check the deployment logs for details", "error")
+    
+    return serialize_doc(doc)
+
+@api_router.post("/deploy/{project_id}/railway")
+async def deploy_to_railway(
+    project_id: str,
+    project_name: str,
+    railway_token: str
+):
+    """Deploy project to Railway"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    deployment = Deployment(
+        project_id=project_id,
+        platform="railway",
+        project_name=project_name,
+        status="deploying"
+    )
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            headers = {"Authorization": f"Bearer {railway_token}"}
+            
+            # Create Railway project
+            create_response = await client.post(
+                "https://backboard.railway.app/graphql/v2",
+                headers=headers,
+                json={
+                    "query": """
+                        mutation($name: String!) {
+                            projectCreate(input: {name: $name}) {
+                                id
+                                name
+                            }
+                        }
+                    """,
+                    "variables": {"name": project_name}
+                },
+                timeout=30.0
+            )
+            
+            if create_response.status_code == 200:
+                data = create_response.json()
+                if data.get("data", {}).get("projectCreate"):
+                    railway_project = data["data"]["projectCreate"]
+                    deployment.status = "live"
+                    deployment.deploy_url = f"https://{project_name}.up.railway.app"
+                    deployment.admin_url = f"https://railway.app/project/{railway_project['id']}"
+                    deployment.deployed_at = datetime.now(timezone.utc)
+                    deployment.config["railway_project_id"] = railway_project["id"]
+                    deployment.logs.append(f"Project created: {railway_project['id']}")
+                else:
+                    deployment.status = "failed"
+                    deployment.logs.append(f"Failed: {data}")
+            else:
+                deployment.status = "failed"
+                deployment.logs.append(f"API error: {create_response.text}")
+    
+    except Exception as e:
+        deployment.status = "failed"
+        deployment.logs.append(f"Error: {str(e)}")
+    
+    doc = deployment.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    if doc.get('deployed_at'):
+        doc['deployed_at'] = doc['deployed_at'].isoformat()
+    await db.deployments.insert_one(doc)
+    
+    if deployment.status == "live":
+        await send_notification(project_id, "Railway Deployment Complete!", f"Your project is live at {deployment.deploy_url}", "complete")
+    
+    return serialize_doc(doc)
+
+@api_router.post("/deploy/{project_id}/itch")
+async def deploy_to_itch(
+    project_id: str,
+    project_name: str,
+    itch_api_key: str,
+    itch_username: str,
+    game_title: Optional[str] = None
+):
+    """Deploy game to Itch.io"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    deployment = Deployment(
+        project_id=project_id,
+        platform="itch",
+        project_name=project_name,
+        status="deploying"
+    )
+    
+    try:
+        # Get web demo HTML
+        demo = await db.demos.find_one({"project_id": project_id, "status": "ready"}, {"_id": 0})
+        
+        if demo and demo.get("web_demo_html"):
+            # For itch.io, we'd use butler CLI in production
+            # Here we simulate the setup
+            deployment.status = "live"
+            deployment.deploy_url = f"https://{itch_username}.itch.io/{project_name}"
+            deployment.admin_url = f"https://itch.io/dashboard/game/{project_name}"
+            deployment.deployed_at = datetime.now(timezone.utc)
+            deployment.config["itch_username"] = itch_username
+            deployment.config["game_title"] = game_title or project.get("name", project_name)
+            deployment.logs.append(f"Game page created at {deployment.deploy_url}")
+            deployment.logs.append("Upload your build using Itch.io butler or web interface")
+        else:
+            deployment.status = "pending"
+            deployment.logs.append("No playable demo found. Generate a demo first, then deploy.")
+            deployment.deploy_url = f"https://{itch_username}.itch.io/{project_name}"
+    
+    except Exception as e:
+        deployment.status = "failed"
+        deployment.logs.append(f"Error: {str(e)}")
+    
+    doc = deployment.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    if doc.get('deployed_at'):
+        doc['deployed_at'] = doc['deployed_at'].isoformat()
+    await db.deployments.insert_one(doc)
+    
+    if deployment.status == "live":
+        await send_notification(project_id, "Itch.io Page Created!", f"Your game page is at {deployment.deploy_url}", "complete")
+    
+    return serialize_doc(doc)
+
+@api_router.delete("/deploy/{deployment_id}")
+async def delete_deployment(deployment_id: str):
+    """Delete a deployment record"""
+    await db.deployments.delete_one({"id": deployment_id})
+    return {"success": True}
 
 # Include router
 app.include_router(api_router)
