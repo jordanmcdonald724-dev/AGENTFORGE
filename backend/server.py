@@ -334,6 +334,34 @@ class StartBuildRequest(BaseModel):
     estimated_hours: int = 12
     scheduled_at: Optional[str] = None  # ISO datetime string for scheduled builds
 
+class PlayableDemo(BaseModel):
+    """Playable demo generated on build completion"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    build_id: str
+    status: str = "generating"  # generating, ready, failed
+    demo_type: str = "both"  # web, executable, both
+    target_engine: str = "unreal"
+    
+    # Web demo (HTML5/WebGL embed)
+    web_demo_url: Optional[str] = None
+    web_demo_html: Optional[str] = None
+    
+    # Executable demo package
+    executable_url: Optional[str] = None
+    executable_size_mb: float = 0
+    platform: str = "windows"  # windows, mac, linux, all
+    
+    # Demo contents
+    systems_included: List[str] = []
+    demo_features: List[str] = []
+    controls_guide: str = ""
+    
+    # Metadata
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    generated_at: Optional[datetime] = None
+
 # Quick Actions Configuration
 QUICK_ACTIONS = {
     "player_controller": {
@@ -963,8 +991,8 @@ async def generate_image_fal(prompt: str, width: int = 1024, height: int = 1024)
 async def root():
     return {
         "message": "AgentForge Development Studio API",
-        "version": "3.0.0",
-        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor", "simulation_mode", "war_room", "autonomous_builds", "open_world_systems"]
+        "version": "3.2.0",
+        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor", "simulation_mode", "war_room", "autonomous_builds", "open_world_systems", "build_scheduling", "playable_demos"]
     }
 
 @api_router.get("/health")
@@ -2948,10 +2976,360 @@ async def run_full_build(build_id: str, background_tasks: BackgroundTasks):
                     "progress_percent": 100 if all_complete else final_build.get("progress_percent", 0)
                 }}
             )
+            
+            # AUTO-GENERATE PLAYABLE DEMO ON COMPLETION
+            if all_complete:
+                await broadcast_to_war_room(
+                    final_build["project_id"],
+                    "COMMANDER",
+                    "🎮 BUILD COMPLETE! Now generating playable demo with all systems...",
+                    "progress",
+                    build_id
+                )
+                try:
+                    await generate_playable_demo(build_id)
+                except Exception as e:
+                    logger.error(f"Demo generation failed: {e}")
+                    await broadcast_to_war_room(
+                        final_build["project_id"],
+                        "PRISM",
+                        f"⚠️ Demo generation encountered an issue: {str(e)[:100]}",
+                        "warning",
+                        build_id
+                    )
     
     background_tasks.add_task(execute_all_stages)
     
     return {"success": True, "message": "Build started in background", "build_id": build_id}
+
+# ============ PLAYABLE DEMO GENERATION ============
+
+async def generate_playable_demo(build_id: str):
+    """Generate playable demo on build completion"""
+    build = await db.builds.find_one({"id": build_id})
+    if not build:
+        return None
+    
+    project = await db.projects.find_one({"id": build["project_id"]}, {"_id": 0})
+    files = await db.files.find({"project_id": build["project_id"]}, {"_id": 0}).to_list(500)
+    agents = await get_or_create_agents()
+    
+    # Create demo record
+    demo = PlayableDemo(
+        project_id=build["project_id"],
+        build_id=build_id,
+        status="generating",
+        target_engine=build["target_engine"],
+        demo_type="both"
+    )
+    
+    doc = demo.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.demos.insert_one(doc)
+    
+    # Determine which systems were built
+    systems_built = []
+    for stage in build.get("stages", []):
+        if stage.get("status") == "completed":
+            systems_built.append(stage.get("name", ""))
+    
+    # Get PRISM (artist) to generate demo
+    prism = next((a for a in agents if a['name'] == 'PRISM'), agents[0])
+    
+    await broadcast_to_war_room(
+        build["project_id"],
+        "PRISM",
+        f"🎨 Taking over demo generation. Creating playable showcase for {build['target_engine'].upper()}...",
+        "handoff",
+        build_id
+    )
+    
+    # Generate Web Demo (HTML5 embed)
+    web_demo_prompt = f"""Create a playable HTML5 demo for this {build['target_engine']} game project.
+
+PROJECT: {project['name']}
+DESCRIPTION: {project['description']}
+ENGINE: {build['target_engine'].upper()}
+SYSTEMS BUILT: {', '.join(systems_built)}
+
+Create a COMPLETE, FULLY PLAYABLE HTML5 demo that showcases ALL the game systems.
+Include:
+1. Full HTML document with embedded CSS and JavaScript
+2. Canvas-based rendering or DOM-based game view
+3. Working player controls (WASD/Arrow keys for movement, mouse for camera/actions)
+4. Visual representation of all implemented systems
+5. On-screen controls guide
+6. Demo should be immediately playable in browser
+
+The demo should demonstrate:
+- Player movement and controls
+- Any combat/interaction systems
+- UI elements (health bars, inventory preview, etc.)
+- Visual effects and feedback
+- A small test environment to explore
+
+Output a single complete HTML file that works standalone:
+```html:demo/web_demo.html
+<!DOCTYPE html>
+<html>
+...complete playable demo...
+</html>
+```"""
+
+    try:
+        web_response = await call_agent(prism, [{"role": "user", "content": web_demo_prompt}], "")
+        web_blocks = extract_code_blocks(web_response)
+        
+        web_demo_html = None
+        for block in web_blocks:
+            if block.get("language") == "html" or "html" in block.get("filepath", ""):
+                web_demo_html = block.get("content", "")
+                break
+        
+        if not web_demo_html:
+            # Fallback: extract any HTML content
+            html_match = re.search(r'<!DOCTYPE html>[\s\S]*?</html>', web_response, re.IGNORECASE)
+            if html_match:
+                web_demo_html = html_match.group(0)
+        
+        # Save web demo file
+        if web_demo_html:
+            web_file = ProjectFile(
+                project_id=build["project_id"],
+                filename="web_demo.html",
+                filepath="demo/web_demo.html",
+                content=web_demo_html,
+                language="html",
+                created_by_agent_name="PRISM"
+            )
+            web_doc = web_file.model_dump()
+            web_doc['created_at'] = web_doc['created_at'].isoformat()
+            web_doc['updated_at'] = web_doc['updated_at'].isoformat()
+            await db.files.insert_one(web_doc)
+            
+            await broadcast_to_war_room(
+                build["project_id"],
+                "PRISM",
+                "✅ Web demo (HTML5) generated! Playable in browser.",
+                "progress",
+                build_id
+            )
+    except Exception as e:
+        logger.error(f"Web demo generation failed: {e}")
+        web_demo_html = None
+    
+    # Generate Executable Demo Package Instructions
+    exe_demo_prompt = f"""Create executable demo build configuration and main demo scene for {build['target_engine']}.
+
+PROJECT: {project['name']}
+ENGINE: {build['target_engine'].upper()}
+SYSTEMS: {', '.join(systems_built)}
+
+Generate:
+1. Demo scene/level that showcases ALL systems
+2. Build configuration for Windows/Mac/Linux
+3. Demo launcher/main menu
+4. Controls configuration
+5. README with play instructions
+
+For {build['target_engine'].upper()}, create:
+"""
+
+    if build['target_engine'] == 'unreal':
+        exe_demo_prompt += """
+- Demo map (.cpp level setup)
+- Demo game mode with all systems active
+- DefaultGame.ini build settings
+- Demo-specific player controller
+- Package configuration for shipping build
+
+Output files:
+```cpp:Source/Demo/DemoGameMode.cpp
+```cpp:Source/Demo/DemoPlayerController.cpp
+```cpp:Source/Demo/DemoLevel.cpp
+```ini:Config/DefaultGame_Demo.ini
+```markdown:Demo/README.md
+"""
+    else:
+        exe_demo_prompt += """
+- Demo scene script
+- Build settings profile
+- Demo manager with all systems
+- Player demo controller
+- Package manifest
+
+Output files:
+```csharp:Assets/Demo/DemoManager.cs
+```csharp:Assets/Demo/DemoSceneSetup.cs
+```json:ProjectSettings/DemoBuildSettings.json
+```markdown:Demo/README.md
+"""
+
+    try:
+        exe_response = await call_agent(prism, [{"role": "user", "content": exe_demo_prompt}], "")
+        exe_blocks = extract_code_blocks(exe_response)
+        
+        demo_files = []
+        controls_guide = ""
+        
+        for block in exe_blocks:
+            if block.get("filepath"):
+                file = ProjectFile(
+                    project_id=build["project_id"],
+                    filename=block.get("filename", ""),
+                    filepath=block.get("filepath"),
+                    content=block.get("content", ""),
+                    language=block.get("language", "text"),
+                    created_by_agent_name="PRISM"
+                )
+                file_doc = file.model_dump()
+                file_doc['created_at'] = file_doc['created_at'].isoformat()
+                file_doc['updated_at'] = file_doc['updated_at'].isoformat()
+                await db.files.insert_one(file_doc)
+                demo_files.append(block.get("filepath"))
+                
+                if "README" in block.get("filepath", ""):
+                    controls_guide = block.get("content", "")
+        
+        await broadcast_to_war_room(
+            build["project_id"],
+            "PRISM",
+            f"✅ Executable demo package created! {len(demo_files)} files generated.",
+            "progress",
+            build_id
+        )
+    except Exception as e:
+        logger.error(f"Executable demo generation failed: {e}")
+        demo_files = []
+        controls_guide = ""
+    
+    # Generate controls guide if not from README
+    if not controls_guide:
+        controls_guide = f"""# {project['name']} - Demo Controls
+
+## Movement
+- W/A/S/D or Arrow Keys: Move
+- Mouse: Look around
+- Space: Jump
+- Shift: Sprint
+- Ctrl: Crouch
+
+## Interaction
+- E: Interact
+- Left Click: Primary action
+- Right Click: Secondary action
+- Tab: Open inventory
+- Esc: Pause menu
+
+## Systems Included
+{chr(10).join([f'- {s}' for s in systems_built])}
+
+## How to Play
+1. Web Demo: Open demo/web_demo.html in browser
+2. Executable: Build using the provided configuration files
+"""
+    
+    # Determine demo features
+    demo_features = []
+    for system in systems_built:
+        if "player" in system.lower() or "controller" in system.lower():
+            demo_features.append("Player movement and controls")
+        if "combat" in system.lower():
+            demo_features.append("Combat system showcase")
+        if "inventory" in system.lower() or "item" in system.lower():
+            demo_features.append("Inventory management")
+        if "ai" in system.lower() or "npc" in system.lower():
+            demo_features.append("AI/NPC interactions")
+        if "ui" in system.lower():
+            demo_features.append("UI framework demo")
+        if "world" in system.lower() or "terrain" in system.lower():
+            demo_features.append("World exploration")
+        if "quest" in system.lower():
+            demo_features.append("Quest system")
+        if "dialogue" in system.lower():
+            demo_features.append("Dialogue interactions")
+    
+    if not demo_features:
+        demo_features = ["Core gameplay loop", "Basic controls", "System showcase"]
+    
+    # Update demo record
+    await db.demos.update_one(
+        {"id": demo.id},
+        {"$set": {
+            "status": "ready",
+            "web_demo_html": web_demo_html,
+            "systems_included": systems_built,
+            "demo_features": list(set(demo_features)),
+            "controls_guide": controls_guide,
+            "generated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Update build with demo info
+    await db.builds.update_one(
+        {"id": build_id},
+        {"$set": {"demo_id": demo.id, "demo_status": "ready"}}
+    )
+    
+    # Final war room message
+    await broadcast_to_war_room(
+        build["project_id"],
+        "COMMANDER",
+        f"🎉 PROJECT COMPLETE! Playable demo ready!\n\n🌐 Web Demo: Open demo/web_demo.html\n📦 Executable: Use demo build configs\n\nFeatures: {', '.join(demo_features[:5])}\n\nYour project is ready to play!",
+        "progress",
+        build_id
+    )
+    
+    return demo
+
+@api_router.get("/demos/{project_id}")
+async def get_project_demos(project_id: str):
+    """Get all demos for a project"""
+    demos = await db.demos.find({"project_id": project_id}, {"_id": 0}).sort("created_at", -1).to_list(10)
+    return demos
+
+@api_router.get("/demos/{project_id}/latest")
+async def get_latest_demo(project_id: str):
+    """Get the latest demo for a project"""
+    demo = await db.demos.find_one(
+        {"project_id": project_id, "status": "ready"},
+        {"_id": 0},
+        sort=[("created_at", -1)]
+    )
+    return demo
+
+@api_router.get("/demos/{project_id}/web")
+async def get_web_demo(project_id: str):
+    """Get the web demo HTML for embedding"""
+    demo = await db.demos.find_one(
+        {"project_id": project_id, "status": "ready"},
+        {"_id": 0},
+        sort=[("created_at", -1)]
+    )
+    if not demo or not demo.get("web_demo_html"):
+        raise HTTPException(status_code=404, detail="No web demo available")
+    
+    return HTMLResponse(content=demo["web_demo_html"])
+
+@api_router.post("/demos/{project_id}/regenerate")
+async def regenerate_demo(project_id: str, background_tasks: BackgroundTasks):
+    """Regenerate demo for a completed build"""
+    # Find the latest completed build
+    build = await db.builds.find_one(
+        {"project_id": project_id, "status": "completed"},
+        {"_id": 0},
+        sort=[("completed_at", -1)]
+    )
+    if not build:
+        raise HTTPException(status_code=404, detail="No completed build found")
+    
+    # Delete existing demos for this build
+    await db.demos.delete_many({"build_id": build["id"]})
+    
+    # Regenerate
+    background_tasks.add_task(generate_playable_demo, build["id"])
+    
+    return {"success": True, "message": "Demo regeneration started", "build_id": build["id"]}
 
 # Include router
 app.include_router(api_router)

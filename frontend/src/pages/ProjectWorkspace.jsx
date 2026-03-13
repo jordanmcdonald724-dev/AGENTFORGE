@@ -24,7 +24,8 @@ import {
   Folder, FolderOpen, ChevronRight, ChevronDown, Save, Download, Trash2, Palette, Copy, Check, X, Image,
   Sparkles, ArrowRightCircle, Github, Play, Eye, Gamepad2, Package, Heart, Volume2, Layout, MessageCircle,
   Rocket, ChevronUp, RefreshCw, Brain, Wand2, CopyPlus, Search, Replace, Radio, AlertTriangle, Clock,
-  Pause, Square, SkipForward, Swords, Mountain, Car, Sun, Map, Hammer, Coins, Ghost, Timer, Camera, Wifi
+  Pause, Square, SkipForward, Swords, Mountain, Car, Sun, Map, Hammer, Coins, Ghost, Timer, Camera, Wifi,
+  Joystick, Monitor, Globe
 } from "lucide-react";
 import { API } from "@/App";
 
@@ -88,6 +89,9 @@ const ProjectWorkspace = () => {
   const [openWorldSystems, setOpenWorldSystems] = useState([]);
   const [currentBuild, setCurrentBuild] = useState(null);
   const [simulationResult, setSimulationResult] = useState(null);
+  const [currentDemo, setCurrentDemo] = useState(null);
+  const [demoDialogOpen, setDemoDialogOpen] = useState(false);
+  const [regeneratingDemo, setRegeneratingDemo] = useState(false);
   
   const [chatInput, setChatInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -185,9 +189,10 @@ const ProjectWorkspace = () => {
       // Set default engine based on project type
       if (projectRes.data.type === "unity") setTargetEngine("unity");
       
-      // Fetch war room and build
+      // Fetch war room, build, and demo
       await fetchWarRoom();
       await fetchCurrentBuild();
+      await fetchLatestDemo();
     } catch (error) {
       toast.error("Failed to load project");
       navigate("/dashboard");
@@ -207,7 +212,49 @@ const ProjectWorkspace = () => {
     try {
       const res = await axios.get(`${API}/builds/${projectId}/current`);
       setCurrentBuild(res.data);
+      // If build just completed, fetch the demo
+      if (res.data?.status === "completed" && res.data?.demo_id) {
+        await fetchLatestDemo();
+      }
     } catch (e) {}
+  };
+
+  const fetchLatestDemo = async () => {
+    try {
+      const res = await axios.get(`${API}/demos/${projectId}/latest`);
+      setCurrentDemo(res.data);
+    } catch (e) {}
+  };
+
+  const regenerateDemo = async () => {
+    setRegeneratingDemo(true);
+    try {
+      await axios.post(`${API}/demos/${projectId}/regenerate`);
+      toast.success("Demo regeneration started!");
+      // Poll for completion
+      const checkDemo = setInterval(async () => {
+        const res = await axios.get(`${API}/demos/${projectId}/latest`);
+        if (res.data?.status === "ready") {
+          setCurrentDemo(res.data);
+          setRegeneratingDemo(false);
+          clearInterval(checkDemo);
+          toast.success("Demo ready!");
+        }
+      }, 5000);
+    } catch (error) {
+      toast.error("Failed to regenerate demo");
+      setRegeneratingDemo(false);
+    }
+  };
+
+  const openWebDemo = () => {
+    if (currentDemo?.web_demo_html) {
+      const newWindow = window.open("", "_blank");
+      newWindow.document.write(currentDemo.web_demo_html);
+      newWindow.document.close();
+    } else {
+      window.open(`${API}/demos/${projectId}/web`, "_blank");
+    }
   };
 
   const sendMessageStreaming = async () => {
@@ -743,6 +790,77 @@ const ProjectWorkspace = () => {
                 <span className="text-xs text-blue-400">Building {currentBuild.progress_percent}%</span>
                 <Button variant="ghost" size="icon" className="h-5 w-5" onClick={pauseBuild}><Pause className="w-3 h-3" /></Button>
               </div>
+            )}
+
+            {/* Playable Demo Button */}
+            {currentDemo && currentDemo.status === "ready" && (
+              <Dialog open={demoDialogOpen} onOpenChange={setDemoDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-emerald-700 text-emerald-400 hover:bg-emerald-500/10" data-testid="demo-btn">
+                    <Gamepad2 className="w-4 h-4 mr-1" />Play Demo
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-[#18181b] border-zinc-700 max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="font-rajdhani text-white flex items-center gap-2">
+                      <Gamepad2 className="w-5 h-5 text-emerald-400" />Playable Demo Ready!
+                    </DialogTitle>
+                  </DialogHeader>
+                  <div className="py-4 space-y-4">
+                    {/* Demo Options */}
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Web Demo */}
+                      <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Globe className="w-6 h-6 text-blue-400" />
+                          <h4 className="font-rajdhani font-bold text-white">Web Demo</h4>
+                        </div>
+                        <p className="text-xs text-zinc-400 mb-4">Play instantly in your browser. HTML5/WebGL based.</p>
+                        <Button onClick={openWebDemo} className="w-full bg-blue-500 hover:bg-blue-600">
+                          <Play className="w-4 h-4 mr-2" />Play in Browser
+                        </Button>
+                      </div>
+                      
+                      {/* Executable Demo */}
+                      <div className="p-4 rounded-lg bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Monitor className="w-6 h-6 text-purple-400" />
+                          <h4 className="font-rajdhani font-bold text-white">Executable</h4>
+                        </div>
+                        <p className="text-xs text-zinc-400 mb-4">Download build configs for {currentDemo.target_engine?.toUpperCase() || 'UE5'}.</p>
+                        <Button variant="outline" className="w-full border-purple-500 text-purple-400" onClick={() => { setRightTab("code"); setDemoDialogOpen(false); const demoFile = files.find(f => f.filepath?.includes("demo/")); if (demoFile) { setSelectedFile(demoFile); setEditorContent(demoFile.content); } }}>
+                          <FileCode className="w-4 h-4 mr-2" />View Demo Files
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Demo Features */}
+                    {currentDemo.demo_features?.length > 0 && (
+                      <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
+                        <h5 className="text-sm font-medium text-white mb-2">Demo Features</h5>
+                        <div className="flex flex-wrap gap-2">
+                          {currentDemo.demo_features.map((feature, i) => (
+                            <Badge key={i} variant="outline" className="text-xs border-zinc-700 text-zinc-400">{feature}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Controls Guide */}
+                    {currentDemo.controls_guide && (
+                      <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
+                        <h5 className="text-sm font-medium text-white mb-2">Controls</h5>
+                        <pre className="text-xs text-zinc-400 whitespace-pre-wrap max-h-32 overflow-y-auto">{currentDemo.controls_guide.slice(0, 500)}</pre>
+                      </div>
+                    )}
+
+                    {/* Regenerate Button */}
+                    <Button variant="outline" className="w-full border-zinc-700" onClick={regenerateDemo} disabled={regeneratingDemo}>
+                      {regeneratingDemo ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Regenerating...</> : <><RefreshCw className="w-4 h-4 mr-2" />Regenerate Demo</>}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             )}
 
             {/* Other header buttons */}

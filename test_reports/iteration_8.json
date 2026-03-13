@@ -1,0 +1,103 @@
+{
+  "summary": "AgentForge v3.2 - Playable Demo testing complete. All demo endpoints working: GET /api/demos/{project_id}, GET /api/demos/{project_id}/latest, GET /api/demos/{project_id}/web, POST /api/demos/{project_id}/regenerate. Frontend 'Play Demo' button and dialog fully functional with Web Demo, Executable options, demo features, and controls guide.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Demo Dialog",
+        "issues": ["Console warning: Missing aria-describedby for DialogContent - minor accessibility issue from previous version"]
+      }
+    ]
+  },
+
+  "passed_tests": [
+    "✅ API version is 3.2.0",
+    "✅ playable_demos feature is listed in API features",
+    "✅ GET /api/demos/{project_id} - returns list of demos",
+    "✅ GET /api/demos/{project_id}/latest - returns latest ready demo with all required fields",
+    "✅ GET /api/demos/{project_id}/web - returns HTML content with text/html content-type",
+    "✅ POST /api/demos/{project_id}/regenerate - starts demo regeneration successfully",
+    "✅ POST /api/demos/fake_project/regenerate - returns 404 correctly for non-existent projects",
+    "✅ PlayableDemo model has systems_included list",
+    "✅ PlayableDemo model has demo_features list",
+    "✅ PlayableDemo model has controls_guide string",
+    "✅ PlayableDemo model has web_demo_html for HTML5/WebGL demo",
+    "✅ Demo is properly linked to completed build",
+    "✅ Frontend: 'Play Demo' button appears when demo is ready",
+    "✅ Frontend: Demo dialog shows 'Playable Demo Ready!' title",
+    "✅ Frontend: Web Demo section with 'Play in Browser' button",
+    "✅ Frontend: Executable section with 'View Demo Files' button",
+    "✅ Frontend: Demo Features badges displayed (World exploration, AI/NPC interactions, UI framework demo)",
+    "✅ Frontend: Controls guide section visible",
+    "✅ Frontend: 'Regenerate Demo' button available"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_v32_playable_demos.py",
+    "/app/test_reports/pytest/pytest_v32_results.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/backend/tests/test_v32_playable_demos.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (14 passed, 1 skipped)",
+    "frontend": "100% (All v3.2 demo UI features accessible and functional)"
+  },
+
+  "seed_data_creation": "Demo regeneration triggered during testing, creating a ready demo for the test project",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "AgentForge v3.2 Playable Demo feature fully tested. Key features: 1) Demo endpoints: GET /api/demos/{project_id} returns list, GET /api/demos/{project_id}/latest returns ready demo, GET /api/demos/{project_id}/web returns HTML content, POST /api/demos/{project_id}/regenerate triggers regeneration. 2) PlayableDemo model includes: id, project_id, build_id, status, demo_type, target_engine, web_demo_html, systems_included, demo_features, controls_guide. 3) Frontend: 'Play Demo' button appears in header when demo is ready, dialog has Web Demo and Executable options. The test file /app/backend/tests/test_v32_playable_demos.py covers all v3.2 demo endpoints.",
+
+  "v32_features_tested": {
+    "demo_endpoints": {
+      "status": "WORKING",
+      "endpoints": [
+        "GET /api/demos/{project_id} - returns list of demos",
+        "GET /api/demos/{project_id}/latest - returns latest ready demo",
+        "GET /api/demos/{project_id}/web - returns HTML content for web demo",
+        "POST /api/demos/{project_id}/regenerate - regenerates demo from last build"
+      ]
+    },
+    "playable_demo_model": {
+      "status": "WORKING",
+      "fields_verified": [
+        "id", "project_id", "build_id", "status", "demo_type", "target_engine",
+        "web_demo_html", "systems_included", "demo_features", "controls_guide",
+        "web_demo_url", "executable_url", "executable_size_mb", "platform",
+        "created_at", "generated_at"
+      ]
+    },
+    "frontend_ui": {
+      "status": "WORKING",
+      "features_verified": [
+        "Play Demo button in header (appears when demo ready)",
+        "Demo dialog with 'Playable Demo Ready!' title",
+        "Web Demo section with Play in Browser button",
+        "Executable section with View Demo Files button",
+        "Demo Features badges",
+        "Controls guide section",
+        "Regenerate Demo button"
+      ]
+    },
+    "web_demo_generation": {
+      "status": "WORKING",
+      "notes": "PRISM agent generates complete HTML5 playable demo with game loop, controls, HUD, combat, and NPC interactions"
+    }
+  }
+}
