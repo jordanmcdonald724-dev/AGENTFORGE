@@ -24,6 +24,7 @@ import NightShiftPanel from '@/components/mission-control/NightShiftPanel';
 import TimeTravelPanel from '@/components/mission-control/TimeTravelPanel';
 import EvolutionPanel from '@/components/mission-control/EvolutionPanel';
 import UnrealEnginePanel from '@/components/mission-control/UnrealEnginePanel';
+import GameBuilderPanel from '@/components/mission-control/GameBuilderPanel';
 import ResearchPanel from '@/components/mission-control/ResearchPanel';
 import HardwarePanel from '@/components/mission-control/HardwarePanel';
 
@@ -94,7 +95,7 @@ const MissionControl = () => {
     { id: 'evolution', label: 'Evolution', icon: Dna, color: '#10b981' },
     { id: 'night-shift', label: 'Night Shift', icon: Moon, color: '#6366f1' },
     { id: 'time-travel', label: 'Time Travel', icon: History, color: '#f97316' },
-    { id: 'unreal', label: 'Unreal Engine', icon: Gamepad2, color: '#8b5cf6' },
+    { id: 'game-builder', label: 'Game Builder', icon: Gamepad2, color: '#8b5cf6' },
     { id: 'research', label: 'Research Mode', icon: BookOpen, color: '#3b82f6' },
     { id: 'hardware', label: 'Hardware', icon: Cpu, color: '#f59e0b' }
   ];
@@ -224,7 +225,7 @@ const MissionControl = () => {
           {activePanel === 'evolution' && <EvolutionPanel projectId={projectId} />}
           {activePanel === 'night-shift' && <NightShiftPanel projectId={projectId} />}
           {activePanel === 'time-travel' && <TimeTravelPanel projectId={projectId} />}
-          {activePanel === 'unreal' && <UnrealEnginePanel />}
+          {activePanel === 'game-builder' && <GameBuilderPanel />}
           {activePanel === 'research' && <ResearchPanel />}
           {activePanel === 'hardware' && <HardwarePanel />}
         </div>

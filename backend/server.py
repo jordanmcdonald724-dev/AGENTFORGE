@@ -94,6 +94,9 @@ try:
     from routes.auto_deploy import router as auto_deploy_router
     from routes.ai_review import router as ai_review_router
     
+    # Game Builder (Real UE5 + Unity builds)
+    from routes.game_builder import router as game_builder_router
+    
     # Register all routers with /api prefix
     # Core routes
     app.include_router(health_router, prefix="/api", tags=["health"])
@@ -162,6 +165,9 @@ try:
     app.include_router(research_router, prefix="/api", tags=["research"])
     app.include_router(auto_deploy_router, prefix="/api", tags=["auto-deploy"])
     app.include_router(ai_review_router, prefix="/api", tags=["ai-review"])
+    
+    # Game Builder (Real UE5 + Unity builds)
+    app.include_router(game_builder_router, prefix="/api", tags=["game-builder"])
     
     logger.info("Successfully loaded all modular routers")
     
