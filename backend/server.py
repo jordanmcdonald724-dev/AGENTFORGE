@@ -203,6 +203,68 @@ class AgentChainRequest(BaseModel):
     chain: List[str] = ["COMMANDER", "FORGE", "SENTINEL"]  # Default chain
     auto_execute: bool = True
 
+# ============ NEW v2.3 MODELS ============
+
+class AgentMemory(BaseModel):
+    """Persistent memory for agents across sessions"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    agent_id: str
+    agent_name: str
+    memory_type: str = "context"  # context, preference, learned, decision
+    content: str
+    importance: int = 5  # 1-10 scale
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: Optional[datetime] = None
+
+class CustomQuickAction(BaseModel):
+    """User-created custom quick actions"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str
+    icon: str = "sparkles"
+    prompt: str
+    chain: List[str] = ["COMMANDER", "FORGE"]
+    category: str = "custom"  # custom, gameplay, systems, ui, audio
+    is_global: bool = False  # If true, available across all projects
+    project_id: Optional[str] = None  # If not global, specific to project
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class RefactorRequest(BaseModel):
+    """Multi-file refactoring request"""
+    project_id: str
+    refactor_type: str  # rename, extract, move, find_replace
+    target: str  # What to refactor (class name, function name, pattern)
+    new_value: Optional[str] = None  # New name or value
+    file_ids: List[str] = []  # Specific files to refactor, empty = all
+    preview_only: bool = False  # If true, just show what would change
+
+class ProjectDuplicateRequest(BaseModel):
+    project_id: str
+    new_name: str
+    include_files: bool = True
+    include_tasks: bool = False
+    include_messages: bool = False
+
+class CustomActionCreate(BaseModel):
+    name: str
+    description: str
+    prompt: str
+    chain: List[str] = ["COMMANDER", "FORGE"]
+    icon: str = "sparkles"
+    category: str = "custom"
+    is_global: bool = False
+    project_id: Optional[str] = None
+
+class MemoryCreate(BaseModel):
+    project_id: str
+    agent_name: str
+    memory_type: str = "context"
+    content: str
+    importance: int = 5
+
 class QuickActionRequest(BaseModel):
     project_id: str
     action_id: str
@@ -615,6 +677,17 @@ async def build_project_context(project_id: str) -> str:
         context_parts.append(f"\nAPPROVED PLAN:\n{plan.get('overview', '')}")
         context_parts.append(f"ARCHITECTURE:\n{plan.get('architecture', '')}")
     
+    # Include agent memories for persistent context
+    memories = await db.memories.find(
+        {"project_id": project_id},
+        {"_id": 0}
+    ).sort("importance", -1).limit(10).to_list(10)
+    
+    if memories:
+        context_parts.append("\nAGENT MEMORIES (remember these):")
+        for mem in memories:
+            context_parts.append(f"  [{mem['agent_name']}] {mem['content']}")
+    
     files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(50)
     if files:
         context_parts.append(f"\nEXISTING FILES ({len(files)}):")
@@ -662,8 +735,8 @@ async def generate_image_fal(prompt: str, width: int = 1024, height: int = 1024)
 async def root():
     return {
         "message": "AgentForge Development Studio API",
-        "version": "2.2.0",
-        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview"]
+        "version": "2.3.0",
+        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor"]
     }
 
 @api_router.get("/health")
@@ -1569,6 +1642,404 @@ async def get_preview_data(project_id: str):
         "js": [{"path": f['filepath'], "content": f['content']} for f in js_files],
         "project_type": project['type']
     }
+
+# ============ AGENT MEMORY PERSISTENCE ============
+
+@api_router.post("/memory")
+async def create_memory(memory_data: MemoryCreate):
+    """Store agent memory for persistence across sessions"""
+    agents = await get_or_create_agents()
+    agent = next((a for a in agents if a['name'].upper() == memory_data.agent_name.upper()), None)
+    
+    memory = AgentMemory(
+        project_id=memory_data.project_id,
+        agent_id=agent['id'] if agent else "",
+        agent_name=memory_data.agent_name,
+        memory_type=memory_data.memory_type,
+        content=memory_data.content,
+        importance=memory_data.importance
+    )
+    doc = memory.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    if doc.get('expires_at'):
+        doc['expires_at'] = doc['expires_at'].isoformat()
+    await db.memories.insert_one(doc)
+    return serialize_doc(doc)
+
+@api_router.get("/memory")
+async def get_memories(project_id: str, agent_name: Optional[str] = None, limit: int = 50):
+    """Get agent memories for a project"""
+    query = {"project_id": project_id}
+    if agent_name:
+        query["agent_name"] = agent_name.upper()
+    memories = await db.memories.find(query, {"_id": 0}).sort("importance", -1).limit(limit).to_list(limit)
+    return memories
+
+@api_router.delete("/memory/{memory_id}")
+async def delete_memory(memory_id: str):
+    await db.memories.delete_one({"id": memory_id})
+    return {"success": True}
+
+@api_router.post("/memory/auto-extract")
+async def auto_extract_memories(project_id: str):
+    """Auto-extract important memories from recent messages"""
+    messages = await db.messages.find(
+        {"project_id": project_id, "agent_role": {"$ne": "user"}},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(20).to_list(20)
+    
+    if not messages:
+        return {"extracted": 0, "memories": []}
+    
+    # Use COMMANDER to extract key learnings
+    agents = await get_or_create_agents()
+    lead = next((a for a in agents if a['role'] == 'lead'), agents[0])
+    
+    conversation = "\n".join([f"{m['agent_name']}: {m['content'][:500]}" for m in messages])
+    
+    extract_prompt = f"""Review this conversation and extract 3-5 key facts, decisions, or learnings that should be remembered for future sessions.
+
+Conversation:
+{conversation}
+
+Output as JSON array:
+[{{"agent": "AGENT_NAME", "type": "decision|context|preference|learned", "content": "What to remember", "importance": 1-10}}]"""
+
+    try:
+        response = llm_client.chat.completions.create(
+            model=lead.get('model', 'google/gemini-2.5-flash'),
+            messages=[{"role": "user", "content": extract_prompt}],
+            max_tokens=2000
+        )
+        
+        # Parse JSON from response
+        content = response.choices[0].message.content
+        json_match = re.search(r'\[[\s\S]*\]', content)
+        if json_match:
+            extracted = json.loads(json_match.group())
+            saved_memories = []
+            
+            for mem in extracted:
+                memory = AgentMemory(
+                    project_id=project_id,
+                    agent_id="",
+                    agent_name=mem.get('agent', 'COMMANDER'),
+                    memory_type=mem.get('type', 'context'),
+                    content=mem.get('content', ''),
+                    importance=mem.get('importance', 5)
+                )
+                doc = memory.model_dump()
+                doc['created_at'] = doc['created_at'].isoformat()
+                await db.memories.insert_one(doc)
+                saved_memories.append(serialize_doc(doc))
+            
+            return {"extracted": len(saved_memories), "memories": saved_memories}
+    except Exception as e:
+        logger.error(f"Memory extraction failed: {e}")
+    
+    return {"extracted": 0, "memories": []}
+
+# ============ CUSTOM QUICK ACTIONS ============
+
+@api_router.post("/custom-actions")
+async def create_custom_action(action_data: CustomActionCreate):
+    """Create a custom quick action"""
+    action = CustomQuickAction(
+        name=action_data.name,
+        description=action_data.description,
+        prompt=action_data.prompt,
+        chain=action_data.chain,
+        icon=action_data.icon,
+        category=action_data.category,
+        is_global=action_data.is_global,
+        project_id=action_data.project_id
+    )
+    doc = action.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.custom_actions.insert_one(doc)
+    return serialize_doc(doc)
+
+@api_router.get("/custom-actions")
+async def get_custom_actions(project_id: Optional[str] = None):
+    """Get custom quick actions (global + project-specific)"""
+    query = {"$or": [{"is_global": True}]}
+    if project_id:
+        query["$or"].append({"project_id": project_id})
+    
+    actions = await db.custom_actions.find(query, {"_id": 0}).to_list(100)
+    return actions
+
+@api_router.delete("/custom-actions/{action_id}")
+async def delete_custom_action(action_id: str):
+    await db.custom_actions.delete_one({"id": action_id})
+    return {"success": True}
+
+@api_router.post("/custom-actions/{action_id}/execute")
+async def execute_custom_action(action_id: str, project_id: str):
+    """Execute a custom quick action"""
+    action = await db.custom_actions.find_one({"id": action_id}, {"_id": 0})
+    if not action:
+        raise HTTPException(status_code=404, detail="Custom action not found")
+    
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Fill template variables
+    prompt = action['prompt'].replace('{engine_type}', project.get('type', 'game'))
+    prompt = prompt.replace('{engine_version}', project.get('engine_version', ''))
+    prompt = prompt.replace('{project_name}', project.get('name', ''))
+    
+    chain_request = AgentChainRequest(
+        project_id=project_id,
+        message=prompt,
+        chain=action['chain']
+    )
+    
+    return await execute_agent_chain(chain_request)
+
+@api_router.post("/custom-actions/{action_id}/execute/stream")
+async def stream_custom_action(action_id: str, project_id: str):
+    """Stream execute a custom quick action"""
+    action = await db.custom_actions.find_one({"id": action_id}, {"_id": 0})
+    if not action:
+        raise HTTPException(status_code=404, detail="Custom action not found")
+    
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    prompt = action['prompt'].replace('{engine_type}', project.get('type', 'game'))
+    prompt = prompt.replace('{engine_version}', project.get('engine_version', ''))
+    
+    chain_request = AgentChainRequest(
+        project_id=project_id,
+        message=prompt,
+        chain=action['chain']
+    )
+    
+    return await stream_agent_chain(chain_request)
+
+# ============ PROJECT DUPLICATION ============
+
+@api_router.post("/projects/{project_id}/duplicate")
+async def duplicate_project(project_id: str, request: ProjectDuplicateRequest):
+    """Duplicate a project with all its files"""
+    original = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not original:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Create new project
+    new_project = Project(
+        name=request.new_name,
+        description=original['description'] + " (Copy)",
+        type=original['type'],
+        engine_version=original.get('engine_version'),
+        thumbnail=original['thumbnail'],
+        phase="clarification",
+        status="planning"
+    )
+    new_doc = new_project.model_dump()
+    new_doc['created_at'] = new_doc['created_at'].isoformat()
+    new_doc['updated_at'] = new_doc['updated_at'].isoformat()
+    await db.projects.insert_one(new_doc)
+    
+    duplicated = {"project": serialize_doc(new_doc), "files": 0, "tasks": 0, "messages": 0}
+    
+    # Duplicate files
+    if request.include_files:
+        files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+        for f in files:
+            new_file = ProjectFile(
+                project_id=new_project.id,
+                filename=f['filename'],
+                filepath=f['filepath'],
+                content=f['content'],
+                language=f['language'],
+                file_type=f.get('file_type', 'code')
+            )
+            file_doc = new_file.model_dump()
+            file_doc['created_at'] = file_doc['created_at'].isoformat()
+            file_doc['updated_at'] = file_doc['updated_at'].isoformat()
+            await db.files.insert_one(file_doc)
+        duplicated["files"] = len(files)
+    
+    # Duplicate tasks
+    if request.include_tasks:
+        tasks = await db.tasks.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+        for t in tasks:
+            new_task = Task(
+                project_id=new_project.id,
+                title=t['title'],
+                description=t['description'],
+                status="backlog",
+                priority=t['priority'],
+                category=t.get('category', 'general')
+            )
+            task_doc = new_task.model_dump()
+            task_doc['created_at'] = task_doc['created_at'].isoformat()
+            task_doc['updated_at'] = task_doc['updated_at'].isoformat()
+            await db.tasks.insert_one(task_doc)
+        duplicated["tasks"] = len(tasks)
+    
+    return duplicated
+
+# ============ MULTI-FILE REFACTORING ============
+
+@api_router.post("/refactor/preview")
+async def preview_refactor(request: RefactorRequest):
+    """Preview what a refactor would change without applying"""
+    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Get files to refactor
+    if request.file_ids:
+        files = await db.files.find({"id": {"$in": request.file_ids}}, {"_id": 0}).to_list(500)
+    else:
+        files = await db.files.find({"project_id": request.project_id}, {"_id": 0}).to_list(500)
+    
+    changes = []
+    
+    for f in files:
+        original_content = f['content']
+        new_content = original_content
+        
+        if request.refactor_type == "find_replace":
+            if request.target in original_content:
+                new_content = original_content.replace(request.target, request.new_value or "")
+                
+        elif request.refactor_type == "rename":
+            # Rename class, function, or variable
+            patterns = [
+                (rf'\bclass\s+{re.escape(request.target)}\b', f'class {request.new_value}'),
+                (rf'\bdef\s+{re.escape(request.target)}\b', f'def {request.new_value}'),
+                (rf'\bfunction\s+{re.escape(request.target)}\b', f'function {request.new_value}'),
+                (rf'\bvoid\s+{re.escape(request.target)}\s*\(', f'void {request.new_value}('),
+                (rf'\b{re.escape(request.target)}\s*\(', f'{request.new_value}('),
+                (rf'\b{re.escape(request.target)}\b', request.new_value),
+            ]
+            for pattern, replacement in patterns:
+                new_content = re.sub(pattern, replacement, new_content)
+        
+        if new_content != original_content:
+            # Count changes
+            old_lines = original_content.split('\n')
+            new_lines = new_content.split('\n')
+            
+            changes.append({
+                "file_id": f['id'],
+                "filepath": f['filepath'],
+                "occurrences": original_content.count(request.target),
+                "preview": {
+                    "before": original_content[:500] + ("..." if len(original_content) > 500 else ""),
+                    "after": new_content[:500] + ("..." if len(new_content) > 500 else "")
+                }
+            })
+    
+    return {
+        "refactor_type": request.refactor_type,
+        "target": request.target,
+        "new_value": request.new_value,
+        "files_affected": len(changes),
+        "total_files_scanned": len(files),
+        "changes": changes
+    }
+
+@api_router.post("/refactor/apply")
+async def apply_refactor(request: RefactorRequest):
+    """Apply a refactor across multiple files"""
+    # First get preview
+    preview = await preview_refactor(request)
+    
+    if preview["files_affected"] == 0:
+        return {"success": True, "files_updated": 0, "message": "No changes needed"}
+    
+    # Apply changes
+    updated_files = []
+    for change in preview["changes"]:
+        file = await db.files.find_one({"id": change["file_id"]})
+        if not file:
+            continue
+        
+        original_content = file['content']
+        new_content = original_content
+        
+        if request.refactor_type == "find_replace":
+            new_content = original_content.replace(request.target, request.new_value or "")
+        elif request.refactor_type == "rename":
+            patterns = [
+                (rf'\bclass\s+{re.escape(request.target)}\b', f'class {request.new_value}'),
+                (rf'\bdef\s+{re.escape(request.target)}\b', f'def {request.new_value}'),
+                (rf'\bfunction\s+{re.escape(request.target)}\b', f'function {request.new_value}'),
+                (rf'\b{re.escape(request.target)}\b', request.new_value),
+            ]
+            for pattern, replacement in patterns:
+                new_content = re.sub(pattern, replacement, new_content)
+        
+        # Update file
+        new_version = file.get('version', 1) + 1
+        await db.files.update_one(
+            {"id": change["file_id"]},
+            {"$set": {
+                "content": new_content,
+                "version": new_version,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        updated_files.append(change["filepath"])
+    
+    return {
+        "success": True,
+        "files_updated": len(updated_files),
+        "updated_files": updated_files,
+        "refactor_type": request.refactor_type
+    }
+
+@api_router.post("/refactor/ai-suggest")
+async def ai_suggest_refactor(project_id: str, description: str):
+    """Use AI to suggest and perform a refactor based on natural language"""
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(50)
+    if not files:
+        raise HTTPException(status_code=400, detail="No files to refactor")
+    
+    agents = await get_or_create_agents()
+    lead = next((a for a in agents if a['role'] == 'lead'), agents[0])
+    
+    file_list = "\n".join([f"- {f['filepath']}: {f['language']}" for f in files])
+    
+    prompt = f"""Analyze this refactoring request and suggest specific changes:
+
+Request: {description}
+
+Project files:
+{file_list}
+
+Respond with a JSON object:
+{{
+    "refactor_type": "rename|find_replace|extract|reorganize",
+    "target": "what to change",
+    "new_value": "what to change it to",
+    "explanation": "why this change",
+    "affected_files": ["list of filepaths"]
+}}"""
+
+    try:
+        response = llm_client.chat.completions.create(
+            model=lead.get('model', 'google/gemini-2.5-flash'),
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1000
+        )
+        
+        content = response.choices[0].message.content
+        json_match = re.search(r'\{[\s\S]*\}', content)
+        if json_match:
+            suggestion = json.loads(json_match.group())
+            return {"success": True, "suggestion": suggestion}
+    except Exception as e:
+        logger.error(f"AI refactor suggestion failed: {e}")
+    
+    return {"success": False, "error": "Could not generate suggestion"}
 
 # Include router
 app.include_router(api_router)
