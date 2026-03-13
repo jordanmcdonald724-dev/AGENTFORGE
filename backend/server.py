@@ -6593,14 +6593,244 @@ async def get_build_farm_status():
     queued_jobs = len([j for j in jobs if j.get("status") == "queued"])
     running_jobs = len([j for j in jobs if j.get("status") in ["assigned", "building"]])
     
+    # Calculate queue wait time
+    avg_job_time = 30  # minutes
+    queue_wait = (queued_jobs * avg_job_time) // max(len(workers) - active_workers, 1) if workers else queued_jobs * avg_job_time
+    
     return {
         "total_workers": len(workers),
         "active_workers": active_workers,
         "idle_workers": len(workers) - active_workers,
         "queued_jobs": queued_jobs,
         "running_jobs": running_jobs,
-        "completed_jobs": len([j for j in jobs if j.get("status") == "complete"])
+        "completed_jobs": len([j for j in jobs if j.get("status") == "complete"]),
+        "failed_jobs": len([j for j in jobs if j.get("status") == "failed"]),
+        "queue_wait_minutes": queue_wait,
+        "active_builds": [
+            {
+                "job_id": j.get("id"),
+                "project_name": j.get("project_name"),
+                "progress": j.get("progress", 0),
+                "worker": j.get("assigned_worker"),
+                "stage": j.get("current_stage", "Starting")
+            }
+            for j in jobs if j.get("status") in ["assigned", "building"]
+        ]
     }
+
+
+@api_router.post("/build-farm/jobs/{job_id}/start")
+async def start_build_job(job_id: str, background_tasks: BackgroundTasks):
+    """Start processing a build job"""
+    job = await db.build_farm_jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Find available worker
+    workers = await db.build_workers.find({"status": "idle"}, {"_id": 0}).to_list(10)
+    if not workers:
+        raise HTTPException(status_code=400, detail="No workers available")
+    
+    worker = workers[0]
+    
+    # Assign job
+    await db.build_farm_jobs.update_one(
+        {"id": job_id},
+        {"$set": {
+            "status": "building",
+            "assigned_worker": worker["id"],
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "progress": 0,
+            "current_stage": "Initializing"
+        }}
+    )
+    
+    await db.build_workers.update_one(
+        {"id": worker["id"]},
+        {"$set": {
+            "status": "building",
+            "current_job": job_id,
+            "current_project_id": job.get("project_id")
+        }}
+    )
+    
+    # Start build process in background
+    background_tasks.add_task(process_build_job, job_id, worker["id"])
+    
+    return {"success": True, "worker": worker["name"], "job_id": job_id}
+
+
+async def process_build_job(job_id: str, worker_id: str):
+    """Background task to process a build job"""
+    stages = [
+        {"name": "Setup", "duration": 3},
+        {"name": "Code Generation", "duration": 8},
+        {"name": "Asset Processing", "duration": 5},
+        {"name": "Testing", "duration": 4},
+        {"name": "Packaging", "duration": 3}
+    ]
+    
+    total_duration = sum(s["duration"] for s in stages)
+    progress = 0
+    
+    try:
+        for stage in stages:
+            # Update stage
+            await db.build_farm_jobs.update_one(
+                {"id": job_id},
+                {"$set": {
+                    "current_stage": stage["name"],
+                    "progress": progress
+                },
+                "$push": {"logs": f"[{datetime.now(timezone.utc).isoformat()}] Starting: {stage['name']}"}}
+            )
+            
+            # Simulate work
+            steps = stage["duration"]
+            for i in range(steps):
+                await asyncio.sleep(1)
+                step_progress = (i + 1) / steps
+                stage_contribution = (stage["duration"] / total_duration) * 100
+                progress = min(99, progress + (stage_contribution / steps))
+                
+                await db.build_farm_jobs.update_one(
+                    {"id": job_id},
+                    {"$set": {"progress": progress}}
+                )
+            
+            # Stage complete
+            await db.build_farm_jobs.update_one(
+                {"id": job_id},
+                {"$push": {
+                    "logs": f"[{datetime.now(timezone.utc).isoformat()}] Completed: {stage['name']}",
+                    "stages_completed": stage["name"]
+                }}
+            )
+        
+        # Job complete
+        await db.build_farm_jobs.update_one(
+            {"id": job_id},
+            {"$set": {
+                "status": "complete",
+                "progress": 100,
+                "completed_at": datetime.now(timezone.utc).isoformat(),
+                "result": {"success": True, "files_generated": 25}
+            }}
+        )
+        
+        # Update worker
+        worker = await db.build_workers.find_one({"id": worker_id})
+        jobs_completed = worker.get("jobs_completed", 0) + 1
+        await db.build_workers.update_one(
+            {"id": worker_id},
+            {"$set": {
+                "status": "idle",
+                "current_job": None,
+                "current_project_id": None,
+                "jobs_completed": jobs_completed,
+                "last_heartbeat": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        logger.info(f"Build job {job_id} completed successfully")
+        
+    except Exception as e:
+        logger.error(f"Build job {job_id} failed: {e}")
+        await db.build_farm_jobs.update_one(
+            {"id": job_id},
+            {"$set": {
+                "status": "failed",
+                "error": str(e)
+            },
+            "$push": {"logs": f"[{datetime.now(timezone.utc).isoformat()}] ERROR: {str(e)}"}}
+        )
+        
+        await db.build_workers.update_one(
+            {"id": worker_id},
+            {"$set": {
+                "status": "idle",
+                "current_job": None,
+                "current_project_id": None
+            }}
+        )
+
+
+@api_router.get("/build-farm/jobs/{job_id}/logs")
+async def get_job_logs(job_id: str):
+    """Get logs for a specific job"""
+    job = await db.build_farm_jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return {"logs": job.get("logs", []), "status": job.get("status"), "progress": job.get("progress", 0)}
+
+
+@api_router.post("/build-farm/jobs/{job_id}/cancel")
+async def cancel_build_job(job_id: str):
+    """Cancel a build job"""
+    job = await db.build_farm_jobs.find_one({"id": job_id}, {"_id": 0})
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if job.get("status") not in ["queued", "assigned", "building"]:
+        raise HTTPException(status_code=400, detail="Job cannot be cancelled")
+    
+    await db.build_farm_jobs.update_one(
+        {"id": job_id},
+        {"$set": {"status": "cancelled"}}
+    )
+    
+    if job.get("assigned_worker"):
+        await db.build_workers.update_one(
+            {"id": job["assigned_worker"]},
+            {"$set": {"status": "idle", "current_job": None}}
+        )
+    
+    return {"success": True}
+
+
+@api_router.post("/build-farm/workers/{worker_id}/pause")
+async def pause_worker(worker_id: str):
+    """Pause a worker"""
+    await db.build_workers.update_one(
+        {"id": worker_id},
+        {"$set": {"status": "paused"}}
+    )
+    return {"success": True}
+
+
+@api_router.post("/build-farm/workers/{worker_id}/resume")
+async def resume_worker(worker_id: str):
+    """Resume a paused worker"""
+    await db.build_workers.update_one(
+        {"id": worker_id},
+        {"$set": {"status": "idle"}}
+    )
+    return {"success": True}
+
+
+@api_router.delete("/build-farm/workers/{worker_id}")
+async def remove_worker(worker_id: str):
+    """Remove a worker from the pool"""
+    worker = await db.build_workers.find_one({"id": worker_id}, {"_id": 0})
+    if worker and worker.get("status") == "building":
+        raise HTTPException(status_code=400, detail="Cannot remove worker while building")
+    await db.build_workers.delete_one({"id": worker_id})
+    return {"success": True}
+
+
+@api_router.post("/build-farm/workers/add")
+async def add_worker(name: str, capabilities: str = "web,api"):
+    """Add a new worker to the pool"""
+    worker = BuildWorker(
+        name=name,
+        capabilities=capabilities.split(","),
+        status="idle"
+    )
+    doc = worker.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['last_heartbeat'] = doc['last_heartbeat'].isoformat()
+    await db.build_workers.insert_one(doc)
+    return serialize_doc(doc)
 
 # ========== FEATURE 4: ONE-CLICK SAAS ENDPOINTS ==========
 

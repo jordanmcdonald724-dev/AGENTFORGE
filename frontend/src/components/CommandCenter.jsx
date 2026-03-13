@@ -14,7 +14,7 @@ import GoalLoopPanel from "./GoalLoopPanel";
 import KnowledgeGraphPanel from "./KnowledgeGraphPanel";
 import MissionControlPanel from "./MissionControlPanel";
 import RealityPipelinePanel from "./RealityPipelinePanel";
-import SystemVisualization from "./SystemVisualization";
+import SystemVisualization3D from "./SystemVisualization3D";
 
 const CommandCenter = ({ projectId, projectName, onNavigate }) => {
   const [activeTab, setActiveTab] = useState("mission");
@@ -106,7 +106,7 @@ const CommandCenter = ({ projectId, projectName, onNavigate }) => {
         </TabsContent>
 
         <TabsContent value="visualize" className="flex-1 m-0 overflow-hidden">
-          <SystemVisualization projectId={projectId} />
+          <SystemVisualization3D projectId={projectId} />
         </TabsContent>
       </Tabs>
     </div>
