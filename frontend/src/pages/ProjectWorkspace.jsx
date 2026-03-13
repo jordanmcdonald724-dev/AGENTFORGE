@@ -25,7 +25,7 @@ import {
   Sparkles, ArrowRightCircle, Github, Play, Eye, Gamepad2, Package, Heart, Volume2, Layout, MessageCircle,
   Rocket, ChevronUp, RefreshCw, Brain, Wand2, CopyPlus, Search, Replace, Radio, AlertTriangle, Clock,
   Pause, Square, SkipForward, Swords, Mountain, Car, Sun, Map, Hammer, Coins, Ghost, Timer, Camera, Wifi,
-  Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music, Terminal
+  Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music, Terminal, Command
 } from "lucide-react";
 import { API } from "@/App";
 import BlueprintEditor from "@/components/BlueprintEditor";
@@ -36,6 +36,7 @@ import AudioGeneratorPanel from "@/components/AudioGeneratorPanel";
 import DeploymentPanel from "@/components/DeploymentPanel";
 import SandboxPanel from "@/components/SandboxPanel";
 import AssetPipelinePanel from "@/components/AssetPipelinePanel";
+import CommandCenter from "@/components/CommandCenter";
 
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
@@ -1041,6 +1042,7 @@ const ProjectWorkspace = () => {
                   <TabsTrigger value="audio" className="data-[state=active]:bg-zinc-800" data-testid="audio-tab"><Music className="w-4 h-4 mr-2" />Audio</TabsTrigger>
                   <TabsTrigger value="assets" className="data-[state=active]:bg-zinc-800" data-testid="assets-tab"><Package className="w-4 h-4 mr-2" />Assets</TabsTrigger>
                   <TabsTrigger value="sandbox" className="data-[state=active]:bg-zinc-800" data-testid="sandbox-tab"><Terminal className="w-4 h-4 mr-2" />Sandbox</TabsTrigger>
+                  <TabsTrigger value="command" className="data-[state=active]:bg-zinc-800" data-testid="command-tab"><Command className="w-4 h-4 mr-2" />Command</TabsTrigger>
                   <TabsTrigger value="deploy" className="data-[state=active]:bg-zinc-800" data-testid="deploy-tab"><Rocket className="w-4 h-4 mr-2" />Deploy</TabsTrigger>
                   <TabsTrigger value="notifications" className="data-[state=active]:bg-zinc-800" data-testid="notifications-tab"><Bell className="w-4 h-4 mr-2" />Alerts</TabsTrigger>
                 </TabsList>
@@ -1228,6 +1230,11 @@ const ProjectWorkspace = () => {
                 {/* Sandbox Tab */}
                 <TabsContent value="sandbox" className="flex-1 m-0 overflow-hidden">
                   <SandboxPanel projectId={projectId} />
+                </TabsContent>
+
+                {/* Command Center Tab */}
+                <TabsContent value="command" className="flex-1 m-0 overflow-hidden">
+                  <CommandCenter projectId={projectId} projectName={project?.name} onNavigate={(path) => window.location.href = path} />
                 </TabsContent>
 
                 {/* Deploy Tab */}

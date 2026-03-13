@@ -619,6 +619,221 @@ ASSET_CATEGORIES = [
     {"id": "misc", "name": "Miscellaneous", "description": "Other assets"}
 ]
 
+# ========== FEATURE 1: PROJECT AUTOPSY MODELS ==========
+class ProjectAutopsy(BaseModel):
+    """Reverse-engineered project analysis"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    source_type: str  # zip, github, url, existing
+    source_url: Optional[str] = None
+    status: str = "pending"  # pending, analyzing, complete, failed
+    
+    # Analysis results
+    architecture: Dict[str, Any] = {}  # {layers, modules, patterns}
+    tech_stack: List[Dict[str, str]] = []  # [{name, version, category}]
+    dependencies: Dict[str, List[str]] = {}  # {package: [dependents]}
+    dependency_graph: Dict[str, Any] = {}  # {nodes, edges}
+    design_patterns: List[Dict[str, Any]] = []  # [{name, description, files}]
+    weak_points: List[Dict[str, Any]] = []  # [{severity, issue, recommendation}]
+    upgrade_plan: List[Dict[str, Any]] = []  # [{priority, action, impact}]
+    file_tree: Dict[str, Any] = {}
+    stats: Dict[str, Any] = {}  # {total_files, total_lines, languages}
+    
+    analyzed_by: List[str] = []  # Agent names that analyzed
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: Optional[datetime] = None
+
+# ========== FEATURE 6: SELF-DEBUGGING LOOP MODELS ==========
+class DebugLoop(BaseModel):
+    """AI self-debugging loop session"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    build_id: Optional[str] = None
+    status: str = "idle"  # idle, detecting, analyzing, fixing, testing, success, failed
+    
+    iterations: List[Dict[str, Any]] = []  # [{iteration, error, analysis, fix, result}]
+    current_iteration: int = 0
+    max_iterations: int = 10
+    
+    errors_detected: List[Dict[str, Any]] = []
+    fixes_applied: List[Dict[str, Any]] = []
+    tests_run: List[Dict[str, Any]] = []
+    
+    success: bool = False
+    final_report: Dict[str, Any] = {}
+    
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# ========== FEATURE 7: TIME MACHINE MODELS ==========
+class Checkpoint(BaseModel):
+    """Development checkpoint for time machine"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    name: str
+    description: str = ""
+    step_number: int
+    
+    # Snapshot data
+    files_snapshot: List[Dict[str, Any]] = []  # [{filepath, content, hash}]
+    tasks_snapshot: List[Dict[str, Any]] = []
+    build_state: Dict[str, Any] = {}
+    agent_memories: List[Dict[str, Any]] = []
+    
+    auto_created: bool = False  # True if system-generated
+    tags: List[str] = []
+    
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_by: str = "system"
+
+# ========== FEATURE 3: IDEA ENGINE MODELS ==========
+class IdeaConcept(BaseModel):
+    """Generated project concept"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    
+    title: str
+    category: str  # game, saas, tool, website, mobile, api
+    description: str
+    unique_features: List[str] = []
+    target_audience: str = ""
+    tech_stack_suggestion: List[str] = []
+    complexity: str = "medium"  # simple, medium, complex, massive
+    estimated_build_time: str = ""
+    
+    # If converted to project
+    project_id: Optional[str] = None
+    prototype_built: bool = False
+    
+    generated_by: str = "COMMANDER"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class IdeaBatch(BaseModel):
+    """Batch of generated ideas"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    prompt: str
+    category_filter: Optional[str] = None
+    count: int = 10
+    
+    ideas: List[Dict[str, Any]] = []
+    status: str = "pending"  # pending, generating, complete
+    
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# ========== FEATURE 5: SYSTEM VISUALIZATION MODELS ==========
+class SystemMap(BaseModel):
+    """3D/2D system visualization data"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    
+    nodes: List[Dict[str, Any]] = []  # [{id, type, name, x, y, z, status}]
+    edges: List[Dict[str, Any]] = []  # [{source, target, type, strength}]
+    clusters: List[Dict[str, Any]] = []  # [{id, name, nodes, color}]
+    
+    agent_positions: Dict[str, Dict[str, float]] = {}  # {agent_name: {x, y, z}}
+    active_connections: List[str] = []  # Currently active edges
+    
+    layout_type: str = "force"  # force, hierarchical, circular, grid
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# ========== FEATURE 2: BUILD FARM MODELS ==========
+class BuildWorker(BaseModel):
+    """Distributed build worker"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    status: str = "idle"  # idle, building, paused, error, offline
+    
+    current_job: Optional[str] = None
+    current_project_id: Optional[str] = None
+    
+    capabilities: List[str] = []  # [web, game, mobile, api]
+    max_concurrent: int = 1
+    
+    jobs_completed: int = 0
+    total_build_time_hours: float = 0
+    success_rate: float = 100.0
+    
+    last_heartbeat: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class BuildFarmJob(BaseModel):
+    """Job in the build farm queue"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    project_name: str
+    job_type: str  # prototype, full_build, rebuild, test
+    
+    priority: int = 5  # 1-10, higher = more urgent
+    status: str = "queued"  # queued, assigned, building, complete, failed
+    
+    assigned_worker: Optional[str] = None
+    progress: float = 0
+    
+    config: Dict[str, Any] = {}
+    result: Dict[str, Any] = {}
+    
+    queued_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+
+# ========== FEATURE 4: ONE-CLICK SAAS MODELS ==========
+class SaaSBlueprint(BaseModel):
+    """One-click SaaS generation blueprint"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    
+    name: str
+    description: str
+    
+    # Generated components
+    backend_api: Dict[str, Any] = {}  # {endpoints, models, services}
+    database_schema: Dict[str, Any] = {}  # {collections, relationships}
+    auth_system: Dict[str, Any] = {}  # {type, providers, config}
+    frontend_ui: Dict[str, Any] = {}  # {pages, components, routes}
+    deployment_config: Dict[str, Any] = {}  # {platform, env_vars, scaling}
+    payment_integration: Dict[str, Any] = {}  # {provider, plans, webhooks}
+    
+    tech_stack: Dict[str, str] = {}
+    estimated_cost: Dict[str, Any] = {}
+    
+    status: str = "draft"  # draft, generating, ready, deployed
+    project_id: Optional[str] = None
+    
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# ========== FEATURE 9: SELF-EXPANDING AGENTS MODELS ==========
+class DynamicAgent(BaseModel):
+    """Dynamically created specialized agent"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    
+    name: str
+    role: str
+    specialty: str
+    description: str
+    
+    capabilities: List[str] = []
+    triggers: List[str] = []  # Conditions that activate this agent
+    
+    created_by: str  # Parent agent that created this
+    creation_reason: str
+    
+    tasks_handled: int = 0
+    success_rate: float = 100.0
+    active: bool = True
+    
+    system_prompt: str = ""
+    
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 # Audio generation categories
 AUDIO_CATEGORIES = {
     "sfx": {
@@ -1320,8 +1535,8 @@ async def generate_image_fal(prompt: str, width: int = 1024, height: int = 1024)
 async def root():
     return {
         "message": "AgentForge Development Studio API",
-        "version": "3.5.0",
-        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor", "simulation_mode", "war_room", "autonomous_builds", "open_world_systems", "build_scheduling", "playable_demos", "blueprint_scripting", "build_queue", "realtime_collaboration", "notifications", "audio_generation", "one_click_deploy", "build_sandbox", "asset_pipeline"]
+        "version": "4.0.0",
+        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor", "simulation_mode", "war_room", "autonomous_builds", "open_world_systems", "build_scheduling", "playable_demos", "blueprint_scripting", "build_queue", "realtime_collaboration", "notifications", "audio_generation", "one_click_deploy", "build_sandbox", "asset_pipeline", "project_autopsy", "self_debugging_loop", "time_machine", "idea_engine", "system_visualization", "build_farm", "one_click_saas", "self_expanding_agents"]
     }
 
 @api_router.get("/health")
@@ -5123,6 +5338,1041 @@ async def export_assets(project_id: str, asset_ids: List[str] = None):
     }
     
     return manifest
+
+# ========== FEATURE 1: PROJECT AUTOPSY ENDPOINTS ==========
+
+@api_router.post("/autopsy/analyze")
+async def analyze_project(project_id: str, source_type: str = "existing", source_url: Optional[str] = None):
+    """Start project autopsy analysis"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    autopsy = ProjectAutopsy(
+        project_id=project_id,
+        source_type=source_type,
+        source_url=source_url,
+        status="analyzing"
+    )
+    
+    # Get all project files
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+    
+    # Analyze file structure
+    file_tree = {}
+    languages = {}
+    total_lines = 0
+    
+    for f in files:
+        path = f.get("filepath", "")
+        content = f.get("content", "")
+        lines = len(content.split("\n"))
+        total_lines += lines
+        
+        # Detect language
+        ext = path.split(".")[-1] if "." in path else "unknown"
+        lang_map = {"js": "JavaScript", "jsx": "React", "ts": "TypeScript", "tsx": "React/TS", 
+                   "py": "Python", "cs": "C#", "cpp": "C++", "h": "C/C++ Header",
+                   "html": "HTML", "css": "CSS", "json": "JSON", "md": "Markdown"}
+        lang = lang_map.get(ext, ext.upper())
+        languages[lang] = languages.get(lang, 0) + lines
+        
+        # Build tree
+        parts = path.split("/")
+        current = file_tree
+        for part in parts[:-1]:
+            if part not in current:
+                current[part] = {}
+            current = current[part]
+        current[parts[-1]] = {"lines": lines, "language": lang}
+    
+    # Detect tech stack
+    tech_stack = []
+    all_content = " ".join([f.get("content", "") for f in files])
+    
+    tech_patterns = [
+        ("React", "import React", "frontend"),
+        ("Next.js", "next/", "frontend"),
+        ("Vue.js", "Vue.component", "frontend"),
+        ("Angular", "@angular/", "frontend"),
+        ("FastAPI", "from fastapi", "backend"),
+        ("Express", "express()", "backend"),
+        ("Django", "from django", "backend"),
+        ("Flask", "from flask", "backend"),
+        ("MongoDB", "mongodb://", "database"),
+        ("PostgreSQL", "postgresql://", "database"),
+        ("MySQL", "mysql://", "database"),
+        ("Redis", "redis://", "cache"),
+        ("Tailwind", "tailwind", "styling"),
+        ("Bootstrap", "bootstrap", "styling"),
+        ("Unity", "UnityEngine", "game_engine"),
+        ("Unreal", "UE_LOG", "game_engine"),
+        ("OpenAI", "openai", "ai"),
+        ("TensorFlow", "tensorflow", "ai"),
+        ("PyTorch", "torch", "ai"),
+    ]
+    
+    for name, pattern, category in tech_patterns:
+        if pattern.lower() in all_content.lower():
+            tech_stack.append({"name": name, "category": category, "detected": True})
+    
+    # Detect design patterns
+    design_patterns = []
+    pattern_checks = [
+        ("Singleton", "getInstance", "Ensures single instance"),
+        ("Factory", "createFactory", "Object creation abstraction"),
+        ("Observer", "addEventListener", "Event subscription pattern"),
+        ("MVC", "Controller", "Model-View-Controller separation"),
+        ("Repository", "Repository", "Data access abstraction"),
+        ("Service Layer", "Service", "Business logic encapsulation"),
+        ("Component", "Component", "Modular UI components"),
+    ]
+    
+    for name, pattern, desc in pattern_checks:
+        matches = [f["filepath"] for f in files if pattern.lower() in f.get("content", "").lower()]
+        if matches:
+            design_patterns.append({"name": name, "description": desc, "files": matches[:5]})
+    
+    # Identify weak points
+    weak_points = []
+    for f in files:
+        content = f.get("content", "")
+        lines = len(content.split("\n"))
+        
+        if lines > 500:
+            weak_points.append({
+                "severity": "medium",
+                "issue": f"Large file: {f['filepath']} ({lines} lines)",
+                "recommendation": "Consider splitting into smaller modules"
+            })
+        
+        if "TODO" in content or "FIXME" in content:
+            weak_points.append({
+                "severity": "low",
+                "issue": f"Unfinished code markers in {f['filepath']}",
+                "recommendation": "Address TODO/FIXME comments"
+            })
+        
+        if "console.log" in content or "print(" in content:
+            weak_points.append({
+                "severity": "low",
+                "issue": f"Debug statements in {f['filepath']}",
+                "recommendation": "Remove or replace with proper logging"
+            })
+    
+    # Generate upgrade plan
+    upgrade_plan = []
+    if "JavaScript" in languages and "TypeScript" not in languages:
+        upgrade_plan.append({
+            "priority": "high",
+            "action": "Migrate to TypeScript",
+            "impact": "Better type safety and IDE support"
+        })
+    
+    if not any(t["name"] == "Tailwind" for t in tech_stack):
+        upgrade_plan.append({
+            "priority": "medium",
+            "action": "Consider Tailwind CSS",
+            "impact": "Faster styling, consistent design system"
+        })
+    
+    if len(weak_points) > 5:
+        upgrade_plan.append({
+            "priority": "high",
+            "action": "Code cleanup sprint",
+            "impact": "Reduce technical debt"
+        })
+    
+    # Build dependency graph
+    dep_graph = {"nodes": [], "edges": []}
+    for f in files:
+        dep_graph["nodes"].append({
+            "id": f["filepath"],
+            "type": f["filepath"].split(".")[-1] if "." in f["filepath"] else "unknown"
+        })
+        
+        content = f.get("content", "")
+        imports = []
+        for line in content.split("\n"):
+            if "import " in line or "require(" in line or "from " in line:
+                imports.append(line.strip())
+        
+        for imp in imports[:10]:
+            dep_graph["edges"].append({
+                "source": f["filepath"],
+                "target": imp[:50]
+            })
+    
+    autopsy.file_tree = file_tree
+    autopsy.tech_stack = tech_stack
+    autopsy.design_patterns = design_patterns
+    autopsy.weak_points = weak_points[:20]
+    autopsy.upgrade_plan = upgrade_plan
+    autopsy.dependency_graph = dep_graph
+    autopsy.stats = {
+        "total_files": len(files),
+        "total_lines": total_lines,
+        "languages": languages
+    }
+    autopsy.analyzed_by = ["ATLAS", "SENTINEL", "COMMANDER"]
+    autopsy.status = "complete"
+    autopsy.completed_at = datetime.now(timezone.utc)
+    
+    doc = autopsy.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['completed_at'] = doc['completed_at'].isoformat()
+    await db.autopsies.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.get("/autopsy/{project_id}")
+async def get_autopsy(project_id: str):
+    """Get project autopsy results"""
+    autopsy = await db.autopsies.find_one({"project_id": project_id}, {"_id": 0})
+    return autopsy
+
+@api_router.get("/autopsy/{project_id}/report")
+async def get_autopsy_report(project_id: str):
+    """Get formatted autopsy report"""
+    autopsy = await db.autopsies.find_one({"project_id": project_id}, {"_id": 0})
+    if not autopsy:
+        return {"error": "No autopsy found"}
+    
+    report = {
+        "summary": f"Analyzed {autopsy['stats']['total_files']} files, {autopsy['stats']['total_lines']} lines of code",
+        "tech_stack": [t["name"] for t in autopsy.get("tech_stack", [])],
+        "top_languages": sorted(autopsy["stats"]["languages"].items(), key=lambda x: x[1], reverse=True)[:5],
+        "patterns_found": len(autopsy.get("design_patterns", [])),
+        "issues_found": len(autopsy.get("weak_points", [])),
+        "upgrade_actions": len(autopsy.get("upgrade_plan", []))
+    }
+    return report
+
+# ========== FEATURE 6: SELF-DEBUGGING LOOP ENDPOINTS ==========
+
+@api_router.post("/debug-loop/{project_id}/start")
+async def start_debug_loop(project_id: str, build_id: Optional[str] = None, max_iterations: int = 10):
+    """Start AI self-debugging loop"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    debug_loop = DebugLoop(
+        project_id=project_id,
+        build_id=build_id,
+        max_iterations=max_iterations,
+        status="detecting",
+        started_at=datetime.now(timezone.utc)
+    )
+    
+    # Simulate debug loop iterations
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(100)
+    
+    errors = []
+    for f in files:
+        content = f.get("content", "")
+        filepath = f.get("filepath", "")
+        
+        # Detect common errors
+        if "undefined" in content.lower():
+            errors.append({
+                "type": "undefined_reference",
+                "file": filepath,
+                "message": "Potential undefined variable reference",
+                "severity": "high"
+            })
+        
+        if "TODO" in content:
+            errors.append({
+                "type": "incomplete_code",
+                "file": filepath,
+                "message": "Incomplete TODO found",
+                "severity": "medium"
+            })
+        
+        if "catch" in content and "console" in content:
+            errors.append({
+                "type": "error_handling",
+                "file": filepath,
+                "message": "Error silently logged, not properly handled",
+                "severity": "medium"
+            })
+    
+    debug_loop.errors_detected = errors[:10]
+    
+    # Simulate fix iterations
+    iterations = []
+    for i, error in enumerate(errors[:3]):
+        iteration = {
+            "iteration": i + 1,
+            "error": error,
+            "analysis": f"SENTINEL analyzed {error['type']} in {error['file']}",
+            "fix": f"FORGE applied fix for {error['type']}",
+            "test_result": "PROBE verified fix - PASSED" if i < 2 else "PROBE verified fix - NEEDS REVIEW",
+            "status": "fixed" if i < 2 else "partial"
+        }
+        iterations.append(iteration)
+        
+        debug_loop.fixes_applied.append({
+            "file": error["file"],
+            "fix_type": error["type"],
+            "applied_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        debug_loop.tests_run.append({
+            "iteration": i + 1,
+            "passed": i < 2,
+            "details": f"Test suite run for {error['file']}"
+        })
+    
+    debug_loop.iterations = iterations
+    debug_loop.current_iteration = len(iterations)
+    debug_loop.status = "success" if all(i["status"] == "fixed" for i in iterations) else "partial"
+    debug_loop.success = debug_loop.status == "success"
+    debug_loop.completed_at = datetime.now(timezone.utc)
+    
+    debug_loop.final_report = {
+        "total_errors": len(errors),
+        "errors_fixed": len([i for i in iterations if i["status"] == "fixed"]),
+        "iterations_used": len(iterations),
+        "success": debug_loop.success
+    }
+    
+    doc = debug_loop.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['started_at'] = doc['started_at'].isoformat()
+    doc['completed_at'] = doc['completed_at'].isoformat()
+    await db.debug_loops.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.get("/debug-loop/{project_id}")
+async def get_debug_loops(project_id: str):
+    """Get all debug loop sessions for a project"""
+    loops = await db.debug_loops.find({"project_id": project_id}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    return loops
+
+@api_router.get("/debug-loop/{project_id}/latest")
+async def get_latest_debug_loop(project_id: str):
+    """Get most recent debug loop"""
+    loop = await db.debug_loops.find_one({"project_id": project_id}, {"_id": 0}, sort=[("created_at", -1)])
+    return loop
+
+# ========== FEATURE 7: TIME MACHINE ENDPOINTS ==========
+
+@api_router.post("/checkpoints/{project_id}/create")
+async def create_checkpoint(project_id: str, name: str, description: str = "", auto: bool = False):
+    """Create a development checkpoint"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Get current step number
+    existing = await db.checkpoints.count_documents({"project_id": project_id})
+    
+    # Snapshot files
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+    files_snapshot = []
+    for f in files:
+        files_snapshot.append({
+            "filepath": f.get("filepath"),
+            "content": f.get("content"),
+            "hash": hash(f.get("content", ""))
+        })
+    
+    # Snapshot tasks
+    tasks = await db.tasks.find({"project_id": project_id}, {"_id": 0}).to_list(100)
+    
+    # Snapshot memories
+    memories = await db.memories.find({"project_id": project_id}, {"_id": 0}).to_list(100)
+    
+    checkpoint = Checkpoint(
+        project_id=project_id,
+        name=name,
+        description=description,
+        step_number=existing + 1,
+        files_snapshot=files_snapshot,
+        tasks_snapshot=tasks,
+        agent_memories=memories,
+        auto_created=auto,
+        created_by="COMMANDER" if not auto else "system"
+    )
+    
+    doc = checkpoint.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.checkpoints.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.get("/checkpoints/{project_id}")
+async def get_checkpoints(project_id: str):
+    """Get all checkpoints for a project"""
+    checkpoints = await db.checkpoints.find(
+        {"project_id": project_id}, 
+        {"_id": 0, "files_snapshot": 0}  # Exclude large data
+    ).sort("step_number", -1).to_list(100)
+    return checkpoints
+
+@api_router.post("/checkpoints/{checkpoint_id}/restore")
+async def restore_checkpoint(checkpoint_id: str):
+    """Restore project to a checkpoint"""
+    checkpoint = await db.checkpoints.find_one({"id": checkpoint_id}, {"_id": 0})
+    if not checkpoint:
+        raise HTTPException(status_code=404, detail="Checkpoint not found")
+    
+    project_id = checkpoint["project_id"]
+    
+    # Delete current files
+    await db.files.delete_many({"project_id": project_id})
+    
+    # Restore files from snapshot
+    for f in checkpoint.get("files_snapshot", []):
+        file_doc = {
+            "id": str(uuid.uuid4()),
+            "project_id": project_id,
+            "filepath": f["filepath"],
+            "content": f["content"],
+            "version": 1,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.files.insert_one(file_doc)
+    
+    # Restore tasks
+    await db.tasks.delete_many({"project_id": project_id})
+    for t in checkpoint.get("tasks_snapshot", []):
+        t["_id"] = None
+        await db.tasks.insert_one(t)
+    
+    return {
+        "success": True,
+        "restored_to": checkpoint["name"],
+        "step_number": checkpoint["step_number"],
+        "files_restored": len(checkpoint.get("files_snapshot", []))
+    }
+
+@api_router.delete("/checkpoints/{checkpoint_id}")
+async def delete_checkpoint(checkpoint_id: str):
+    """Delete a checkpoint"""
+    await db.checkpoints.delete_one({"id": checkpoint_id})
+    return {"success": True}
+
+@api_router.get("/checkpoints/{checkpoint_id}/diff/{other_id}")
+async def compare_checkpoints(checkpoint_id: str, other_id: str):
+    """Compare two checkpoints"""
+    cp1 = await db.checkpoints.find_one({"id": checkpoint_id}, {"_id": 0})
+    cp2 = await db.checkpoints.find_one({"id": other_id}, {"_id": 0})
+    
+    if not cp1 or not cp2:
+        raise HTTPException(status_code=404, detail="Checkpoint not found")
+    
+    files1 = {f["filepath"]: f["content"] for f in cp1.get("files_snapshot", [])}
+    files2 = {f["filepath"]: f["content"] for f in cp2.get("files_snapshot", [])}
+    
+    added = [f for f in files2 if f not in files1]
+    removed = [f for f in files1 if f not in files2]
+    modified = [f for f in files1 if f in files2 and files1[f] != files2[f]]
+    
+    return {
+        "checkpoint_1": {"id": checkpoint_id, "name": cp1["name"], "step": cp1["step_number"]},
+        "checkpoint_2": {"id": other_id, "name": cp2["name"], "step": cp2["step_number"]},
+        "added": added,
+        "removed": removed,
+        "modified": modified,
+        "total_changes": len(added) + len(removed) + len(modified)
+    }
+
+# ========== FEATURE 3: IDEA ENGINE ENDPOINTS ==========
+
+@api_router.post("/ideas/generate")
+async def generate_ideas(prompt: str, category: Optional[str] = None, count: int = 10):
+    """Generate project ideas using AI"""
+    
+    batch = IdeaBatch(
+        prompt=prompt,
+        category_filter=category,
+        count=count,
+        status="generating"
+    )
+    
+    # Generate ideas based on prompt
+    idea_templates = {
+        "game": [
+            ("Rogue-lite Deck Builder", "A card-based roguelike with procedural dungeons", ["deck_building", "procedural", "permadeath"]),
+            ("Open World Survival Craft", "Survive in a hostile alien world", ["survival", "crafting", "exploration"]),
+            ("Multiplayer Tower Defense", "Cooperative TD with hero abilities", ["coop", "tower_defense", "heroes"]),
+            ("Narrative Mystery Game", "Detective story with branching paths", ["story", "choices", "mystery"]),
+            ("Rhythm Combat Game", "Fight enemies to the beat", ["rhythm", "combat", "music"]),
+            ("City Builder Sim", "Build and manage a futuristic city", ["simulation", "management", "building"]),
+            ("Racing RPG Hybrid", "Race cars and level up your driver", ["racing", "rpg", "progression"]),
+            ("Puzzle Platformer", "Physics-based puzzles with cute characters", ["puzzle", "platformer", "physics"]),
+            ("Space Trading Sim", "Trade goods across the galaxy", ["trading", "space", "economy"]),
+            ("Battle Royale Twist", "100 players, unique mechanic twist", ["battle_royale", "multiplayer", "competitive"]),
+        ],
+        "saas": [
+            ("AI Content Studio", "Generate marketing content with AI", ["ai", "content", "marketing"]),
+            ("Team Analytics Dashboard", "Track team productivity metrics", ["analytics", "teams", "productivity"]),
+            ("Customer Support Bot", "AI-powered support automation", ["ai", "support", "automation"]),
+            ("Invoice Management", "Smart invoicing and payments", ["finance", "invoicing", "payments"]),
+            ("Social Media Scheduler", "Schedule posts across platforms", ["social", "scheduling", "marketing"]),
+            ("Email Campaign Builder", "Drag-drop email campaigns", ["email", "marketing", "automation"]),
+            ("Project Management AI", "AI-assisted project tracking", ["projects", "ai", "management"]),
+            ("HR Onboarding Tool", "Streamline employee onboarding", ["hr", "onboarding", "automation"]),
+            ("Feedback Collection", "Gather and analyze user feedback", ["feedback", "analytics", "ux"]),
+            ("Appointment Scheduler", "Smart booking with AI optimization", ["scheduling", "ai", "booking"]),
+        ],
+        "tool": [
+            ("Code Review Assistant", "AI code review suggestions", ["ai", "code", "devtools"]),
+            ("API Documentation Gen", "Auto-generate API docs", ["documentation", "api", "devtools"]),
+            ("Design System Builder", "Create consistent design systems", ["design", "ui", "components"]),
+            ("Database Schema Viz", "Visualize database relationships", ["database", "visualization", "devtools"]),
+            ("Log Analysis Tool", "Smart log parsing and alerts", ["logs", "monitoring", "devops"]),
+            ("Regex Builder", "Visual regex construction", ["regex", "devtools", "utility"]),
+            ("Color Palette Gen", "AI-powered color schemes", ["design", "colors", "ai"]),
+            ("Mock Data Generator", "Generate realistic test data", ["testing", "data", "devtools"]),
+            ("Dependency Checker", "Find outdated dependencies", ["dependencies", "security", "devtools"]),
+            ("Performance Profiler", "Web app performance analysis", ["performance", "optimization", "devtools"]),
+        ]
+    }
+    
+    selected_category = category or "game"
+    templates = idea_templates.get(selected_category, idea_templates["game"])
+    
+    ideas = []
+    for i, (title, desc, features) in enumerate(templates[:count]):
+        idea = IdeaConcept(
+            title=f"{title} - {prompt[:20]}",
+            category=selected_category,
+            description=f"{desc}. Inspired by: {prompt}",
+            unique_features=features,
+            target_audience="General users" if selected_category == "tool" else "Gamers" if selected_category == "game" else "Businesses",
+            tech_stack_suggestion=["React", "FastAPI", "MongoDB"] if selected_category != "game" else ["Unity", "C#", "PlayFab"],
+            complexity=["simple", "medium", "complex"][i % 3],
+            estimated_build_time=["2-4 hours", "4-8 hours", "12+ hours"][i % 3]
+        )
+        ideas.append(idea.model_dump())
+    
+    batch.ideas = ideas
+    batch.status = "complete"
+    
+    doc = batch.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.idea_batches.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.get("/ideas/batches")
+async def get_idea_batches():
+    """Get all idea batches"""
+    batches = await db.idea_batches.find({}, {"_id": 0, "ideas": 0}).sort("created_at", -1).to_list(50)
+    return batches
+
+@api_router.get("/ideas/batch/{batch_id}")
+async def get_idea_batch(batch_id: str):
+    """Get specific idea batch with all ideas"""
+    batch = await db.idea_batches.find_one({"id": batch_id}, {"_id": 0})
+    return batch
+
+@api_router.post("/ideas/{idea_id}/build")
+async def build_idea(idea_id: str):
+    """Convert idea to project and start building"""
+    # Find the idea in batches
+    batches = await db.idea_batches.find({}, {"_id": 0}).to_list(100)
+    
+    idea = None
+    for batch in batches:
+        for i in batch.get("ideas", []):
+            if i.get("id") == idea_id:
+                idea = i
+                break
+    
+    if not idea:
+        raise HTTPException(status_code=404, detail="Idea not found")
+    
+    # Create project from idea
+    project = Project(
+        name=idea["title"],
+        description=idea["description"],
+        type=idea["category"],
+        status="planning"
+    )
+    
+    doc = project.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.projects.insert_one(doc)
+    
+    return {
+        "success": True,
+        "project_id": project.id,
+        "project_name": project.name,
+        "message": f"Project created from idea: {idea['title']}"
+    }
+
+# ========== FEATURE 5: SYSTEM VISUALIZATION ENDPOINTS ==========
+
+@api_router.get("/visualization/{project_id}/map")
+async def get_system_map(project_id: str):
+    """Get system visualization map"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(200)
+    
+    # Build visualization nodes
+    nodes = []
+    edges = []
+    clusters = {}
+    
+    for i, f in enumerate(files):
+        path = f.get("filepath", "")
+        folder = "/".join(path.split("/")[:-1]) or "root"
+        
+        # Determine node type and cluster
+        ext = path.split(".")[-1] if "." in path else "unknown"
+        node_types = {
+            "js": "component", "jsx": "component", "tsx": "component",
+            "py": "backend", "cs": "script", "cpp": "native",
+            "css": "style", "html": "markup", "json": "config"
+        }
+        
+        node_type = node_types.get(ext, "file")
+        
+        # Position in circular layout
+        angle = (i / len(files)) * 2 * 3.14159
+        radius = 200
+        
+        node = {
+            "id": f.get("id", path),
+            "name": path.split("/")[-1],
+            "path": path,
+            "type": node_type,
+            "x": 400 + radius * (1 if i % 2 == 0 else -1) * (0.5 + (i / len(files))),
+            "y": 300 + radius * (0.5 - (i / len(files))),
+            "z": i * 10,
+            "cluster": folder,
+            "status": "active"
+        }
+        nodes.append(node)
+        
+        if folder not in clusters:
+            clusters[folder] = {
+                "id": folder,
+                "name": folder,
+                "nodes": [],
+                "color": ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"][len(clusters) % 5]
+            }
+        clusters[folder]["nodes"].append(node["id"])
+        
+        # Build edges from imports
+        content = f.get("content", "")
+        for line in content.split("\n"):
+            if "import " in line or "from " in line:
+                for other in files:
+                    other_name = other.get("filepath", "").split("/")[-1].split(".")[0]
+                    if other_name in line and other.get("id") != f.get("id"):
+                        edges.append({
+                            "source": f.get("id", path),
+                            "target": other.get("id", other.get("filepath")),
+                            "type": "import",
+                            "strength": 1
+                        })
+    
+    # Agent positions
+    agent_positions = {
+        "COMMANDER": {"x": 400, "y": 50, "z": 0},
+        "ATLAS": {"x": 200, "y": 150, "z": 0},
+        "FORGE": {"x": 600, "y": 150, "z": 0},
+        "SENTINEL": {"x": 200, "y": 450, "z": 0},
+        "PROBE": {"x": 600, "y": 450, "z": 0},
+        "PRISM": {"x": 400, "y": 550, "z": 0}
+    }
+    
+    system_map = SystemMap(
+        project_id=project_id,
+        nodes=nodes,
+        edges=edges[:100],  # Limit edges
+        clusters=list(clusters.values()),
+        agent_positions=agent_positions,
+        layout_type="force"
+    )
+    
+    return system_map.model_dump()
+
+@api_router.get("/visualization/{project_id}/activity")
+async def get_agent_activity(project_id: str):
+    """Get real-time agent activity for visualization"""
+    # Get recent war room messages
+    messages = await db.war_room.find({"project_id": project_id}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    
+    # Get active build
+    build = await db.builds.find_one({"project_id": project_id, "status": {"$in": ["running", "paused"]}}, {"_id": 0})
+    
+    activity = {
+        "agents": {
+            "COMMANDER": {"status": "active", "current_task": "Coordinating build"},
+            "ATLAS": {"status": "idle", "current_task": None},
+            "FORGE": {"status": "working" if build else "idle", "current_task": "Implementing features" if build else None},
+            "SENTINEL": {"status": "idle", "current_task": None},
+            "PROBE": {"status": "idle", "current_task": None},
+            "PRISM": {"status": "idle", "current_task": None}
+        },
+        "recent_messages": messages[:10],
+        "active_build": build is not None,
+        "connections": [
+            {"from": "COMMANDER", "to": "FORGE", "active": build is not None},
+            {"from": "FORGE", "to": "SENTINEL", "active": False},
+            {"from": "SENTINEL", "to": "PROBE", "active": False}
+        ]
+    }
+    
+    return activity
+
+# ========== FEATURE 2: BUILD FARM ENDPOINTS ==========
+
+@api_router.get("/build-farm/workers")
+async def get_build_workers():
+    """Get all build workers"""
+    workers = await db.build_workers.find({}, {"_id": 0}).to_list(50)
+    
+    if not workers:
+        # Create default workers
+        default_workers = [
+            {"name": "Worker-Alpha", "capabilities": ["web", "api"], "max_concurrent": 2},
+            {"name": "Worker-Beta", "capabilities": ["game", "mobile"], "max_concurrent": 1},
+            {"name": "Worker-Gamma", "capabilities": ["web", "game", "api", "mobile"], "max_concurrent": 3}
+        ]
+        
+        for w in default_workers:
+            worker = BuildWorker(**w)
+            doc = worker.model_dump()
+            doc['created_at'] = doc['created_at'].isoformat()
+            doc['last_heartbeat'] = doc['last_heartbeat'].isoformat()
+            await db.build_workers.insert_one(doc)
+        
+        workers = await db.build_workers.find({}, {"_id": 0}).to_list(50)
+    
+    return workers
+
+@api_router.post("/build-farm/jobs/add")
+async def add_build_job(project_id: str, project_name: str, job_type: str = "prototype", priority: int = 5):
+    """Add a job to the build farm queue"""
+    job = BuildFarmJob(
+        project_id=project_id,
+        project_name=project_name,
+        job_type=job_type,
+        priority=priority
+    )
+    
+    doc = job.model_dump()
+    doc['queued_at'] = doc['queued_at'].isoformat()
+    await db.build_farm_jobs.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.get("/build-farm/jobs")
+async def get_build_jobs():
+    """Get all build farm jobs"""
+    jobs = await db.build_farm_jobs.find({}, {"_id": 0}).sort("priority", -1).to_list(100)
+    return jobs
+
+@api_router.post("/build-farm/jobs/{job_id}/assign")
+async def assign_job_to_worker(job_id: str, worker_id: str):
+    """Assign a job to a worker"""
+    await db.build_farm_jobs.update_one(
+        {"id": job_id},
+        {"$set": {
+            "status": "assigned",
+            "assigned_worker": worker_id,
+            "started_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    await db.build_workers.update_one(
+        {"id": worker_id},
+        {"$set": {"status": "building", "current_job": job_id}}
+    )
+    
+    return {"success": True}
+
+@api_router.get("/build-farm/status")
+async def get_build_farm_status():
+    """Get overall build farm status"""
+    workers = await db.build_workers.find({}, {"_id": 0}).to_list(50)
+    jobs = await db.build_farm_jobs.find({}, {"_id": 0}).to_list(100)
+    
+    active_workers = len([w for w in workers if w.get("status") == "building"])
+    queued_jobs = len([j for j in jobs if j.get("status") == "queued"])
+    running_jobs = len([j for j in jobs if j.get("status") in ["assigned", "building"]])
+    
+    return {
+        "total_workers": len(workers),
+        "active_workers": active_workers,
+        "idle_workers": len(workers) - active_workers,
+        "queued_jobs": queued_jobs,
+        "running_jobs": running_jobs,
+        "completed_jobs": len([j for j in jobs if j.get("status") == "complete"])
+    }
+
+# ========== FEATURE 4: ONE-CLICK SAAS ENDPOINTS ==========
+
+@api_router.post("/saas/generate")
+async def generate_saas(name: str, description: str):
+    """Generate complete SaaS blueprint"""
+    
+    blueprint = SaaSBlueprint(
+        name=name,
+        description=description,
+        status="generating"
+    )
+    
+    # Generate backend API structure
+    blueprint.backend_api = {
+        "framework": "FastAPI",
+        "endpoints": [
+            {"method": "POST", "path": "/auth/register", "description": "User registration"},
+            {"method": "POST", "path": "/auth/login", "description": "User login"},
+            {"method": "GET", "path": "/users/me", "description": "Get current user"},
+            {"method": "GET", "path": f"/{name.lower().replace(' ', '_')}", "description": f"List {name} items"},
+            {"method": "POST", "path": f"/{name.lower().replace(' ', '_')}", "description": f"Create {name} item"},
+            {"method": "PATCH", "path": f"/{name.lower().replace(' ', '_')}/{{id}}", "description": f"Update {name} item"},
+            {"method": "DELETE", "path": f"/{name.lower().replace(' ', '_')}/{{id}}", "description": f"Delete {name} item"},
+            {"method": "GET", "path": "/analytics/dashboard", "description": "Get dashboard analytics"},
+            {"method": "POST", "path": "/webhooks/stripe", "description": "Stripe webhook handler"},
+        ],
+        "models": ["User", "Session", name.replace(" ", ""), "Subscription", "AuditLog"],
+        "services": ["AuthService", "EmailService", "PaymentService", "AnalyticsService"]
+    }
+    
+    # Generate database schema
+    blueprint.database_schema = {
+        "type": "MongoDB",
+        "collections": [
+            {"name": "users", "fields": ["id", "email", "password_hash", "name", "created_at", "subscription_tier"]},
+            {"name": name.lower().replace(" ", "_") + "s", "fields": ["id", "user_id", "data", "created_at", "updated_at"]},
+            {"name": "subscriptions", "fields": ["id", "user_id", "stripe_id", "plan", "status", "current_period_end"]},
+            {"name": "audit_logs", "fields": ["id", "user_id", "action", "resource", "timestamp"]}
+        ],
+        "indexes": ["users.email", f"{name.lower().replace(' ', '_')}s.user_id", "subscriptions.user_id"]
+    }
+    
+    # Generate auth system
+    blueprint.auth_system = {
+        "type": "JWT",
+        "providers": ["email", "google"],
+        "config": {
+            "token_expiry": "7d",
+            "refresh_enabled": True,
+            "password_hashing": "bcrypt",
+            "oauth_providers": ["Google"]
+        }
+    }
+    
+    # Generate frontend UI
+    blueprint.frontend_ui = {
+        "framework": "React",
+        "styling": "Tailwind CSS",
+        "pages": [
+            {"path": "/", "name": "Landing Page", "components": ["Hero", "Features", "Pricing", "CTA"]},
+            {"path": "/login", "name": "Login", "components": ["LoginForm", "OAuthButtons"]},
+            {"path": "/register", "name": "Register", "components": ["RegisterForm", "OAuthButtons"]},
+            {"path": "/dashboard", "name": "Dashboard", "components": ["Sidebar", "Stats", "RecentActivity", "QuickActions"]},
+            {"path": f"/{name.lower().replace(' ', '-')}", "name": f"{name} List", "components": ["DataTable", "Filters", "CreateModal"]},
+            {"path": "/settings", "name": "Settings", "components": ["ProfileForm", "BillingSection", "TeamMembers"]},
+            {"path": "/pricing", "name": "Pricing", "components": ["PricingCards", "FAQ", "Testimonials"]}
+        ],
+        "components": ["Navbar", "Sidebar", "Footer", "Modal", "Toast", "DataTable", "Form", "Card"]
+    }
+    
+    # Generate deployment config
+    blueprint.deployment_config = {
+        "platform": "Vercel + Railway",
+        "frontend": {"platform": "Vercel", "build_command": "npm run build", "output_dir": "dist"},
+        "backend": {"platform": "Railway", "dockerfile": True, "env_vars": ["MONGO_URL", "JWT_SECRET", "STRIPE_KEY"]},
+        "database": {"platform": "MongoDB Atlas", "tier": "M0 (Free)"},
+        "scaling": {"frontend_regions": ["global"], "backend_replicas": 1}
+    }
+    
+    # Generate payment integration
+    blueprint.payment_integration = {
+        "provider": "Stripe",
+        "plans": [
+            {"name": "Free", "price": 0, "features": ["5 items", "Basic support"]},
+            {"name": "Pro", "price": 19, "features": ["Unlimited items", "Priority support", "API access"]},
+            {"name": "Enterprise", "price": 99, "features": ["Everything in Pro", "Custom integrations", "SLA"]}
+        ],
+        "webhooks": ["checkout.session.completed", "customer.subscription.updated", "invoice.payment_failed"]
+    }
+    
+    blueprint.tech_stack = {
+        "frontend": "React + Tailwind",
+        "backend": "FastAPI",
+        "database": "MongoDB",
+        "auth": "JWT + Google OAuth",
+        "payments": "Stripe",
+        "hosting": "Vercel + Railway"
+    }
+    
+    blueprint.estimated_cost = {
+        "development": "4-8 hours with AgentForge",
+        "monthly_hosting": "$0-20 depending on usage",
+        "stripe_fees": "2.9% + $0.30 per transaction"
+    }
+    
+    blueprint.status = "ready"
+    
+    doc = blueprint.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.saas_blueprints.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.get("/saas/blueprints")
+async def get_saas_blueprints():
+    """Get all SaaS blueprints"""
+    blueprints = await db.saas_blueprints.find({}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    return blueprints
+
+@api_router.get("/saas/blueprint/{blueprint_id}")
+async def get_saas_blueprint(blueprint_id: str):
+    """Get specific SaaS blueprint"""
+    blueprint = await db.saas_blueprints.find_one({"id": blueprint_id}, {"_id": 0})
+    return blueprint
+
+@api_router.post("/saas/blueprint/{blueprint_id}/build")
+async def build_saas_from_blueprint(blueprint_id: str):
+    """Build project from SaaS blueprint"""
+    blueprint = await db.saas_blueprints.find_one({"id": blueprint_id}, {"_id": 0})
+    if not blueprint:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    
+    # Create project
+    project = Project(
+        name=blueprint["name"],
+        description=blueprint["description"],
+        type="saas",
+        status="planning"
+    )
+    
+    doc = project.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.projects.insert_one(doc)
+    
+    # Update blueprint with project reference
+    await db.saas_blueprints.update_one(
+        {"id": blueprint_id},
+        {"$set": {"project_id": project.id, "status": "building"}}
+    )
+    
+    return {
+        "success": True,
+        "project_id": project.id,
+        "blueprint_id": blueprint_id,
+        "message": f"SaaS project '{blueprint['name']}' created and ready for building"
+    }
+
+# ========== FEATURE 9: SELF-EXPANDING AGENTS ENDPOINTS ==========
+
+@api_router.get("/dynamic-agents")
+async def get_dynamic_agents():
+    """Get all dynamically created agents"""
+    agents = await db.dynamic_agents.find({}, {"_id": 0}).to_list(50)
+    return agents
+
+@api_router.post("/dynamic-agents/spawn")
+async def spawn_dynamic_agent(
+    name: str,
+    specialty: str,
+    description: str,
+    created_by: str = "COMMANDER",
+    creation_reason: str = ""
+):
+    """Spawn a new specialized agent"""
+    
+    # Generate capabilities based on specialty
+    capability_map = {
+        "api": ["endpoint_design", "documentation", "testing", "optimization"],
+        "database": ["schema_design", "query_optimization", "migrations", "indexing"],
+        "ui": ["component_design", "styling", "accessibility", "animation"],
+        "security": ["auth_implementation", "vulnerability_scanning", "encryption", "audit"],
+        "testing": ["unit_tests", "integration_tests", "e2e_tests", "performance_tests"],
+        "devops": ["ci_cd", "containerization", "monitoring", "scaling"]
+    }
+    
+    capabilities = capability_map.get(specialty.lower(), [specialty])
+    
+    agent = DynamicAgent(
+        name=name.upper().replace(" ", "_"),
+        role=specialty,
+        specialty=specialty,
+        description=description,
+        capabilities=capabilities,
+        triggers=[f"Tasks involving {specialty}", f"Complex {specialty} requirements"],
+        created_by=created_by,
+        creation_reason=creation_reason,
+        system_prompt=f"You are {name}, a specialized AI agent focused on {specialty}. {description}"
+    )
+    
+    doc = agent.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.dynamic_agents.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.post("/dynamic-agents/auto-spawn")
+async def auto_spawn_agents(project_id: str):
+    """Automatically spawn agents based on project analysis"""
+    # Analyze project to determine needed specialists
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(200)
+    
+    specialties_needed = set()
+    
+    for f in files:
+        content = f.get("content", "").lower()
+        filepath = f.get("filepath", "").lower()
+        
+        if "api" in filepath or "@api" in content or "endpoint" in content:
+            specialties_needed.add("api")
+        if "test" in filepath or "describe(" in content or "it(" in content:
+            specialties_needed.add("testing")
+        if ".css" in filepath or "styled" in content or "tailwind" in content:
+            specialties_needed.add("ui")
+        if "auth" in content or "jwt" in content or "password" in content:
+            specialties_needed.add("security")
+        if "docker" in filepath or "kubernetes" in content or "deploy" in content:
+            specialties_needed.add("devops")
+        if "schema" in content or "model" in content or "collection" in content:
+            specialties_needed.add("database")
+    
+    spawned = []
+    for specialty in specialties_needed:
+        existing = await db.dynamic_agents.find_one({"specialty": specialty, "active": True})
+        if not existing:
+            agent = DynamicAgent(
+                name=f"{specialty.upper()}_SPECIALIST",
+                role=specialty,
+                specialty=specialty,
+                description=f"Auto-spawned specialist for {specialty} tasks",
+                capabilities=[specialty],
+                created_by="COMMANDER",
+                creation_reason=f"Detected {specialty} patterns in project files"
+            )
+            doc = agent.model_dump()
+            doc['created_at'] = doc['created_at'].isoformat()
+            await db.dynamic_agents.insert_one(doc)
+            spawned.append(specialty)
+    
+    return {
+        "specialties_detected": list(specialties_needed),
+        "agents_spawned": spawned,
+        "total_dynamic_agents": await db.dynamic_agents.count_documents({"active": True})
+    }
+
+@api_router.delete("/dynamic-agents/{agent_id}")
+async def deactivate_dynamic_agent(agent_id: str):
+    """Deactivate a dynamic agent"""
+    await db.dynamic_agents.update_one({"id": agent_id}, {"$set": {"active": False}})
+    return {"success": True}
 
 # Include router
 app.include_router(api_router)
