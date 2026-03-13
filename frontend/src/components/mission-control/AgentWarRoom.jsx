@@ -37,8 +37,31 @@ const AgentWarRoom = ({ projectId }) => {
   const fetchAgents = async () => {
     try {
       const res = await axios.get(`${API}/agents`);
-      setAgents(res.data || []);
-    } catch (e) {}
+      const agentData = res.data || [];
+      // If no agents returned, use default configuration
+      if (agentData.length === 0) {
+        setAgents([
+          { id: '1', name: 'COMMANDER', role: 'lead' },
+          { id: '2', name: 'ATLAS', role: 'architect' },
+          { id: '3', name: 'FORGE', role: 'developer' },
+          { id: '4', name: 'SENTINEL', role: 'reviewer' },
+          { id: '5', name: 'PROBE', role: 'tester' },
+          { id: '6', name: 'PRISM', role: 'artist' }
+        ]);
+      } else {
+        setAgents(agentData);
+      }
+    } catch (e) {
+      // Use default agents on error
+      setAgents([
+        { id: '1', name: 'COMMANDER', role: 'lead' },
+        { id: '2', name: 'ATLAS', role: 'architect' },
+        { id: '3', name: 'FORGE', role: 'developer' },
+        { id: '4', name: 'SENTINEL', role: 'reviewer' },
+        { id: '5', name: 'PROBE', role: 'tester' },
+        { id: '6', name: 'PRISM', role: 'artist' }
+      ]);
+    }
   };
 
   const simulateActivity = () => {

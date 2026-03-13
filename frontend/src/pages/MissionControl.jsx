@@ -18,6 +18,7 @@ import AgentWarRoom from '@/components/mission-control/AgentWarRoom';
 import GodModePanel from '@/components/mission-control/GodModePanel';
 import VisualProjectBrain from '@/components/mission-control/VisualProjectBrain';
 import BuildTimeline from '@/components/mission-control/BuildTimeline';
+import KnowledgeGraphPanel from '@/components/mission-control/KnowledgeGraphPanel';
 
 const MissionControl = () => {
   const { projectId } = useParams();
@@ -206,15 +207,7 @@ const MissionControl = () => {
           {activePanel === 'god-mode' && <GodModePanel />}
           {activePanel === 'project-brain' && <VisualProjectBrain projectId={projectId} files={files} />}
           {activePanel === 'timeline' && <BuildTimeline projectId={projectId} />}
-          {activePanel === 'knowledge' && (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center">
-                <Database className="w-16 h-16 text-pink-500 mx-auto mb-4" />
-                <h3 className="text-xl font-bold">Knowledge Graph</h3>
-                <p className="text-zinc-500 mt-2">Global software pattern memory</p>
-              </div>
-            </div>
-          )}
+          {activePanel === 'knowledge' && <KnowledgeGraphPanel />}
         </div>
       </div>
     </div>
