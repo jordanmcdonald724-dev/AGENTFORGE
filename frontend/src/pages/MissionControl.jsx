@@ -27,6 +27,10 @@ import UnrealEnginePanel from '@/components/mission-control/UnrealEnginePanel';
 import GameBuilderPanel from '@/components/mission-control/GameBuilderPanel';
 import ResearchPanel from '@/components/mission-control/ResearchPanel';
 import HardwarePanel from '@/components/mission-control/HardwarePanel';
+import AutoDeployPanel from '@/components/mission-control/AutoDeployPanel';
+import AIReviewPanel from '@/components/mission-control/AIReviewPanel';
+import MobileBuilderPanel from '@/components/mission-control/MobileBuilderPanel';
+import CloudBuilderPanel from '@/components/mission-control/CloudBuilderPanel';
 
 const MissionControl = () => {
   const { projectId } = useParams();
@@ -96,6 +100,10 @@ const MissionControl = () => {
     { id: 'night-shift', label: 'Night Shift', icon: Moon, color: '#6366f1' },
     { id: 'time-travel', label: 'Time Travel', icon: History, color: '#f97316' },
     { id: 'game-builder', label: 'Game Builder', icon: Gamepad2, color: '#8b5cf6' },
+    { id: 'mobile-builder', label: 'Mobile Builder', icon: Gamepad2, color: '#06b6d4' },
+    { id: 'cloud-builder', label: 'Cloud Builder', icon: Globe, color: '#f97316' },
+    { id: 'auto-deploy', label: 'Auto Deploy', icon: Rocket, color: '#10b981' },
+    { id: 'ai-review', label: 'AI Review', icon: Eye, color: '#f59e0b' },
     { id: 'research', label: 'Research Mode', icon: BookOpen, color: '#3b82f6' },
     { id: 'hardware', label: 'Hardware', icon: Cpu, color: '#f59e0b' }
   ];
@@ -226,6 +234,10 @@ const MissionControl = () => {
           {activePanel === 'night-shift' && <NightShiftPanel projectId={projectId} />}
           {activePanel === 'time-travel' && <TimeTravelPanel projectId={projectId} />}
           {activePanel === 'game-builder' && <GameBuilderPanel />}
+          {activePanel === 'mobile-builder' && <MobileBuilderPanel />}
+          {activePanel === 'cloud-builder' && <CloudBuilderPanel />}
+          {activePanel === 'auto-deploy' && <AutoDeployPanel />}
+          {activePanel === 'ai-review' && <AIReviewPanel projectId={projectId} />}
           {activePanel === 'research' && <ResearchPanel />}
           {activePanel === 'hardware' && <HardwarePanel />}
         </div>

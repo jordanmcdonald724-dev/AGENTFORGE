@@ -97,6 +97,10 @@ try:
     # Game Builder (Real UE5 + Unity builds)
     from routes.game_builder import router as game_builder_router
     
+    # New feature routes
+    from routes.mobile_builder import router as mobile_builder_router
+    from routes.cloud_builder import router as cloud_builder_router
+    
     # Register all routers with /api prefix
     # Core routes
     app.include_router(health_router, prefix="/api", tags=["health"])
@@ -168,6 +172,10 @@ try:
     
     # Game Builder (Real UE5 + Unity builds)
     app.include_router(game_builder_router, prefix="/api", tags=["game-builder"])
+    
+    # New feature routes
+    app.include_router(mobile_builder_router, prefix="/api", tags=["mobile-builder"])
+    app.include_router(cloud_builder_router, prefix="/api", tags=["cloud-builder"])
     
     logger.info("Successfully loaded all modular routers")
     
