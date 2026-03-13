@@ -25,7 +25,7 @@ import {
   Sparkles, ArrowRightCircle, Github, Play, Eye, Gamepad2, Package, Heart, Volume2, Layout, MessageCircle,
   Rocket, ChevronUp, RefreshCw, Brain, Wand2, CopyPlus, Search, Replace, Radio, AlertTriangle, Clock,
   Pause, Square, SkipForward, Swords, Mountain, Car, Sun, Map, Hammer, Coins, Ghost, Timer, Camera, Wifi,
-  Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music, Terminal, Command
+  Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music, Terminal, Command, FlaskConical
 } from "lucide-react";
 import { API } from "@/App";
 import BlueprintEditor from "@/components/BlueprintEditor";
@@ -37,6 +37,7 @@ import DeploymentPanel from "@/components/DeploymentPanel";
 import SandboxPanel from "@/components/SandboxPanel";
 import AssetPipelinePanel from "@/components/AssetPipelinePanel";
 import CommandCenter from "@/components/CommandCenter";
+import LabsPanel from "@/components/LabsPanel";
 
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
@@ -1045,6 +1046,7 @@ const ProjectWorkspace = () => {
                   <TabsTrigger value="command" className="data-[state=active]:bg-zinc-800" data-testid="command-tab"><Command className="w-4 h-4 mr-2" />Command</TabsTrigger>
                   <TabsTrigger value="deploy" className="data-[state=active]:bg-zinc-800" data-testid="deploy-tab"><Rocket className="w-4 h-4 mr-2" />Deploy</TabsTrigger>
                   <TabsTrigger value="notifications" className="data-[state=active]:bg-zinc-800" data-testid="notifications-tab"><Bell className="w-4 h-4 mr-2" />Alerts</TabsTrigger>
+                  <TabsTrigger value="labs" className="data-[state=active]:bg-violet-900/50 text-violet-400" data-testid="labs-tab"><FlaskConical className="w-4 h-4 mr-2" />Labs<Badge variant="secondary" className="ml-2 text-xs bg-violet-500/20 text-violet-400">NEW</Badge></TabsTrigger>
                 </TabsList>
 
                 {/* Chat Tab */}
@@ -1245,6 +1247,10 @@ const ProjectWorkspace = () => {
                 {/* Notifications Tab */}
                 <TabsContent value="notifications" className="flex-1 m-0 overflow-hidden">
                   <NotificationsPanel projectId={projectId} />
+                </TabsContent>
+
+                <TabsContent value="labs" className="flex-1 m-0 overflow-hidden">
+                  <LabsPanel projectId={projectId} />
                 </TabsContent>
               </Tabs>
             </div>

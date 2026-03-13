@@ -7993,6 +7993,11 @@ try:
     from routes.preview import router as preview_router
     from routes.refactor import router as refactor_router
     from routes.exploration import router as exploration_router
+    from routes.world_model import router as world_model_router
+    from routes.software_dna import router as software_dna_router
+    from routes.god_mode import router as god_mode_router
+    from routes.discovery import router as discovery_router
+    from routes.marketplace import router as marketplace_router
     
     app.include_router(celery_router, prefix="/api", tags=["celery"])
     app.include_router(k8s_router, prefix="/api", tags=["kubernetes"])
@@ -8006,7 +8011,12 @@ try:
     app.include_router(preview_router, prefix="/api", tags=["preview"])
     app.include_router(refactor_router, prefix="/api", tags=["refactor"])
     app.include_router(exploration_router, prefix="/api", tags=["exploration"])
-    logger.info("Successfully loaded modular routers from /routes")
+    app.include_router(world_model_router, prefix="/api", tags=["world-model"])
+    app.include_router(software_dna_router, prefix="/api", tags=["software-dna"])
+    app.include_router(god_mode_router, prefix="/api", tags=["god-mode"])
+    app.include_router(discovery_router, prefix="/api", tags=["discovery"])
+    app.include_router(marketplace_router, prefix="/api", tags=["marketplace"])
+    logger.info("Successfully loaded modular routers including LABS features")
 except Exception as e:
     logger.warning(f"Could not load modular routers: {e}")
 
