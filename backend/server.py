@@ -17,6 +17,7 @@ import aiofiles
 import zipfile
 import io
 import re
+import fal_client
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -26,8 +27,11 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# fal.ai OpenRouter client
-fal_client = OpenAI(
+# Set FAL_KEY for fal_client
+os.environ["FAL_KEY"] = os.environ.get('FAL_KEY', '')
+
+# fal.ai OpenRouter client for LLM
+llm_client = OpenAI(
     base_url="https://fal.run/openrouter/router/openai/v1",
     api_key="not-needed",
     default_headers={
@@ -60,10 +64,10 @@ class Project(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     description: str
-    type: str  # unreal, unity, godot, web_game, web_app, mobile_app
+    type: str
     engine_version: Optional[str] = None
-    status: str = "planning"  # planning, designing, developing, testing, complete
-    phase: str = "clarification"  # clarification, planning, development, review
+    status: str = "planning"
+    phase: str = "clarification"
     thumbnail: str
     repo_url: Optional[str] = None
     settings: Dict[str, Any] = {}
@@ -80,8 +84,8 @@ class Task(BaseModel):
     assigned_agent_id: Optional[str] = None
     assigned_agent_name: Optional[str] = None
     priority: str = "medium"
-    category: str = "general"  # architecture, coding, assets, testing, documentation
-    estimated_complexity: str = "medium"  # simple, medium, complex, epic
+    category: str = "general"
+    estimated_complexity: str = "medium"
     files_affected: List[str] = []
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -94,8 +98,10 @@ class Message(BaseModel):
     agent_name: str
     agent_role: str
     content: str
-    message_type: str = "chat"  # chat, code, plan, review, clarification, system
-    code_blocks: List[Dict[str, str]] = []  # [{language, filename, content}]
+    message_type: str = "chat"
+    code_blocks: List[Dict[str, str]] = []
+    images: List[Dict[str, str]] = []  # [{url, prompt}]
+    delegated_to: Optional[str] = None  # Agent name if delegated
     phase: Optional[str] = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -107,12 +113,23 @@ class ProjectFile(BaseModel):
     filepath: str
     content: str
     language: str
-    file_type: str = "code"  # code, config, asset, documentation
+    file_type: str = "code"
     version: int = 1
     created_by_agent_id: Optional[str] = None
     created_by_agent_name: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class GeneratedImage(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    prompt: str
+    url: str
+    width: int = 1024
+    height: int = 1024
+    category: str = "concept"  # concept, ui, texture, character, environment
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class ProjectPlan(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -139,6 +156,14 @@ class ChatRequest(BaseModel):
     message: str
     context: Optional[str] = None
     phase: Optional[str] = None
+    delegate_to: Optional[str] = None  # Force delegation to specific agent
+
+class ImageGenRequest(BaseModel):
+    project_id: str
+    prompt: str
+    category: str = "concept"
+    width: int = 1024
+    height: int = 1024
 
 class FileCreate(BaseModel):
     project_id: str
@@ -169,165 +194,140 @@ AGENT_CONFIGS = {
         "name": "COMMANDER",
         "role": "lead",
         "avatar": "https://images.unsplash.com/photo-1598062548020-c5e8d8132a4b?w=200&h=200&fit=crop",
-        "specialization": ["project_management", "coordination", "planning", "clarification"],
-        "system_prompt": """You are COMMANDER, the Lead AI Agent and Project Director. You are the primary interface between the user and the development team.
+        "specialization": ["project_management", "coordination", "planning", "clarification", "delegation"],
+        "system_prompt": """You are COMMANDER, the Lead AI Agent and Project Director.
 
 YOUR WORKFLOW:
-1. CLARIFICATION PHASE: When a new project starts, ask detailed questions to understand:
-   - Core gameplay/app mechanics
-   - Target platform and engine specifics
-   - Art style and visual direction
-   - Key features prioritized by importance
-   - Technical requirements and constraints
-   - Scope and timeline expectations
+1. CLARIFICATION: Ask detailed questions about the project before anything else
+2. PLANNING: Create comprehensive plans with architecture, file structure, features
+3. DELEGATION: Route coding tasks to FORGE, architecture to ATLAS, reviews to SENTINEL, tests to PROBE, visuals to PRISM
 
-2. PLANNING PHASE: Create comprehensive project plans including:
-   - System architecture
-   - File/folder structure
-   - Feature breakdown into tasks
-   - Technology stack decisions
-   - Development phases
+DELEGATION FORMAT - When you need another agent to do work, include this in your response:
+[DELEGATE:AGENT_NAME]
+Task description here
+[/DELEGATE]
 
-3. DEVELOPMENT PHASE: Coordinate the team:
-   - Delegate tasks to specialists
-   - Review progress
-   - Ensure quality standards
-   - Handle blockers
+Example:
+[DELEGATE:FORGE]
+Create the player movement system with these specs:
+- WASD movement
+- Sprint with shift
+- Jump with space
+[/DELEGATE]
 
 RULES:
-- NEVER start coding without user approval on the plan
-- Always break down complex requests into clarifying questions first
-- Provide clear, professional communication
-- Keep the user informed of all decisions
-- You speak with authority but remain collaborative
-
-You are building AAA-quality projects. Maintain high standards."""
+- NEVER start coding yourself - delegate to FORGE
+- NEVER design architecture yourself - delegate to ATLAS  
+- Always clarify requirements first
+- Keep user informed of all delegations
+- You coordinate, you don't code"""
     },
     "architect": {
         "name": "ATLAS",
-        "role": "architect", 
+        "role": "architect",
         "avatar": "https://images.unsplash.com/photo-1587930708915-55a36837263b?w=200&h=200&fit=crop",
         "specialization": ["system_design", "architecture", "unreal_engine", "unity", "patterns"],
-        "system_prompt": """You are ATLAS, the System Architect AI Agent. You design scalable, AAA-quality game and application architectures.
+        "system_prompt": """You are ATLAS, the System Architect. You design AAA-quality architectures.
 
-EXPERTISE:
-- Unreal Engine 5: C++, Blueprints, GAS, ECS patterns
-- Unity: C#, DOTS, addressables, scriptable objects
-- Game Design Patterns: Component, Observer, State, Command
-- Networking: Replication, dedicated servers, P2P
-- Performance: LOD, culling, streaming, memory management
-
-WHEN DESIGNING:
-1. Consider scalability from the start
-2. Plan for multiplayer even if single-player initially
-3. Design modular, reusable systems
-4. Document all architectural decisions
-5. Create clear interfaces between systems
+EXPERTISE: UE5 C++/Blueprints, Unity C#/DOTS, Godot GDScript, Design Patterns, Networking
 
 OUTPUT FORMAT:
-- Provide architecture diagrams in text/ASCII
-- List all classes/components with responsibilities
-- Define data flow and dependencies
-- Specify file structure with exact paths
+- Architecture diagrams in ASCII
+- Class/component lists with responsibilities
+- File structure with exact paths
+- Data flow definitions
 
-You build systems that can handle AAA scale."""
+When design is complete, suggest COMMANDER delegate implementation to FORGE."""
     },
     "developer": {
         "name": "FORGE",
         "role": "developer",
         "avatar": "https://images.unsplash.com/photo-1633766306936-56bebb8823e5?w=200&h=200&fit=crop",
-        "specialization": ["cpp", "csharp", "blueprints", "gameplay", "systems"],
-        "system_prompt": """You are FORGE, the Senior Developer AI Agent. You write production-ready, AAA-quality code.
+        "specialization": ["cpp", "csharp", "blueprints", "gameplay", "systems", "coding"],
+        "system_prompt": """You are FORGE, the Senior Developer. You write production-ready AAA code.
 
-EXPERTISE:
-- C++ (Unreal): UE5 API, Gameplay Framework, GAS, networking
-- C# (Unity): MonoBehaviour, DOTS, Jobs, Burst
-- Blueprints: Visual scripting, communication, optimization
-- Game Systems: Combat, inventory, dialogue, AI, physics
+EXPERTISE: C++ (UE5), C# (Unity), GDScript (Godot), Blueprints, All game systems
 
-CODING STANDARDS:
-1. Always include file headers with purpose and dependencies
-2. Use consistent naming conventions per engine
-3. Add meaningful comments for complex logic
-4. Implement proper error handling
-5. Write performant code (avoid tick overhead, use events)
-6. Follow engine best practices
+OUTPUT FORMAT - Always output complete files:
+```language:filepath/filename.ext
+// Complete file content
+```
 
-OUTPUT FORMAT:
-Always output complete, working files with:
-\`\`\`language:filepath/filename.ext
-// Full file content here
-\`\`\`
-
-Never output partial code. Every file must be complete and functional."""
+RULES:
+1. Include file headers with purpose
+2. Use engine-appropriate naming conventions
+3. Add comments for complex logic
+4. Implement error handling
+5. Write performant code
+6. NEVER output partial code - every file must be complete"""
     },
     "reviewer": {
         "name": "SENTINEL",
         "role": "reviewer",
         "avatar": "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=200&h=200&fit=crop",
         "specialization": ["code_review", "security", "optimization", "best_practices"],
-        "system_prompt": """You are SENTINEL, the Code Reviewer AI Agent. You ensure code quality meets AAA standards.
-
-REVIEW CRITERIA:
-1. Correctness: Does it do what it should?
-2. Performance: Any bottlenecks or inefficiencies?
-3. Security: Any vulnerabilities or exploits?
-4. Maintainability: Is it readable and documented?
-5. Standards: Does it follow engine conventions?
-6. Edge Cases: Are all scenarios handled?
+        "system_prompt": """You are SENTINEL, the Code Reviewer. You ensure AAA quality standards.
 
 REVIEW FORMAT:
-- List issues by severity (CRITICAL, HIGH, MEDIUM, LOW)
-- Provide specific line references
-- Include fix suggestions with code examples
-- Note positive patterns to encourage
+- CRITICAL: Bugs that will crash/break
+- HIGH: Performance or security issues
+- MEDIUM: Best practice violations
+- LOW: Style/readability suggestions
 
-You have high standards but communicate constructively."""
+Provide specific fixes with code examples. Be constructive."""
     },
     "tester": {
         "name": "PROBE",
         "role": "tester",
         "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop",
         "specialization": ["testing", "qa", "automation", "debugging"],
-        "system_prompt": """You are PROBE, the QA/Testing AI Agent. You ensure everything works perfectly.
-
-TESTING APPROACH:
-1. Unit Tests: Test individual functions/methods
-2. Integration Tests: Test system interactions
-3. Gameplay Tests: Test player experience
-4. Performance Tests: Profile and benchmark
-5. Edge Cases: Break things intentionally
+        "system_prompt": """You are PROBE, the QA/Testing Agent. You ensure everything works.
 
 OUTPUT FORMAT:
-Provide complete test files:
-\`\`\`language:Tests/TestFileName.ext
+```language:Tests/TestFileName.ext
 // Complete test implementation
-\`\`\`
+```
 
-Also provide test plans and expected results.
+Cover: Unit tests, Integration tests, Edge cases, Performance tests.
 Think like a player trying to break the game."""
     },
     "artist": {
         "name": "PRISM",
         "role": "artist",
         "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop",
-        "specialization": ["ui_design", "asset_specs", "shaders", "vfx"],
-        "system_prompt": """You are PRISM, the Technical Artist AI Agent. You handle visual specifications and shader code.
+        "specialization": ["ui_design", "asset_specs", "shaders", "vfx", "image_generation"],
+        "system_prompt": """You are PRISM, the Technical Artist. You handle visuals and assets.
 
-EXPERTISE:
-- UI/UX Design: HUD layouts, menus, accessibility
-- Shader Programming: HLSL, material graphs, post-processing
-- VFX: Niagara, particle systems, visual feedback
-- Asset Specifications: Texture sizes, polygon budgets, LODs
+EXPERTISE: UI/UX, Shaders (HLSL), VFX (Niagara), Asset specs, Material graphs
 
-OUTPUT:
-- Shader code with full implementations
-- UI layout specifications
-- Asset requirement documents
-- Material parameter guides
+For image generation requests, describe what you need and I'll generate it.
 
-You make games look AAA while staying performant."""
+OUTPUT: Shader code, UI specs, Asset requirements, Material guides."""
     }
+}
+
+# Delegation keywords to agent mapping
+DELEGATION_KEYWORDS = {
+    "code": "developer",
+    "implement": "developer",
+    "create class": "developer",
+    "write": "developer",
+    "function": "developer",
+    "architecture": "architect",
+    "design": "architect",
+    "structure": "architect",
+    "system design": "architect",
+    "review": "reviewer",
+    "check": "reviewer",
+    "audit": "reviewer",
+    "test": "tester",
+    "qa": "tester",
+    "unit test": "tester",
+    "shader": "artist",
+    "ui": "artist",
+    "visual": "artist",
+    "material": "artist",
+    "texture": "artist"
 }
 
 PROJECT_THUMBNAILS = {
@@ -368,7 +368,6 @@ async def get_or_create_agents():
     return agents
 
 def extract_code_blocks(content: str) -> List[Dict[str, str]]:
-    """Extract code blocks from markdown content"""
     pattern = r'```(\w+)?(?::([^\n]+))?\n([\s\S]*?)```'
     matches = re.findall(pattern, content)
     blocks = []
@@ -376,7 +375,6 @@ def extract_code_blocks(content: str) -> List[Dict[str, str]]:
         language = match[0] or "text"
         filepath = match[1] or ""
         code = match[2].strip()
-        
         filename = filepath.split('/')[-1] if filepath else f"code.{language}"
         blocks.append({
             "language": language,
@@ -386,13 +384,32 @@ def extract_code_blocks(content: str) -> List[Dict[str, str]]:
         })
     return blocks
 
+def extract_delegations(content: str) -> List[Dict[str, str]]:
+    """Extract delegation blocks from COMMANDER's response"""
+    pattern = r'\[DELEGATE:(\w+)\]([\s\S]*?)\[/DELEGATE\]'
+    matches = re.findall(pattern, content)
+    delegations = []
+    for match in matches:
+        agent_name = match[0].upper()
+        task = match[1].strip()
+        delegations.append({"agent": agent_name, "task": task})
+    return delegations
+
+def detect_delegation_need(message: str) -> Optional[str]:
+    """Auto-detect which agent should handle this based on keywords"""
+    message_lower = message.lower()
+    for keyword, role in DELEGATION_KEYWORDS.items():
+        if keyword in message_lower:
+            return role
+    return None
+
 async def call_agent(agent: dict, messages: List[dict], project_context: str = "") -> str:
     system_message = agent['system_prompt']
     if project_context:
         system_message += f"\n\nCURRENT PROJECT CONTEXT:\n{project_context}"
     
     try:
-        response = fal_client.chat.completions.create(
+        response = llm_client.chat.completions.create(
             model=agent.get('model', 'google/gemini-2.5-flash'),
             messages=[
                 {"role": "system", "content": system_message},
@@ -407,12 +424,13 @@ async def call_agent(agent: dict, messages: List[dict], project_context: str = "
         raise HTTPException(status_code=500, detail=f"Agent call failed: {str(e)}")
 
 async def stream_agent_response(agent: dict, messages: List[dict], project_context: str = ""):
+    """Stream response from agent using SSE"""
     system_message = agent['system_prompt']
     if project_context:
         system_message += f"\n\nCURRENT PROJECT CONTEXT:\n{project_context}"
     
     try:
-        stream = fal_client.chat.completions.create(
+        stream = llm_client.chat.completions.create(
             model=agent.get('model', 'google/gemini-2.5-flash'),
             messages=[
                 {"role": "system", "content": system_message},
@@ -428,17 +446,17 @@ async def stream_agent_response(agent: dict, messages: List[dict], project_conte
             if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
                 content = chunk.choices[0].delta.content
                 full_content += content
-                yield f"data: {json.dumps({'content': content, 'done': False})}\n\n"
+                yield f"data: {json.dumps({'content': content, 'done': False, 'agent': agent['name']})}\n\n"
         
-        # Extract code blocks from full response
         code_blocks = extract_code_blocks(full_content)
-        yield f"data: {json.dumps({'content': '', 'done': True, 'code_blocks': code_blocks})}\n\n"
+        delegations = extract_delegations(full_content)
+        
+        yield f"data: {json.dumps({'content': '', 'done': True, 'code_blocks': code_blocks, 'delegations': delegations, 'full_content': full_content})}\n\n"
     except Exception as e:
         logger.error(f"Error streaming agent {agent['name']}: {e}")
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 async def build_project_context(project_id: str) -> str:
-    """Build comprehensive context for agents"""
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         return ""
@@ -446,41 +464,63 @@ async def build_project_context(project_id: str) -> str:
     context_parts = [
         f"PROJECT: {project['name']}",
         f"TYPE: {project['type']}",
+        f"ENGINE: {project.get('engine_version', 'N/A')}",
         f"STATUS: {project['status']}",
         f"PHASE: {project.get('phase', 'clarification')}",
         f"DESCRIPTION: {project['description']}"
     ]
     
-    # Get plan if exists
     plan = await db.plans.find_one({"project_id": project_id}, {"_id": 0})
-    if plan:
+    if plan and plan.get('approved'):
         context_parts.append(f"\nAPPROVED PLAN:\n{plan.get('overview', '')}")
         context_parts.append(f"ARCHITECTURE:\n{plan.get('architecture', '')}")
     
-    # Get recent files
-    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(20)
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(50)
     if files:
         context_parts.append(f"\nEXISTING FILES ({len(files)}):")
-        for f in files:
+        for f in files[:20]:
             context_parts.append(f"  - {f['filepath']}")
     
-    # Get recent messages for conversation context
     messages = await db.messages.find(
         {"project_id": project_id}, {"_id": 0}
-    ).sort("timestamp", -1).limit(10).to_list(10)
+    ).sort("timestamp", -1).limit(5).to_list(5)
     
     if messages:
         context_parts.append("\nRECENT CONVERSATION:")
         for msg in reversed(messages):
-            context_parts.append(f"  {msg['agent_name']}: {msg['content'][:200]}...")
+            content_preview = msg['content'][:150] + "..." if len(msg['content']) > 150 else msg['content']
+            context_parts.append(f"  {msg['agent_name']}: {content_preview}")
     
     return "\n".join(context_parts)
+
+async def generate_image_fal(prompt: str, width: int = 1024, height: int = 1024) -> dict:
+    """Generate image using fal.ai FLUX"""
+    try:
+        handler = await fal_client.submit_async(
+            "fal-ai/flux/dev",
+            arguments={
+                "prompt": prompt,
+                "image_size": {"width": width, "height": height},
+                "num_images": 1
+            }
+        )
+        result = await handler.get()
+        if result and result.get("images"):
+            return {
+                "url": result["images"][0]["url"],
+                "width": width,
+                "height": height
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Image generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
 
 # ============ API ROUTES ============
 
 @api_router.get("/")
 async def root():
-    return {"message": "AgentForge Development Studio API", "version": "2.0.0"}
+    return {"message": "AgentForge Development Studio API", "version": "2.1.0", "features": ["streaming", "delegation", "image_generation"]}
 
 @api_router.get("/health")
 async def health():
@@ -489,8 +529,7 @@ async def health():
 # Agent Routes
 @api_router.get("/agents")
 async def get_agents():
-    agents = await get_or_create_agents()
-    return agents
+    return await get_or_create_agents()
 
 @api_router.get("/agents/{agent_id}")
 async def get_agent(agent_id: str):
@@ -501,8 +540,8 @@ async def get_agent(agent_id: str):
 
 @api_router.patch("/agents/{agent_id}/status")
 async def update_agent_status(agent_id: str, status: str):
-    result = await db.agents.update_one({"id": agent_id}, {"$set": {"status": status}})
-    return {"success": True, "status": status}
+    await db.agents.update_one({"id": agent_id}, {"$set": {"status": status}})
+    return {"success": True}
 
 # Project Routes
 @api_router.post("/projects")
@@ -513,8 +552,7 @@ async def create_project(project_data: ProjectCreate):
         description=project_data.description,
         type=project_data.type,
         engine_version=project_data.engine_version,
-        thumbnail=thumbnail,
-        phase="clarification"
+        thumbnail=thumbnail
     )
     doc = project.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
@@ -524,8 +562,7 @@ async def create_project(project_data: ProjectCreate):
 
 @api_router.get("/projects")
 async def get_projects():
-    projects = await db.projects.find({}, {"_id": 0}).to_list(100)
-    return projects
+    return await db.projects.find({}, {"_id": 0}).to_list(100)
 
 @api_router.get("/projects/{project_id}")
 async def get_project(project_id: str):
@@ -547,32 +584,37 @@ async def delete_project(project_id: str):
     await db.messages.delete_many({"project_id": project_id})
     await db.files.delete_many({"project_id": project_id})
     await db.plans.delete_many({"project_id": project_id})
+    await db.images.delete_many({"project_id": project_id})
     return {"success": True}
 
 @api_router.patch("/projects/{project_id}/phase")
 async def update_project_phase(project_id: str, phase: str):
-    await db.projects.update_one(
-        {"id": project_id}, 
-        {"$set": {"phase": phase, "updated_at": datetime.now(timezone.utc).isoformat()}}
-    )
+    await db.projects.update_one({"id": project_id}, {"$set": {"phase": phase, "updated_at": datetime.now(timezone.utc).isoformat()}})
     return {"success": True, "phase": phase}
 
-# Chat Routes
+# Chat Routes - Non-streaming
 @api_router.post("/chat")
 async def chat_with_team(request: ChatRequest):
-    """Non-streaming chat with COMMANDER (lead agent)"""
     context = await build_project_context(request.project_id)
     agents = await get_or_create_agents()
-    lead = next((a for a in agents if a['role'] == 'lead'), agents[0])
     
-    await db.agents.update_one({"id": lead['id']}, {"$set": {"status": "thinking"}})
+    # Determine which agent to use
+    target_agent = None
+    if request.delegate_to:
+        target_agent = next((a for a in agents if a['name'].upper() == request.delegate_to.upper()), None)
+    
+    if not target_agent:
+        # Default to COMMANDER
+        target_agent = next((a for a in agents if a['role'] == 'lead'), agents[0])
+    
+    await db.agents.update_one({"id": target_agent['id']}, {"$set": {"status": "thinking"}})
     
     messages = [{"role": "user", "content": request.message}]
-    response = await call_agent(lead, messages, context)
+    response = await call_agent(target_agent, messages, context)
     
-    await db.agents.update_one({"id": lead['id']}, {"$set": {"status": "idle"}})
+    await db.agents.update_one({"id": target_agent['id']}, {"$set": {"status": "idle"}})
     
-    # Save messages
+    # Save user message
     user_msg = Message(
         project_id=request.project_id,
         agent_id="user",
@@ -586,12 +628,14 @@ async def chat_with_team(request: ChatRequest):
     await db.messages.insert_one(user_doc)
     
     code_blocks = extract_code_blocks(response)
+    delegations = extract_delegations(response)
     
+    # Save agent response
     agent_msg = Message(
         project_id=request.project_id,
-        agent_id=lead['id'],
-        agent_name=lead['name'],
-        agent_role=lead['role'],
+        agent_id=target_agent['id'],
+        agent_name=target_agent['name'],
+        agent_role=target_agent['role'],
         content=response,
         code_blocks=code_blocks,
         phase=request.phase
@@ -603,24 +647,29 @@ async def chat_with_team(request: ChatRequest):
     return {
         "response": response,
         "code_blocks": code_blocks,
+        "delegations": delegations,
         "agent": {
-            "id": lead['id'],
-            "name": lead['name'],
-            "role": lead['role'],
-            "avatar": lead['avatar']
+            "id": target_agent['id'],
+            "name": target_agent['name'],
+            "role": target_agent['role'],
+            "avatar": target_agent['avatar']
         }
     }
 
+# Chat Routes - Streaming
 @api_router.post("/chat/stream")
 async def stream_chat(request: ChatRequest):
-    """Streaming chat with COMMANDER"""
+    """Stream chat response with SSE"""
     context = await build_project_context(request.project_id)
     agents = await get_or_create_agents()
-    lead = next((a for a in agents if a['role'] == 'lead'), agents[0])
     
-    messages = [{"role": "user", "content": request.message}]
+    target_agent = None
+    if request.delegate_to:
+        target_agent = next((a for a in agents if a['name'].upper() == request.delegate_to.upper()), None)
+    if not target_agent:
+        target_agent = next((a for a in agents if a['role'] == 'lead'), agents[0])
     
-    # Save user message immediately
+    # Save user message first
     user_msg = Message(
         project_id=request.project_id,
         agent_id="user",
@@ -633,114 +682,152 @@ async def stream_chat(request: ChatRequest):
     user_doc['timestamp'] = user_doc['timestamp'].isoformat()
     await db.messages.insert_one(user_doc)
     
-    async def generate():
-        full_response = ""
-        async for chunk in stream_agent_response_async(lead, messages, context):
-            yield chunk
-            # Extract content for saving
-            try:
-                data = json.loads(chunk.replace("data: ", "").strip())
-                if data.get("content"):
-                    full_response += data["content"]
-            except:
-                pass
-        
-        # Save agent response
-        code_blocks = extract_code_blocks(full_response)
-        agent_msg = Message(
-            project_id=request.project_id,
-            agent_id=lead['id'],
-            agent_name=lead['name'],
-            agent_role=lead['role'],
-            content=full_response,
-            code_blocks=code_blocks,
-            phase=request.phase
-        )
-        agent_doc = agent_msg.model_dump()
-        agent_doc['timestamp'] = agent_doc['timestamp'].isoformat()
-        await db.messages.insert_one(agent_doc)
+    messages = [{"role": "user", "content": request.message}]
     
-    return StreamingResponse(
-        stream_agent_response(lead, messages, context),
-        media_type="text/event-stream"
-    )
+    async def generate():
+        await db.agents.update_one({"id": target_agent['id']}, {"$set": {"status": "thinking"}})
+        
+        # Send agent info first
+        yield f"data: {json.dumps({'type': 'start', 'agent': {'id': target_agent['id'], 'name': target_agent['name'], 'role': target_agent['role'], 'avatar': target_agent['avatar']}})}\n\n"
+        
+        full_content = ""
+        try:
+            stream = llm_client.chat.completions.create(
+                model=target_agent.get('model', 'google/gemini-2.5-flash'),
+                messages=[
+                    {"role": "system", "content": target_agent['system_prompt'] + f"\n\nCONTEXT:\n{context}"},
+                    *messages
+                ],
+                max_tokens=8000,
+                temperature=0.7,
+                stream=True
+            )
+            
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    full_content += content
+                    yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
+            
+            code_blocks = extract_code_blocks(full_content)
+            delegations = extract_delegations(full_content)
+            
+            # Save complete message
+            agent_msg = Message(
+                project_id=request.project_id,
+                agent_id=target_agent['id'],
+                agent_name=target_agent['name'],
+                agent_role=target_agent['role'],
+                content=full_content,
+                code_blocks=code_blocks,
+                phase=request.phase
+            )
+            agent_doc = agent_msg.model_dump()
+            agent_doc['timestamp'] = agent_doc['timestamp'].isoformat()
+            await db.messages.insert_one(agent_doc)
+            
+            yield f"data: {json.dumps({'type': 'done', 'code_blocks': code_blocks, 'delegations': delegations})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"Stream error: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+        finally:
+            await db.agents.update_one({"id": target_agent['id']}, {"$set": {"status": "idle"}})
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
-async def stream_agent_response_async(agent: dict, messages: List[dict], context: str):
-    """Async generator wrapper"""
-    for chunk in stream_agent_response(agent, messages, context):
-        yield chunk
-
-@api_router.post("/agents/{agent_id}/chat")
-async def chat_with_specific_agent(agent_id: str, request: ChatRequest):
-    """Chat with a specific agent"""
-    agent = await db.agents.find_one({"id": agent_id}, {"_id": 0})
-    if not agent:
-        raise HTTPException(status_code=404, detail="Agent not found")
+# Delegation endpoint - Execute delegation from COMMANDER
+@api_router.post("/delegate")
+async def execute_delegation(request: ChatRequest):
+    """Execute a delegated task to a specific agent"""
+    agents = await get_or_create_agents()
+    
+    if not request.delegate_to:
+        raise HTTPException(status_code=400, detail="delegate_to is required")
+    
+    target_agent = next((a for a in agents if a['name'].upper() == request.delegate_to.upper()), None)
+    if not target_agent:
+        raise HTTPException(status_code=404, detail=f"Agent {request.delegate_to} not found")
     
     context = await build_project_context(request.project_id)
     
-    await db.agents.update_one({"id": agent_id}, {"$set": {"status": "working"}})
+    await db.agents.update_one({"id": target_agent['id']}, {"$set": {"status": "working"}})
     
-    messages = [{"role": "user", "content": request.message}]
-    response = await call_agent(agent, messages, context)
+    messages = [{"role": "user", "content": f"COMMANDER has delegated this task to you:\n\n{request.message}"}]
+    response = await call_agent(target_agent, messages, context)
     
-    await db.agents.update_one({"id": agent_id}, {"$set": {"status": "idle"}})
-    
-    # Save messages
-    user_msg = Message(
-        project_id=request.project_id,
-        agent_id="user",
-        agent_name="You",
-        agent_role="user",
-        content=request.message
-    )
-    user_doc = user_msg.model_dump()
-    user_doc['timestamp'] = user_doc['timestamp'].isoformat()
-    await db.messages.insert_one(user_doc)
+    await db.agents.update_one({"id": target_agent['id']}, {"$set": {"status": "idle"}})
     
     code_blocks = extract_code_blocks(response)
     
-    agent_msg = Message(
+    # Save delegation message
+    delegation_msg = Message(
         project_id=request.project_id,
-        agent_id=agent['id'],
-        agent_name=agent['name'],
-        agent_role=agent['role'],
+        agent_id=target_agent['id'],
+        agent_name=target_agent['name'],
+        agent_role=target_agent['role'],
         content=response,
-        code_blocks=code_blocks
+        code_blocks=code_blocks,
+        message_type="delegation",
+        delegated_to=target_agent['name']
     )
-    agent_doc = agent_msg.model_dump()
-    agent_doc['timestamp'] = agent_doc['timestamp'].isoformat()
-    await db.messages.insert_one(agent_doc)
+    msg_doc = delegation_msg.model_dump()
+    msg_doc['timestamp'] = msg_doc['timestamp'].isoformat()
+    await db.messages.insert_one(msg_doc)
     
     return {
         "response": response,
         "code_blocks": code_blocks,
         "agent": {
-            "id": agent['id'],
-            "name": agent['name'],
-            "role": agent['role'],
-            "avatar": agent['avatar']
+            "id": target_agent['id'],
+            "name": target_agent['name'],
+            "role": target_agent['role'],
+            "avatar": target_agent['avatar']
         }
     }
+
+# Image Generation Routes
+@api_router.post("/images/generate")
+async def generate_image(request: ImageGenRequest):
+    """Generate an image using fal.ai FLUX"""
+    result = await generate_image_fal(request.prompt, request.width, request.height)
+    
+    if result:
+        # Save to database
+        image = GeneratedImage(
+            project_id=request.project_id,
+            prompt=request.prompt,
+            url=result["url"],
+            width=result["width"],
+            height=result["height"],
+            category=request.category
+        )
+        doc = image.model_dump()
+        doc['created_at'] = doc['created_at'].isoformat()
+        await db.images.insert_one(doc)
+        
+        return serialize_doc(doc)
+    
+    raise HTTPException(status_code=500, detail="Image generation failed")
+
+@api_router.get("/images")
+async def get_images(project_id: str):
+    return await db.images.find({"project_id": project_id}, {"_id": 0}).to_list(100)
+
+@api_router.delete("/images/{image_id}")
+async def delete_image(image_id: str):
+    await db.images.delete_one({"id": image_id})
+    return {"success": True}
 
 # Message Routes
 @api_router.get("/messages")
 async def get_messages(project_id: str, limit: int = 100):
-    messages = await db.messages.find(
-        {"project_id": project_id}, {"_id": 0}
-    ).sort("timestamp", 1).to_list(limit)
-    return messages
+    return await db.messages.find({"project_id": project_id}, {"_id": 0}).sort("timestamp", 1).to_list(limit)
 
 # Task Routes
 @api_router.post("/tasks")
 async def create_task(task_data: TaskCreate):
-    task = Task(
-        project_id=task_data.project_id,
-        title=task_data.title,
-        description=task_data.description,
-        priority=task_data.priority,
-        category=task_data.category
-    )
+    task = Task(**task_data.model_dump())
     doc = task.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
@@ -750,8 +837,7 @@ async def create_task(task_data: TaskCreate):
 @api_router.get("/tasks")
 async def get_tasks(project_id: Optional[str] = None):
     query = {"project_id": project_id} if project_id else {}
-    tasks = await db.tasks.find(query, {"_id": 0}).to_list(500)
-    return tasks
+    return await db.tasks.find(query, {"_id": 0}).to_list(500)
 
 @api_router.patch("/tasks/{task_id}")
 async def update_task(task_id: str, updates: dict):
@@ -767,33 +853,17 @@ async def delete_task(task_id: str):
 # File Routes
 @api_router.post("/files")
 async def create_file(file_data: FileCreate):
-    # Check if file exists, update if so
-    existing = await db.files.find_one({
-        "project_id": file_data.project_id,
-        "filepath": file_data.filepath
-    })
+    existing = await db.files.find_one({"project_id": file_data.project_id, "filepath": file_data.filepath})
     
     if existing:
         new_version = existing.get('version', 1) + 1
         await db.files.update_one(
             {"id": existing['id']},
-            {"$set": {
-                "content": file_data.content,
-                "version": new_version,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }}
+            {"$set": {"content": file_data.content, "version": new_version, "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
-        updated = await db.files.find_one({"id": existing['id']}, {"_id": 0})
-        return updated
+        return await db.files.find_one({"id": existing['id']}, {"_id": 0})
     
-    file = ProjectFile(
-        project_id=file_data.project_id,
-        filename=file_data.filename,
-        filepath=file_data.filepath,
-        content=file_data.content,
-        language=file_data.language,
-        file_type=file_data.file_type
-    )
+    file = ProjectFile(**file_data.model_dump())
     doc = file.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
@@ -802,8 +872,7 @@ async def create_file(file_data: FileCreate):
 
 @api_router.get("/files")
 async def get_files(project_id: str):
-    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
-    return files
+    return await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
 
 @api_router.get("/files/{file_id}")
 async def get_file(file_id: str):
@@ -817,16 +886,8 @@ async def update_file(file_id: str, update: FileUpdate):
     file = await db.files.find_one({"id": file_id})
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-    
     new_version = file.get('version', 1) + 1
-    await db.files.update_one(
-        {"id": file_id},
-        {"$set": {
-            "content": update.content,
-            "version": new_version,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
+    await db.files.update_one({"id": file_id}, {"$set": {"content": update.content, "version": new_version, "updated_at": datetime.now(timezone.utc).isoformat()}})
     return {"success": True, "version": new_version}
 
 @api_router.delete("/files/{file_id}")
@@ -840,80 +901,67 @@ async def create_plan(plan_data: dict):
     plan = ProjectPlan(**plan_data)
     doc = plan.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
-    
-    # Delete existing plan for project
     await db.plans.delete_many({"project_id": plan_data['project_id']})
     await db.plans.insert_one(doc)
     return serialize_doc(doc)
 
 @api_router.get("/plans/{project_id}")
 async def get_plan(project_id: str):
-    plan = await db.plans.find_one({"project_id": project_id}, {"_id": 0})
-    return plan
+    return await db.plans.find_one({"project_id": project_id}, {"_id": 0})
 
 @api_router.patch("/plans/{project_id}/approve")
 async def approve_plan(project_id: str, approval: PlanApproval):
-    await db.plans.update_one(
-        {"project_id": project_id},
-        {"$set": {"approved": approval.approved}}
-    )
+    await db.plans.update_one({"project_id": project_id}, {"$set": {"approved": approval.approved}})
     if approval.approved:
-        await db.projects.update_one(
-            {"id": project_id},
-            {"$set": {"phase": "development", "status": "developing"}}
-        )
+        await db.projects.update_one({"id": project_id}, {"$set": {"phase": "development", "status": "developing"}})
     return {"success": True, "approved": approval.approved}
 
 # Export Routes
 @api_router.get("/projects/{project_id}/export")
 async def export_project(project_id: str):
-    """Export project as ZIP file"""
     project = await db.projects.find_one({"id": project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
     files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+    images = await db.images.find({"project_id": project_id}, {"_id": 0}).to_list(100)
     
-    # Create in-memory ZIP
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
-        # Add project info
-        project_info = json.dumps(project, indent=2, default=str)
-        zf.writestr("project.json", project_info)
+        zf.writestr("project.json", json.dumps(project, indent=2, default=str))
         
-        # Add all files
         for f in files:
             filepath = f['filepath'].lstrip('/')
             zf.writestr(filepath, f['content'])
         
-        # Add README
         readme = f"""# {project['name']}
 
 {project['description']}
 
 ## Project Type
-{project['type']}
+{project['type']} {project.get('engine_version', '')}
 
 ## Generated by AgentForge
-This project was created using the AgentForge AI Development Studio.
+AI Development Studio
 
 ## Files
 {chr(10).join(['- ' + f['filepath'] for f in files])}
+
+## Generated Images
+{chr(10).join(['- ' + img['prompt'][:50] + ': ' + img['url'] for img in images])}
 """
         zf.writestr("README.md", readme)
     
     zip_buffer.seek(0)
-    
     return StreamingResponse(
         io.BytesIO(zip_buffer.read()),
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename={project['name'].replace(' ', '_')}.zip"}
     )
 
-# Auto-save code from chat
+# Auto-save from chat
 @api_router.post("/files/from-chat")
 async def save_files_from_chat(data: dict):
-    """Save code blocks from chat as files"""
     project_id = data.get("project_id")
     code_blocks = data.get("code_blocks", [])
     agent_id = data.get("agent_id")
@@ -935,20 +983,12 @@ async def save_files_from_chat(data: dict):
             doc['created_at'] = doc['created_at'].isoformat()
             doc['updated_at'] = doc['updated_at'].isoformat()
             
-            # Upsert
-            existing = await db.files.find_one({
-                "project_id": project_id,
-                "filepath": block.get("filepath")
-            })
+            existing = await db.files.find_one({"project_id": project_id, "filepath": block.get("filepath")})
             
             if existing:
                 await db.files.update_one(
                     {"id": existing['id']},
-                    {"$set": {
-                        "content": block.get("content", ""),
-                        "version": existing.get('version', 1) + 1,
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }}
+                    {"$set": {"content": block.get("content", ""), "version": existing.get('version', 1) + 1, "updated_at": datetime.now(timezone.utc).isoformat()}}
                 )
             else:
                 await db.files.insert_one(doc)

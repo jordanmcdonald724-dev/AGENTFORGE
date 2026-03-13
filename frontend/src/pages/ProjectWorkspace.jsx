@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -28,7 +27,6 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-  DialogClose
 } from "@/components/ui/dialog";
 import {
   Tooltip,
@@ -57,31 +55,21 @@ import {
   MessageSquare,
   Folder,
   FolderOpen,
-  File,
   ChevronRight,
   ChevronDown,
   Save,
   Download,
   Trash2,
-  MoreVertical,
-  Play,
-  CheckCircle,
-  Circle,
-  Clock,
-  Sparkles,
-  Settings,
-  GitBranch,
-  Package,
   Palette,
   Copy,
   Check,
-  RefreshCw,
-  Terminal,
-  X
+  X,
+  Image,
+  Sparkles,
+  ArrowRightCircle
 } from "lucide-react";
 import { API } from "@/App";
 
-// Phase badges
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
   planning: { label: "Planning", color: "bg-blue-500/20 text-blue-400", icon: Layers },
@@ -89,30 +77,21 @@ const PHASE_CONFIG = {
   review: { label: "Review", color: "bg-purple-500/20 text-purple-400", icon: Shield }
 };
 
-// Language to Monaco mapping
 const LANGUAGE_MAP = {
-  cpp: "cpp",
-  "c++": "cpp",
-  csharp: "csharp",
-  "c#": "csharp",
-  cs: "csharp",
-  javascript: "javascript",
-  js: "javascript",
-  typescript: "typescript",
-  ts: "typescript",
-  python: "python",
-  py: "python",
-  json: "json",
-  html: "html",
-  css: "css",
-  yaml: "yaml",
-  yml: "yaml",
-  markdown: "markdown",
-  md: "markdown",
-  gdscript: "python",
-  blueprint: "json",
-  hlsl: "cpp",
-  glsl: "cpp"
+  cpp: "cpp", "c++": "cpp", csharp: "csharp", "c#": "csharp", cs: "csharp",
+  javascript: "javascript", js: "javascript", typescript: "typescript", ts: "typescript",
+  python: "python", py: "python", json: "json", html: "html", css: "css",
+  yaml: "yaml", yml: "yaml", markdown: "markdown", md: "markdown",
+  gdscript: "python", blueprint: "json", hlsl: "cpp", glsl: "cpp"
+};
+
+const AGENTS = {
+  lead: { icon: Users, color: "text-blue-400" },
+  architect: { icon: Layers, color: "text-cyan-400" },
+  developer: { icon: Code2, color: "text-emerald-400" },
+  reviewer: { icon: Shield, color: "text-amber-400" },
+  tester: { icon: Zap, color: "text-purple-400" },
+  artist: { icon: Palette, color: "text-pink-400" }
 };
 
 const ProjectWorkspace = () => {
@@ -121,62 +100,60 @@ const ProjectWorkspace = () => {
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
   
-  // Core state
   const [project, setProject] = useState(null);
   const [agents, setAgents] = useState([]);
   const [messages, setMessages] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [files, setFiles] = useState([]);
-  const [plan, setPlan] = useState(null);
+  const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Chat state
   const [chatInput, setChatInput] = useState("");
   const [sending, setSending] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
+  const [streamingAgent, setStreamingAgent] = useState(null);
   const [selectedAgent, setSelectedAgent] = useState(null);
   
-  // Editor state
   const [selectedFile, setSelectedFile] = useState(null);
   const [editorContent, setEditorContent] = useState("");
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState(new Set([""]));
   
-  // UI state
   const [activeTab, setActiveTab] = useState("chat");
-  const [showAgentPanel, setShowAgentPanel] = useState(true);
   const [copiedCode, setCopiedCode] = useState(null);
   
-  // Task dialog
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [newTask, setNewTask] = useState({ title: "", description: "", priority: "medium", category: "general" });
+  
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [imagePrompt, setImagePrompt] = useState("");
+  const [imageCategory, setImageCategory] = useState("concept");
+  const [generatingImage, setGeneratingImage] = useState(false);
 
   useEffect(() => {
     fetchProjectData();
   }, [projectId]);
 
   useEffect(() => {
-    if (chatEndRef.current) {
-      chatEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamingContent]);
 
   const fetchProjectData = async () => {
     try {
-      const [projectRes, agentsRes, messagesRes, tasksRes, filesRes, planRes] = await Promise.all([
+      const [projectRes, agentsRes, messagesRes, tasksRes, filesRes, imagesRes] = await Promise.all([
         axios.get(`${API}/projects/${projectId}`),
         axios.get(`${API}/agents`),
         axios.get(`${API}/messages?project_id=${projectId}`),
         axios.get(`${API}/tasks?project_id=${projectId}`),
         axios.get(`${API}/files?project_id=${projectId}`),
-        axios.get(`${API}/plans/${projectId}`).catch(() => ({ data: null }))
+        axios.get(`${API}/images?project_id=${projectId}`).catch(() => ({ data: [] }))
       ]);
       setProject(projectRes.data);
       setAgents(agentsRes.data);
       setMessages(messagesRes.data);
       setTasks(tasksRes.data);
       setFiles(filesRes.data);
-      setPlan(planRes.data);
+      setImages(imagesRes.data);
     } catch (error) {
       toast.error("Failed to load project");
       navigate("/dashboard");
@@ -185,16 +162,17 @@ const ProjectWorkspace = () => {
     }
   };
 
-  const sendMessage = async () => {
+  const sendMessageStreaming = async () => {
     if (!chatInput.trim() || sending) return;
     
     setSending(true);
     const userMessage = chatInput;
     setChatInput("");
+    setStreamingContent("");
 
-    // Add user message immediately
+    // Add user message
     const tempUserMsg = {
-      id: `temp-${Date.now()}`,
+      id: `temp-user-${Date.now()}`,
       project_id: projectId,
       agent_id: "user",
       agent_name: "You",
@@ -205,54 +183,128 @@ const ProjectWorkspace = () => {
     setMessages(prev => [...prev, tempUserMsg]);
 
     try {
-      // Update agent status
-      const leadAgent = agents.find(a => a.role === "lead") || agents[0];
-      setAgents(prev => prev.map(a => 
-        a.id === leadAgent?.id ? { ...a, status: "thinking" } : a
-      ));
-
-      const endpoint = selectedAgent 
-        ? `${API}/agents/${selectedAgent}/chat`
-        : `${API}/chat`;
-      
-      const res = await axios.post(endpoint, {
-        project_id: projectId,
-        message: userMessage,
-        phase: project?.phase
+      const response = await fetch(`${API}/chat/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: projectId,
+          message: userMessage,
+          phase: project?.phase,
+          delegate_to: selectedAgent ? agents.find(a => a.id === selectedAgent)?.name : null
+        })
       });
 
-      // Add agent response with code blocks
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = "";
+      let currentAgent = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.type === 'start') {
+                currentAgent = data.agent;
+                setStreamingAgent(data.agent);
+                setAgents(prev => prev.map(a => 
+                  a.id === data.agent.id ? { ...a, status: "thinking" } : a
+                ));
+              } else if (data.type === 'content') {
+                fullContent += data.content;
+                setStreamingContent(fullContent);
+              } else if (data.type === 'done') {
+                // Add completed message
+                const agentMsg = {
+                  id: `agent-${Date.now()}`,
+                  project_id: projectId,
+                  agent_id: currentAgent?.id,
+                  agent_name: currentAgent?.name,
+                  agent_role: currentAgent?.role,
+                  content: fullContent,
+                  code_blocks: data.code_blocks || [],
+                  delegations: data.delegations || [],
+                  timestamp: new Date().toISOString()
+                };
+                setMessages(prev => [...prev, agentMsg]);
+                setStreamingContent("");
+                setStreamingAgent(null);
+
+                // Auto-save code blocks
+                if (data.code_blocks?.length > 0) {
+                  await saveCodeBlocks(data.code_blocks, currentAgent);
+                }
+
+                // Handle delegations
+                if (data.delegations?.length > 0) {
+                  for (const delegation of data.delegations) {
+                    toast.info(`COMMANDER delegated to ${delegation.agent}`);
+                  }
+                }
+
+                setAgents(prev => prev.map(a => ({ ...a, status: "idle" })));
+              } else if (data.type === 'error') {
+                toast.error(data.error);
+              }
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+        }
+      }
+    } catch (error) {
+      toast.error("Failed to send message");
+      setStreamingContent("");
+      setStreamingAgent(null);
+    } finally {
+      setSending(false);
+      setAgents(prev => prev.map(a => ({ ...a, status: "idle" })));
+    }
+  };
+
+  const executeDelegation = async (agentName, task) => {
+    try {
+      const res = await axios.post(`${API}/delegate`, {
+        project_id: projectId,
+        message: task,
+        delegate_to: agentName
+      });
+
       const agentMsg = {
-        id: `agent-${Date.now()}`,
+        id: `delegate-${Date.now()}`,
         project_id: projectId,
         agent_id: res.data.agent.id,
         agent_name: res.data.agent.name,
         agent_role: res.data.agent.role,
         content: res.data.response,
         code_blocks: res.data.code_blocks || [],
+        delegated_to: agentName,
         timestamp: new Date().toISOString()
       };
       setMessages(prev => [...prev, agentMsg]);
 
-      // Auto-save code blocks
       if (res.data.code_blocks?.length > 0) {
         await saveCodeBlocks(res.data.code_blocks, res.data.agent);
       }
 
-      setAgents(prev => prev.map(a => ({ ...a, status: "idle" })));
+      toast.success(`${agentName} completed the task`);
     } catch (error) {
-      toast.error("Failed to send message");
-      setAgents(prev => prev.map(a => ({ ...a, status: "idle" })));
-    } finally {
-      setSending(false);
+      toast.error(`Delegation to ${agentName} failed`);
     }
   };
 
   const saveCodeBlocks = async (codeBlocks, agent) => {
-    try {
-      const validBlocks = codeBlocks.filter(b => b.filepath);
-      if (validBlocks.length === 0) return;
+    const validBlocks = codeBlocks.filter(b => b.filepath);
+    if (validBlocks.length === 0) return;
 
+    try {
       await axios.post(`${API}/files/from-chat`, {
         project_id: projectId,
         code_blocks: validBlocks,
@@ -260,7 +312,6 @@ const ProjectWorkspace = () => {
         agent_name: agent?.name
       });
       
-      // Refresh files
       const filesRes = await axios.get(`${API}/files?project_id=${projectId}`);
       setFiles(filesRes.data);
       toast.success(`Saved ${validBlocks.length} file(s)`);
@@ -269,9 +320,30 @@ const ProjectWorkspace = () => {
     }
   };
 
+  const generateImage = async () => {
+    if (!imagePrompt.trim()) return;
+    setGeneratingImage(true);
+
+    try {
+      const res = await axios.post(`${API}/images/generate`, {
+        project_id: projectId,
+        prompt: imagePrompt,
+        category: imageCategory
+      });
+
+      setImages(prev => [res.data, ...prev]);
+      setImagePrompt("");
+      setImageDialogOpen(false);
+      toast.success("Image generated!");
+    } catch (error) {
+      toast.error("Image generation failed");
+    } finally {
+      setGeneratingImage(false);
+    }
+  };
+
   const saveFile = async () => {
     if (!selectedFile || !unsavedChanges) return;
-    
     try {
       await axios.patch(`${API}/files/${selectedFile.id}`, { content: editorContent });
       setFiles(files.map(f => f.id === selectedFile.id ? { ...f, content: editorContent } : f));
@@ -279,16 +351,13 @@ const ProjectWorkspace = () => {
       setUnsavedChanges(false);
       toast.success("File saved");
     } catch (error) {
-      toast.error("Failed to save file");
+      toast.error("Failed to save");
     }
   };
 
   const exportProject = async () => {
     try {
-      const response = await axios.get(`${API}/projects/${projectId}/export`, {
-        responseType: 'blob'
-      });
-      
+      const response = await axios.get(`${API}/projects/${projectId}/export`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -309,10 +378,7 @@ const ProjectWorkspace = () => {
   };
 
   const createTask = async () => {
-    if (!newTask.title.trim()) {
-      toast.error("Task title required");
-      return;
-    }
+    if (!newTask.title.trim()) return;
     try {
       const res = await axios.post(`${API}/tasks`, { ...newTask, project_id: projectId });
       setTasks([res.data, ...tasks]);
@@ -325,12 +391,8 @@ const ProjectWorkspace = () => {
   };
 
   const updateTaskStatus = async (taskId, status) => {
-    try {
-      await axios.patch(`${API}/tasks/${taskId}`, { status });
-      setTasks(tasks.map(t => t.id === taskId ? { ...t, status } : t));
-    } catch (error) {
-      toast.error("Failed to update task");
-    }
+    await axios.patch(`${API}/tasks/${taskId}`, { status });
+    setTasks(tasks.map(t => t.id === taskId ? { ...t, status } : t));
   };
 
   const deleteTask = async (taskId) => {
@@ -345,10 +407,8 @@ const ProjectWorkspace = () => {
       setSelectedFile(null);
       setEditorContent("");
     }
-    toast.success("File deleted");
   };
 
-  // Build file tree structure
   const buildFileTree = () => {
     const tree = {};
     files.forEach(file => {
@@ -368,11 +428,7 @@ const ProjectWorkspace = () => {
 
   const toggleFolder = (path) => {
     const newExpanded = new Set(expandedFolders);
-    if (newExpanded.has(path)) {
-      newExpanded.delete(path);
-    } else {
-      newExpanded.add(path);
-    }
+    newExpanded.has(path) ? newExpanded.delete(path) : newExpanded.add(path);
     setExpandedFolders(newExpanded);
   };
 
@@ -386,7 +442,6 @@ const ProjectWorkspace = () => {
         return (
           <div
             key={value.id}
-            data-testid={`file-tree-item-${value.id}`}
             className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-zinc-800 rounded text-sm group ${
               selectedFile?.id === value.id ? 'bg-blue-500/20 text-blue-400' : 'text-zinc-400'
             }`}
@@ -399,12 +454,8 @@ const ProjectWorkspace = () => {
           >
             <FileCode className="w-4 h-4 flex-shrink-0" />
             <span className="truncate flex-1">{name}</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100"
-              onClick={(e) => { e.stopPropagation(); deleteFile(value.id); }}
-            >
+            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100"
+              onClick={(e) => { e.stopPropagation(); deleteFile(value.id); }}>
               <Trash2 className="w-3 h-3 text-red-400" />
             </Button>
           </div>
@@ -428,37 +479,16 @@ const ProjectWorkspace = () => {
     });
   };
 
-  const getAgentIcon = (role) => {
-    const icons = {
-      lead: Users,
-      architect: Layers,
-      developer: Code2,
-      reviewer: Shield,
-      tester: Zap,
-      artist: Palette
-    };
-    return icons[role] || Bot;
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      idle: "bg-zinc-500",
-      thinking: "bg-amber-500 animate-pulse",
-      working: "bg-blue-500 animate-pulse",
-      completed: "bg-emerald-500"
-    };
-    return colors[status] || "bg-zinc-500";
-  };
-
-  const getPriorityColor = (priority) => {
-    const colors = {
-      critical: "border-l-red-500 bg-red-500/5",
-      high: "border-l-amber-500 bg-amber-500/5",
-      medium: "border-l-blue-500 bg-blue-500/5",
-      low: "border-l-zinc-500 bg-zinc-500/5"
-    };
-    return colors[priority] || "border-l-zinc-500";
-  };
+  const getAgentIcon = (role) => AGENTS[role]?.icon || Bot;
+  const getAgentColor = (role) => AGENTS[role]?.color || "text-zinc-400";
+  const getStatusColor = (status) => ({
+    idle: "bg-zinc-500", thinking: "bg-amber-500 animate-pulse", working: "bg-blue-500 animate-pulse", completed: "bg-emerald-500"
+  }[status] || "bg-zinc-500");
+  
+  const getPriorityColor = (priority) => ({
+    critical: "border-l-red-500 bg-red-500/5", high: "border-l-amber-500 bg-amber-500/5",
+    medium: "border-l-blue-500 bg-blue-500/5", low: "border-l-zinc-500 bg-zinc-500/5"
+  }[priority] || "border-l-zinc-500");
 
   const renderCodeBlock = (block, index, messageId) => {
     const blockId = `${messageId}-${index}`;
@@ -467,33 +497,25 @@ const ProjectWorkspace = () => {
         <div className="flex items-center justify-between px-3 py-2 bg-zinc-800/50 border-b border-zinc-700">
           <div className="flex items-center gap-2">
             <FileCode className="w-4 h-4 text-blue-400" />
-            <span className="text-xs text-zinc-400 font-mono">{block.filepath || block.filename || `code.${block.language}`}</span>
+            <span className="text-xs text-zinc-400 font-mono">{block.filepath || block.filename}</span>
             <Badge variant="outline" className="text-[10px] border-zinc-600">{block.language}</Badge>
           </div>
           <div className="flex items-center gap-1">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7"
-                    onClick={() => copyCode(block.content, blockId)}
-                  >
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyCode(block.content, blockId)}>
                     {copiedCode === blockId ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Copy code</TooltipContent>
+                <TooltipContent>Copy</TooltipContent>
               </Tooltip>
             </TooltipProvider>
             {block.filepath && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
+                    <Button variant="ghost" size="icon" className="h-7 w-7"
                       onClick={() => {
                         const existingFile = files.find(f => f.filepath === block.filepath);
                         if (existingFile) {
@@ -501,8 +523,7 @@ const ProjectWorkspace = () => {
                           setEditorContent(existingFile.content);
                           setActiveTab("code");
                         }
-                      }}
-                    >
+                      }}>
                       <FileCode className="w-3 h-3" />
                     </Button>
                   </TooltipTrigger>
@@ -512,81 +533,69 @@ const ProjectWorkspace = () => {
             )}
           </div>
         </div>
-        <SyntaxHighlighter
-          language={LANGUAGE_MAP[block.language] || block.language}
-          style={vscDarkPlus}
-          customStyle={{
-            margin: 0,
-            padding: '12px',
-            fontSize: '12px',
-            background: '#0d0d0f',
-            maxHeight: '400px'
-          }}
-          showLineNumbers
-        >
+        <SyntaxHighlighter language={LANGUAGE_MAP[block.language] || block.language} style={vscDarkPlus}
+          customStyle={{ margin: 0, padding: '12px', fontSize: '12px', background: '#0d0d0f', maxHeight: '400px' }} showLineNumbers>
           {block.content}
         </SyntaxHighlighter>
       </div>
     );
   };
 
-  const parseMessageContent = (content, messageId) => {
-    // Split content by code blocks
+  const parseMessageContent = (content, messageId, delegations = []) => {
     const codeBlockRegex = /```(\w+)?(?::([^\n]+))?\n([\s\S]*?)```/g;
+    const delegationRegex = /\[DELEGATE:(\w+)\]([\s\S]*?)\[\/DELEGATE\]/g;
+    
+    // Remove delegation blocks from display (they're shown separately)
+    let cleanContent = content.replace(delegationRegex, '');
+    
     const parts = [];
     let lastIndex = 0;
     let match;
     let blockIndex = 0;
 
-    while ((match = codeBlockRegex.exec(content)) !== null) {
-      // Add text before code block
+    while ((match = codeBlockRegex.exec(cleanContent)) !== null) {
       if (match.index > lastIndex) {
-        parts.push({
-          type: 'text',
-          content: content.slice(lastIndex, match.index)
-        });
+        parts.push({ type: 'text', content: cleanContent.slice(lastIndex, match.index) });
       }
-      
-      // Add code block
       parts.push({
-        type: 'code',
-        language: match[1] || 'text',
-        filepath: match[2] || '',
-        filename: match[2]?.split('/').pop() || '',
-        content: match[3].trim(),
-        index: blockIndex++
+        type: 'code', language: match[1] || 'text', filepath: match[2] || '',
+        filename: match[2]?.split('/').pop() || '', content: match[3].trim(), index: blockIndex++
       });
-      
       lastIndex = match.index + match[0].length;
     }
     
-    // Add remaining text
-    if (lastIndex < content.length) {
-      parts.push({
-        type: 'text',
-        content: content.slice(lastIndex)
-      });
+    if (lastIndex < cleanContent.length) {
+      parts.push({ type: 'text', content: cleanContent.slice(lastIndex) });
     }
 
-    return parts.map((part, idx) => {
-      if (part.type === 'code') {
-        return renderCodeBlock(part, part.index, messageId);
-      }
-      return (
-        <p key={idx} className="whitespace-pre-wrap text-sm text-zinc-200">
-          {part.content}
-        </p>
-      );
-    });
+    return (
+      <>
+        {parts.map((part, idx) => {
+          if (part.type === 'code') return renderCodeBlock(part, part.index, messageId);
+          return <p key={idx} className="whitespace-pre-wrap text-sm text-zinc-200">{part.content}</p>;
+        })}
+        {delegations?.length > 0 && (
+          <div className="mt-3 space-y-2">
+            {delegations.map((d, idx) => (
+              <div key={idx} className="flex items-center gap-2 p-2 rounded bg-blue-500/10 border border-blue-500/30">
+                <ArrowRightCircle className="w-4 h-4 text-blue-400" />
+                <span className="text-xs text-blue-400">Delegated to {d.agent}</span>
+                <Button size="sm" className="ml-auto h-6 text-xs bg-blue-500 hover:bg-blue-600"
+                  onClick={() => executeDelegation(d.agent, d.task)}>
+                  Execute
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    );
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-10 h-10 text-blue-400 animate-spin mx-auto mb-4" />
-          <p className="text-zinc-500">Loading workspace...</p>
-        </div>
+        <Loader2 className="w-10 h-10 text-blue-400 animate-spin" />
       </div>
     );
   }
@@ -607,28 +616,17 @@ const ProjectWorkspace = () => {
       <header className="flex-shrink-0 bg-[#0d0d0f]/95 backdrop-blur-lg border-b border-zinc-800 z-50">
         <div className="px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => navigate("/dashboard")}
-              data-testid="back-to-dashboard"
-            >
+            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} data-testid="back-btn">
               <ArrowLeft className="w-5 h-5" />
             </Button>
-            <div className="flex items-center gap-3">
-              <div>
-                <h1 className="font-rajdhani text-lg font-bold text-white flex items-center gap-2">
-                  {project?.name}
-                  <Badge className={`${phaseConfig.color} text-xs`}>
-                    <PhaseIcon className="w-3 h-3 mr-1" />
-                    {phaseConfig.label}
-                  </Badge>
-                </h1>
-                <p className="text-xs text-zinc-500 capitalize flex items-center gap-2">
-                  {project?.type?.replace('_', ' ')}
-                  {project?.engine_version && <span>• {project.engine_version}</span>}
-                </p>
-              </div>
+            <div>
+              <h1 className="font-rajdhani text-lg font-bold text-white flex items-center gap-2">
+                {project?.name}
+                <Badge className={`${phaseConfig.color} text-xs`}>
+                  <PhaseIcon className="w-3 h-3 mr-1" />{phaseConfig.label}
+                </Badge>
+              </h1>
+              <p className="text-xs text-zinc-500">{project?.type?.replace('_', ' ')} {project?.engine_version && `• ${project.engine_version}`}</p>
             </div>
           </div>
           
@@ -644,9 +642,7 @@ const ProjectWorkspace = () => {
                       <button
                         data-testid={`agent-pill-${agent.name.toLowerCase()}`}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
-                          isSelected 
-                            ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' 
-                            : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
+                          isSelected ? 'bg-blue-500/20 border-blue-500/50 text-blue-400' : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-600'
                         }`}
                         onClick={() => setSelectedAgent(isSelected ? null : agent.id)}
                       >
@@ -655,24 +651,55 @@ const ProjectWorkspace = () => {
                         <span className="text-xs font-medium">{agent.name}</span>
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>{agent.role.replace('_', ' ')} - Click to chat directly</TooltipContent>
+                    <TooltipContent>Chat directly with {agent.name}</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               );
             })}
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="border-zinc-700"
-              onClick={exportProject}
-              data-testid="export-project-btn"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export
+            <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-zinc-700" data-testid="generate-image-btn">
+                  <Image className="w-4 h-4 mr-2" />Generate Image
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-[#18181b] border-zinc-700" aria-describedby="img-desc">
+                <DialogHeader>
+                  <DialogTitle className="font-rajdhani text-white">Generate Game Asset</DialogTitle>
+                  <p id="img-desc" className="sr-only">Generate an image for your project</p>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <Textarea
+                    placeholder="Describe the image you want to generate..."
+                    value={imagePrompt}
+                    onChange={(e) => setImagePrompt(e.target.value)}
+                    className="bg-zinc-900 border-zinc-700 min-h-[100px]"
+                  />
+                  <Select value={imageCategory} onValueChange={setImageCategory}>
+                    <SelectTrigger className="bg-zinc-900 border-zinc-700">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-zinc-900 border-zinc-700">
+                      <SelectItem value="concept">Concept Art</SelectItem>
+                      <SelectItem value="character">Character</SelectItem>
+                      <SelectItem value="environment">Environment</SelectItem>
+                      <SelectItem value="ui">UI Element</SelectItem>
+                      <SelectItem value="texture">Texture</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <DialogFooter>
+                  <Button onClick={generateImage} disabled={generatingImage || !imagePrompt.trim()} className="bg-blue-500 hover:bg-blue-600">
+                    {generatingImage ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                    Generate
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <Button variant="outline" size="sm" className="border-zinc-700" onClick={exportProject} data-testid="export-btn">
+              <Download className="w-4 h-4 mr-2" />Export
             </Button>
           </div>
         </div>
@@ -681,29 +708,21 @@ const ProjectWorkspace = () => {
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         <ResizablePanelGroup direction="horizontal">
-          {/* Left Panel - Chat/Tasks */}
+          {/* Left Panel */}
           <ResizablePanel defaultSize={45} minSize={30}>
             <div className="h-full flex flex-col bg-[#0a0a0c]">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
                 <TabsList className="flex-shrink-0 bg-transparent border-b border-zinc-800 rounded-none px-4 h-11">
-                  <TabsTrigger 
-                    value="chat" 
-                    data-testid="chat-tab"
-                    className="data-[state=active]:bg-zinc-800"
-                  >
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Chat
+                  <TabsTrigger value="chat" className="data-[state=active]:bg-zinc-800" data-testid="chat-tab">
+                    <MessageSquare className="w-4 h-4 mr-2" />Chat
                   </TabsTrigger>
-                  <TabsTrigger 
-                    value="tasks" 
-                    data-testid="tasks-tab"
-                    className="data-[state=active]:bg-zinc-800"
-                  >
-                    <ListTodo className="w-4 h-4 mr-2" />
-                    Tasks
-                    {tasks.length > 0 && (
-                      <Badge variant="secondary" className="ml-2 text-xs">{tasks.length}</Badge>
-                    )}
+                  <TabsTrigger value="tasks" className="data-[state=active]:bg-zinc-800" data-testid="tasks-tab">
+                    <ListTodo className="w-4 h-4 mr-2" />Tasks
+                    {tasks.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{tasks.length}</Badge>}
+                  </TabsTrigger>
+                  <TabsTrigger value="images" className="data-[state=active]:bg-zinc-800" data-testid="images-tab">
+                    <Image className="w-4 h-4 mr-2" />Images
+                    {images.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{images.length}</Badge>}
                   </TabsTrigger>
                 </TabsList>
 
@@ -711,105 +730,84 @@ const ProjectWorkspace = () => {
                 <TabsContent value="chat" className="flex-1 flex flex-col m-0 overflow-hidden">
                   <ScrollArea className="flex-1 p-4">
                     <div className="space-y-4">
-                      {messages.length === 0 ? (
+                      {messages.length === 0 && !streamingContent ? (
                         <div className="text-center py-16">
-                          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-blue-500/10 flex items-center justify-center">
-                            <Sparkles className="w-8 h-8 text-blue-400" />
-                          </div>
-                          <h3 className="font-rajdhani text-xl text-white mb-2">
-                            Ready to Build
-                          </h3>
-                          <p className="text-sm text-zinc-500 max-w-md mx-auto mb-6">
-                            Tell COMMANDER what you want to create. Be as detailed as possible - 
-                            the more context, the better the results. I'll ask clarifying questions 
-                            before starting.
+                          <Sparkles className="w-12 h-12 mx-auto mb-4 text-blue-400/50" />
+                          <h3 className="font-rajdhani text-xl text-white mb-2">Ready to Build</h3>
+                          <p className="text-sm text-zinc-500 max-w-md mx-auto">
+                            Describe your project to COMMANDER. I'll ask clarifying questions before we start building.
                           </p>
-                          <div className="flex flex-wrap gap-2 justify-center">
-                            {["AAA FPS Game", "RPG Inventory System", "Multiplayer Framework", "Mobile App"].map((suggestion) => (
-                              <Button
-                                key={suggestion}
-                                variant="outline"
-                                size="sm"
-                                className="border-zinc-700 text-zinc-400"
-                                onClick={() => setChatInput(`I want to build a ${suggestion}`)}
-                              >
-                                {suggestion}
-                              </Button>
-                            ))}
-                          </div>
                         </div>
                       ) : (
-                        messages.map((msg) => {
-                          const isUser = msg.agent_role === "user";
-                          const AgentIcon = getAgentIcon(msg.agent_role);
-                          const agent = agents.find(a => a.id === msg.agent_id);
-                          
-                          return (
-                            <motion.div
-                              key={msg.id}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              data-testid={`message-${msg.id}`}
-                              className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}
-                            >
-                              {!isUser && (
-                                <Avatar className="w-8 h-8 border border-zinc-700 flex-shrink-0 mt-1">
-                                  <AvatarImage src={agent?.avatar} alt={msg.agent_name} />
-                                  <AvatarFallback className="bg-zinc-800">
-                                    <AgentIcon className="w-4 h-4 text-blue-400" />
-                                  </AvatarFallback>
-                                </Avatar>
-                              )}
-                              <div className={`max-w-[85%] ${isUser ? 'ml-auto' : ''}`}>
+                        <>
+                          {messages.map((msg) => {
+                            const isUser = msg.agent_role === "user";
+                            const AgentIcon = getAgentIcon(msg.agent_role);
+                            const agent = agents.find(a => a.id === msg.agent_id);
+                            
+                            return (
+                              <motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+                                className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
                                 {!isUser && (
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-rajdhani font-bold text-sm text-blue-400">
-                                      {msg.agent_name}
-                                    </span>
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-zinc-700 text-zinc-500">
-                                      {msg.agent_role}
-                                    </Badge>
-                                  </div>
+                                  <Avatar className="w-8 h-8 border border-zinc-700 flex-shrink-0 mt-1">
+                                    <AvatarImage src={agent?.avatar} />
+                                    <AvatarFallback className="bg-zinc-800">
+                                      <AgentIcon className={`w-4 h-4 ${getAgentColor(msg.agent_role)}`} />
+                                    </AvatarFallback>
+                                  </Avatar>
                                 )}
-                                <div className={`rounded-lg px-4 py-3 ${
-                                  isUser 
-                                    ? 'bg-blue-500 text-white' 
-                                    : 'bg-zinc-800/50 border border-zinc-700/50'
-                                }`}>
-                                  {isUser ? (
-                                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                                  ) : (
-                                    parseMessageContent(msg.content, msg.id)
+                                <div className={`max-w-[85%] ${isUser ? 'ml-auto' : ''}`}>
+                                  {!isUser && (
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-rajdhani font-bold text-sm text-blue-400">{msg.agent_name}</span>
+                                      <Badge variant="outline" className="text-[10px] border-zinc-700 text-zinc-500">{msg.agent_role}</Badge>
+                                      {msg.delegated_to && (
+                                        <Badge className="text-[10px] bg-purple-500/20 text-purple-400">delegated</Badge>
+                                      )}
+                                    </div>
                                   )}
+                                  <div className={`rounded-lg px-4 py-3 ${isUser ? 'bg-blue-500 text-white' : 'bg-zinc-800/50 border border-zinc-700/50'}`}>
+                                    {isUser ? (
+                                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                                    ) : (
+                                      parseMessageContent(msg.content, msg.id, msg.delegations)
+                                    )}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                          
+                          {/* Streaming message */}
+                          {streamingContent && streamingAgent && (
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3">
+                              <Avatar className="w-8 h-8 border border-zinc-700 flex-shrink-0 mt-1">
+                                <AvatarImage src={streamingAgent.avatar} />
+                                <AvatarFallback className="bg-zinc-800">
+                                  <Bot className="w-4 h-4 text-blue-400 animate-pulse" />
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="max-w-[85%]">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="font-rajdhani font-bold text-sm text-blue-400">{streamingAgent.name}</span>
+                                  <Badge className="text-[10px] bg-amber-500/20 text-amber-400 animate-pulse">streaming</Badge>
+                                </div>
+                                <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-4 py-3">
+                                  {parseMessageContent(streamingContent, 'streaming')}
                                 </div>
                               </div>
                             </motion.div>
-                          );
-                        })
+                          )}
+                        </>
                       )}
                       
-                      {/* Streaming indicator */}
-                      {sending && (
+                      {sending && !streamingContent && (
                         <div className="flex gap-3">
-                          <Avatar className="w-8 h-8 border border-zinc-700">
-                            <AvatarFallback className="bg-zinc-800">
-                              <Bot className="w-4 h-4 text-blue-400 animate-pulse" />
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="typing-indicator">
-                                <span></span>
-                                <span></span>
-                                <span></span>
-                              </div>
-                              <span className="text-xs text-zinc-500">
-                                {selectedAgent 
-                                  ? `${agents.find(a => a.id === selectedAgent)?.name} is thinking...`
-                                  : "COMMANDER is thinking..."
-                                }
-                              </span>
-                            </div>
+                          <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center">
+                            <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                          </div>
+                          <div className="bg-zinc-800/50 rounded-lg px-4 py-3">
+                            <div className="typing-indicator"><span></span><span></span><span></span></div>
                           </div>
                         </div>
                       )}
@@ -825,41 +823,20 @@ const ProjectWorkspace = () => {
                         <Badge className="bg-blue-500/20 text-blue-400 border-0">
                           {agents.find(a => a.id === selectedAgent)?.name}
                         </Badge>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="h-5 px-2 text-xs text-zinc-500"
-                          onClick={() => setSelectedAgent(null)}
-                        >
+                        <Button variant="ghost" size="sm" className="h-5 px-2" onClick={() => setSelectedAgent(null)}>
                           <X className="w-3 h-3" />
                         </Button>
                       </div>
                     )}
                     <div className="flex gap-2">
-                      <Textarea
-                        ref={inputRef}
-                        data-testid="chat-input"
-                        placeholder={
-                          project?.phase === "clarification" 
-                            ? "Describe your project in detail..." 
-                            : "What would you like me to build next?"
-                        }
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            sendMessage();
-                          }
-                        }}
+                      <Textarea ref={inputRef} data-testid="chat-input"
+                        placeholder={project?.phase === "clarification" ? "Describe your project..." : "What should I build next?"}
+                        value={chatInput} onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageStreaming(); }}}
                         className="bg-zinc-900 border-zinc-700 min-h-[80px] resize-none text-sm"
                       />
-                      <Button 
-                        data-testid="send-btn"
-                        onClick={sendMessage}
-                        disabled={sending || !chatInput.trim()}
-                        className="bg-blue-500 hover:bg-blue-600 px-4 self-end"
-                      >
+                      <Button data-testid="send-btn" onClick={sendMessageStreaming} disabled={sending || !chatInput.trim()}
+                        className="bg-blue-500 hover:bg-blue-600 px-4 self-end">
                         {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                       </Button>
                     </div>
@@ -873,33 +850,22 @@ const ProjectWorkspace = () => {
                     <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
                       <DialogTrigger asChild>
                         <Button size="sm" className="bg-blue-500 hover:bg-blue-600 h-8" data-testid="add-task-btn">
-                          <Plus className="w-3 h-3 mr-1" /> Add
+                          <Plus className="w-3 h-3 mr-1" />Add
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="bg-[#18181b] border-zinc-700" aria-describedby="task-desc">
                         <DialogHeader>
                           <DialogTitle className="font-rajdhani text-white">New Task</DialogTitle>
-                          <p id="task-desc" className="sr-only">Create a new task</p>
+                          <p id="task-desc" className="sr-only">Create a task</p>
                         </DialogHeader>
                         <div className="space-y-3 py-4">
-                          <Input
-                            data-testid="task-title-input"
-                            placeholder="Task title"
-                            value={newTask.title}
-                            onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                            className="bg-zinc-900 border-zinc-700"
-                          />
-                          <Textarea
-                            placeholder="Description"
-                            value={newTask.description}
-                            onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                            className="bg-zinc-900 border-zinc-700"
-                          />
+                          <Input placeholder="Task title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                            className="bg-zinc-900 border-zinc-700" />
+                          <Textarea placeholder="Description" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                            className="bg-zinc-900 border-zinc-700" />
                           <div className="grid grid-cols-2 gap-3">
                             <Select value={newTask.priority} onValueChange={(v) => setNewTask({ ...newTask, priority: v })}>
-                              <SelectTrigger className="bg-zinc-900 border-zinc-700">
-                                <SelectValue placeholder="Priority" />
-                              </SelectTrigger>
+                              <SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger>
                               <SelectContent className="bg-zinc-900 border-zinc-700">
                                 <SelectItem value="low">Low</SelectItem>
                                 <SelectItem value="medium">Medium</SelectItem>
@@ -908,9 +874,7 @@ const ProjectWorkspace = () => {
                               </SelectContent>
                             </Select>
                             <Select value={newTask.category} onValueChange={(v) => setNewTask({ ...newTask, category: v })}>
-                              <SelectTrigger className="bg-zinc-900 border-zinc-700">
-                                <SelectValue placeholder="Category" />
-                              </SelectTrigger>
+                              <SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger>
                               <SelectContent className="bg-zinc-900 border-zinc-700">
                                 <SelectItem value="general">General</SelectItem>
                                 <SelectItem value="architecture">Architecture</SelectItem>
@@ -922,9 +886,7 @@ const ProjectWorkspace = () => {
                           </div>
                         </div>
                         <DialogFooter>
-                          <Button onClick={createTask} className="bg-blue-500 hover:bg-blue-600" data-testid="create-task-btn">
-                            Create
-                          </Button>
+                          <Button onClick={createTask} className="bg-blue-500 hover:bg-blue-600">Create</Button>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
@@ -935,28 +897,17 @@ const ProjectWorkspace = () => {
                       {Object.entries(tasksByStatus).map(([status, statusTasks]) => (
                         <div key={status} className="w-56 flex-shrink-0 bg-zinc-900/50 rounded-lg border border-zinc-800">
                           <div className="p-2 border-b border-zinc-800">
-                            <h4 className="font-rajdhani font-bold text-xs text-white uppercase">
-                              {status.replace('_', ' ')}
-                            </h4>
+                            <h4 className="font-rajdhani font-bold text-xs text-white uppercase">{status.replace('_', ' ')}</h4>
                             <span className="text-xs text-zinc-500">{statusTasks.length}</span>
                           </div>
                           <div className="p-2 space-y-2 min-h-[200px]">
                             {statusTasks.map((task) => (
-                              <div
-                                key={task.id}
-                                className={`p-2 rounded bg-zinc-800/50 border-l-2 ${getPriorityColor(task.priority)} text-xs`}
-                              >
-                                <div className="flex items-start justify-between gap-1 mb-1">
-                                  <h5 className="text-white font-medium line-clamp-2">{task.title}</h5>
-                                </div>
-                                {task.description && (
-                                  <p className="text-zinc-500 line-clamp-2 mb-2">{task.description}</p>
-                                )}
+                              <div key={task.id} className={`p-2 rounded bg-zinc-800/50 border-l-2 ${getPriorityColor(task.priority)} text-xs`}>
+                                <h5 className="text-white font-medium line-clamp-2 mb-1">{task.title}</h5>
+                                {task.description && <p className="text-zinc-500 line-clamp-2 mb-2">{task.description}</p>}
                                 <div className="flex items-center justify-between">
                                   <Select value={task.status} onValueChange={(v) => updateTaskStatus(task.id, v)}>
-                                    <SelectTrigger className="h-6 w-20 text-[10px] bg-transparent border-zinc-700">
-                                      <SelectValue />
-                                    </SelectTrigger>
+                                    <SelectTrigger className="h-6 w-20 text-[10px] bg-transparent border-zinc-700"><SelectValue /></SelectTrigger>
                                     <SelectContent className="bg-zinc-900 border-zinc-700">
                                       <SelectItem value="backlog">Backlog</SelectItem>
                                       <SelectItem value="todo">To Do</SelectItem>
@@ -965,13 +916,8 @@ const ProjectWorkspace = () => {
                                       <SelectItem value="done">Done</SelectItem>
                                     </SelectContent>
                                   </Select>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon"
-                                    className="h-5 w-5 text-zinc-500 hover:text-red-400"
-                                    onClick={() => deleteTask(task.id)}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
+                                  <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => deleteTask(task.id)}>
+                                    <Trash2 className="w-3 h-3 text-red-400" />
                                   </Button>
                                 </div>
                               </div>
@@ -982,6 +928,32 @@ const ProjectWorkspace = () => {
                     </div>
                   </ScrollArea>
                 </TabsContent>
+
+                {/* Images Tab */}
+                <TabsContent value="images" className="flex-1 m-0 p-4 overflow-auto">
+                  {images.length === 0 ? (
+                    <div className="text-center py-16">
+                      <Image className="w-12 h-12 mx-auto mb-4 text-zinc-700" />
+                      <h3 className="font-rajdhani text-lg text-white mb-2">No Images Yet</h3>
+                      <p className="text-sm text-zinc-500 mb-4">Generate concept art, characters, and assets</p>
+                      <Button onClick={() => setImageDialogOpen(true)} className="bg-blue-500 hover:bg-blue-600">
+                        <Sparkles className="w-4 h-4 mr-2" />Generate Image
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      {images.map((img) => (
+                        <div key={img.id} className="rounded-lg overflow-hidden border border-zinc-800 group">
+                          <img src={img.url} alt={img.prompt} className="w-full aspect-square object-cover" />
+                          <div className="p-3 bg-zinc-900">
+                            <Badge variant="outline" className="text-xs border-zinc-700 mb-2">{img.category}</Badge>
+                            <p className="text-xs text-zinc-400 line-clamp-2">{img.prompt}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
               </Tabs>
             </div>
           </ResizablePanel>
@@ -991,37 +963,23 @@ const ProjectWorkspace = () => {
           {/* Right Panel - Code Editor */}
           <ResizablePanel defaultSize={55} minSize={30}>
             <div className="h-full flex flex-col bg-[#0d0d0f]">
-              {/* Editor Header */}
               <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-b border-zinc-800 bg-[#0a0a0c]">
                 <div className="flex items-center gap-2">
                   <Code2 className="w-4 h-4 text-blue-400" />
                   <span className="font-rajdhani font-bold text-white text-sm">Code Editor</span>
-                  {files.length > 0 && (
-                    <Badge variant="secondary" className="text-xs">{files.length} files</Badge>
-                  )}
+                  {files.length > 0 && <Badge variant="secondary" className="text-xs">{files.length} files</Badge>}
                 </div>
-                <div className="flex items-center gap-2">
-                  {selectedFile && unsavedChanges && (
-                    <Badge className="bg-amber-500/20 text-amber-400 text-xs">Unsaved</Badge>
-                  )}
-                  {selectedFile && (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      className="h-7 border-zinc-700"
-                      onClick={saveFile}
-                      disabled={!unsavedChanges}
-                      data-testid="save-file-btn"
-                    >
-                      <Save className="w-3 h-3 mr-1" />
-                      Save
+                {selectedFile && (
+                  <div className="flex items-center gap-2">
+                    {unsavedChanges && <Badge className="bg-amber-500/20 text-amber-400 text-xs">Unsaved</Badge>}
+                    <Button size="sm" variant="outline" className="h-7 border-zinc-700" onClick={saveFile} disabled={!unsavedChanges}>
+                      <Save className="w-3 h-3 mr-1" />Save
                     </Button>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
               <ResizablePanelGroup direction="horizontal" className="flex-1">
-                {/* File Tree */}
                 <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
                   <div className="h-full flex flex-col bg-[#0a0a0c] border-r border-zinc-800">
                     <div className="flex-shrink-0 px-3 py-2 border-b border-zinc-800">
@@ -1033,11 +991,8 @@ const ProjectWorkspace = () => {
                           <div className="px-4 py-8 text-center">
                             <Folder className="w-8 h-8 mx-auto mb-2 text-zinc-700" />
                             <p className="text-xs text-zinc-600">No files yet</p>
-                            <p className="text-xs text-zinc-700 mt-1">Files will appear here as agents create them</p>
                           </div>
-                        ) : (
-                          renderFileTree(buildFileTree())
-                        )}
+                        ) : renderFileTree(buildFileTree())}
                       </div>
                     </ScrollArea>
                   </div>
@@ -1045,7 +1000,6 @@ const ProjectWorkspace = () => {
 
                 <ResizableHandle className="bg-zinc-800" />
 
-                {/* Monaco Editor */}
                 <ResizablePanel defaultSize={75}>
                   <div className="h-full flex flex-col">
                     {selectedFile ? (
@@ -1053,31 +1007,13 @@ const ProjectWorkspace = () => {
                         <div className="flex-shrink-0 px-4 py-2 border-b border-zinc-800 bg-[#0d0d0f] flex items-center gap-2">
                           <FileCode className="w-4 h-4 text-zinc-500" />
                           <span className="text-sm text-zinc-300 font-mono">{selectedFile.filepath}</span>
-                          <Badge variant="outline" className="text-[10px] border-zinc-700 ml-auto">
-                            v{selectedFile.version || 1}
-                          </Badge>
+                          <Badge variant="outline" className="text-[10px] border-zinc-700 ml-auto">v{selectedFile.version || 1}</Badge>
                         </div>
                         <div className="flex-1">
-                          <Editor
-                            height="100%"
-                            language={LANGUAGE_MAP[selectedFile.language] || selectedFile.language}
-                            value={editorContent}
-                            onChange={(value) => {
-                              setEditorContent(value || "");
-                              setUnsavedChanges(value !== selectedFile.content);
-                            }}
-                            theme="vs-dark"
-                            options={{
-                              minimap: { enabled: true },
-                              fontSize: 13,
-                              fontFamily: "'JetBrains Mono', monospace",
-                              lineNumbers: 'on',
-                              scrollBeyondLastLine: false,
-                              automaticLayout: true,
-                              tabSize: 2,
-                              wordWrap: 'on',
-                              padding: { top: 12 }
-                            }}
+                          <Editor height="100%" language={LANGUAGE_MAP[selectedFile.language] || selectedFile.language}
+                            value={editorContent} onChange={(v) => { setEditorContent(v || ""); setUnsavedChanges(v !== selectedFile.content); }}
+                            theme="vs-dark" options={{ minimap: { enabled: true }, fontSize: 13, fontFamily: "'JetBrains Mono', monospace",
+                              lineNumbers: 'on', scrollBeyondLastLine: false, automaticLayout: true, tabSize: 2, wordWrap: 'on', padding: { top: 12 }}}
                           />
                         </div>
                       </>
@@ -1086,9 +1022,7 @@ const ProjectWorkspace = () => {
                         <div>
                           <FileCode className="w-16 h-16 mx-auto mb-4 text-zinc-800" />
                           <h3 className="font-rajdhani text-lg text-zinc-600 mb-2">No File Selected</h3>
-                          <p className="text-sm text-zinc-700 max-w-xs">
-                            Select a file from the tree or ask an agent to generate code
-                          </p>
+                          <p className="text-sm text-zinc-700">Select a file or ask an agent to generate code</p>
                         </div>
                       </div>
                     )}

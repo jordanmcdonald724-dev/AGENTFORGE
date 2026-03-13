@@ -74,6 +74,13 @@ class AgentTeamAPITester:
         success, data, status = self.make_request("GET", "/")
         self.log_test("Root endpoint", success, f"Status: {status}", data)
         
+        # Test new features in root endpoint
+        if success and data:
+            features = data.get("features", [])
+            expected_features = ["streaming", "delegation", "image_generation"]
+            features_present = all(feature in features for feature in expected_features)
+            self.log_test("New features in root endpoint", features_present, f"Features: {features}")
+        
         # Test health endpoint
         success, data, status = self.make_request("GET", "/health")
         self.log_test("Health check", success, f"Status: {status}", data)
@@ -216,16 +223,121 @@ class AgentTeamAPITester:
             self.log_test("Lead agent response quality", response_length > 50, f"Response length: {response_length} chars")
             self.log_test("Lead agent identification", agent_info.get('name') == 'COMMANDER', f"Agent: {agent_info.get('name')}")
             
-        # Test specific agent chat
-        if self.agent_ids.get('architect'):
-            architect_data = {
-                "project_id": self.project_id,
-                "message": "Can you create a technical architecture for a 2D platformer game?",
-            }
+        return success
+
+    def test_streaming_chat(self):
+        """Test streaming chat endpoint with SSE"""
+        print("\n🌊 Testing Streaming Chat...")
+        
+        if not self.project_id:
+            self.log_test("Streaming chat", False, "No project ID available")
+            return False
             
-            print("   Calling architect agent...")
-            success, data, status = self.make_request("POST", f"/agents/{self.agent_ids['architect']}/chat", architect_data, 200)
-            self.log_test("Direct architect chat", success, f"Architect response: {bool(data.get('response')) if success else 'No response'}")
+        # Test streaming endpoint availability
+        chat_data = {
+            "project_id": self.project_id,
+            "message": "Tell me about yourself briefly.",
+        }
+        
+        # Since we can't easily test SSE streaming in requests, test endpoint accepts the request
+        url = f"{self.base_url}/chat/stream"
+        
+        try:
+            response = self.session.post(url, json=chat_data, stream=True)
+            success = response.status_code == 200
+            
+            # Check for SSE headers
+            content_type = response.headers.get('content-type', '')
+            is_sse = 'text/event-stream' in content_type
+            
+            self.log_test("Streaming chat endpoint", success, f"Status: {response.status_code}")
+            self.log_test("SSE content type", is_sse, f"Content-Type: {content_type}")
+            
+            # Try to read first few chunks to verify streaming works
+            chunks_received = 0
+            if success:
+                for chunk in response.iter_lines(decode_unicode=True):
+                    if chunk and chunks_received < 3:  # Just test first few chunks
+                        if chunk.startswith('data: '):
+                            chunks_received += 1
+                    if chunks_received >= 3:
+                        break
+                        
+            self.log_test("SSE chunks received", chunks_received > 0, f"Chunks: {chunks_received}")
+            
+        except Exception as e:
+            self.log_test("Streaming chat endpoint", False, f"Error: {str(e)}")
+            success = False
+            
+        return success
+
+    def test_delegation_endpoint(self):
+        """Test agent delegation functionality"""
+        print("\n🤝 Testing Agent Delegation...")
+        
+        if not self.project_id:
+            self.log_test("Delegation", False, "No project ID available")
+            return False
+            
+        # Test delegation to FORGE agent
+        delegation_data = {
+            "project_id": self.project_id,
+            "message": "Create a simple player class for a 2D platformer game",
+            "delegate_to": "FORGE"
+        }
+        
+        success, data, status = self.make_request("POST", "/delegate", delegation_data, 200)
+        self.log_test("Delegate to FORGE", success, f"Status: {status}")
+        
+        if success and data:
+            response_content = data.get('response', '')
+            agent_info = data.get('agent', {})
+            code_blocks = data.get('code_blocks', [])
+            
+            self.log_test("Delegation response received", len(response_content) > 0, f"Response length: {len(response_content)}")
+            self.log_test("Delegated agent identified", agent_info.get('name') == 'FORGE', f"Agent: {agent_info.get('name')}")
+            self.log_test("Code blocks in delegation", len(code_blocks) > 0, f"Code blocks: {len(code_blocks)}")
+            
+        return success
+
+    def test_image_generation(self):
+        """Test image generation with fal.ai"""
+        print("\n🎨 Testing Image Generation...")
+        
+        if not self.project_id:
+            self.log_test("Image generation", False, "No project ID available")
+            return False
+            
+        # Test image generation
+        image_data = {
+            "project_id": self.project_id,
+            "prompt": "A simple 2D platformer game character sprite, pixel art style",
+            "category": "character",
+            "width": 512,
+            "height": 512
+        }
+        
+        print("   Generating image with fal.ai...")
+        success, data, status = self.make_request("POST", "/images/generate", image_data, 200)
+        self.log_test("Generate image", success, f"Status: {status}")
+        
+        if success and data:
+            image_id = data.get('id')
+            image_url = data.get('url')
+            prompt_match = data.get('prompt') == image_data['prompt']
+            
+            self.log_test("Image ID generated", bool(image_id), f"Image ID: {image_id}")
+            self.log_test("Image URL returned", bool(image_url), f"URL present: {bool(image_url)}")
+            self.log_test("Prompt preserved", prompt_match, f"Prompt match: {prompt_match}")
+            
+            # Test get images for project
+            success, images, status = self.make_request("GET", f"/images?project_id={self.project_id}")
+            self.log_test("Get project images", success, f"Image count: {len(images) if success else 0}")
+            
+            # Test delete image
+            if image_id:
+                success, data, status = self.make_request("DELETE", f"/images/{image_id}", expected_status=200)
+                self.log_test("Delete generated image", success, "Image deleted")
         
         return success
 
@@ -377,11 +489,17 @@ class AgentTeamAPITester:
         
         # Only test chat if basic functionality works
         chat_ok = True
+        streaming_ok = True
+        delegation_ok = True
+        image_gen_ok = True
         messages_ok = True
         code_save_ok = True
         export_ok = True
         if projects_ok:
             chat_ok = self.test_chat_functionality()
+            streaming_ok = self.test_streaming_chat()
+            delegation_ok = self.test_delegation_endpoint()
+            image_gen_ok = self.test_image_generation()
             messages_ok = self.test_message_persistence()
             code_save_ok = self.test_code_auto_save()
             export_ok = self.test_project_export()
@@ -411,6 +529,9 @@ class AgentTeamAPITester:
             "📁 Project Management": projects_ok,
             "📋 Task Management": tasks_ok,
             "💬 Chat/AI Integration": chat_ok,
+            "🌊 Streaming Chat": streaming_ok,
+            "🤝 Agent Delegation": delegation_ok,
+            "🎨 Image Generation": image_gen_ok,
             "📜 Message Persistence": messages_ok,
             "💾 Code Auto-Save": code_save_ok,
             "📦 Project Export": export_ok,
@@ -432,6 +553,12 @@ class AgentTeamAPITester:
             critical_failures.append("Project management broken")
         if not chat_ok:
             critical_failures.append("AI chat integration failing")
+        if not streaming_ok:
+            critical_failures.append("Streaming chat not working")
+        if not delegation_ok:
+            critical_failures.append("Agent delegation broken")
+        if not image_gen_ok:
+            critical_failures.append("Image generation failing")
             
         if critical_failures:
             print(f"\n🚨 CRITICAL ISSUES:")
