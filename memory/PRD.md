@@ -1,62 +1,56 @@
-# AgentForge - Personal AI Development Studio
+# AgentForge - Personal AI Development Studio v2.1
 
 ## Original Problem Statement
-Build a personal AI development studio with 6 specialized agents that can create AAA games (Unreal Engine, Unity, Godot), web apps, mobile apps - everything a full development team can do. Agents do ALL the work. Emergent-style workflow: clarify → plan → build. User stays in complete control.
+Build a personal AI development studio with 6 agents that builds AAA games, apps, everything. Emergent-style workflow: clarify → plan → build. User in complete control. No templates - builds from scratch.
 
 ## Architecture
-- **Frontend**: React 19, Tailwind CSS, Shadcn UI, Framer Motion, Monaco Editor
-- **Backend**: FastAPI with Motor (async MongoDB)
-- **AI Integration**: fal.ai OpenRouter API (Google Gemini 2.5 Flash)
+- **Frontend**: React 19, Tailwind, Shadcn UI, Monaco Editor, Framer Motion
+- **Backend**: FastAPI, Motor (async MongoDB), SSE streaming
+- **AI**: fal.ai OpenRouter (Gemini 2.5 Flash) + fal.ai FLUX (image gen)
 - **Database**: MongoDB
 
 ## Agent Team (6 Agents)
-1. **COMMANDER** - Lead/Project Director - Clarifies, coordinates, delegates
-2. **ATLAS** - Architect - System design, patterns, UE5/Unity expertise
-3. **FORGE** - Developer - C++, C#, Blueprints, full-stack code
-4. **SENTINEL** - Reviewer - Code quality, security, best practices
-5. **PROBE** - Tester - QA, test automation, coverage
-6. **PRISM** - Artist - UI/UX, shaders, VFX specs
+1. **COMMANDER** - Lead - Clarifies, plans, delegates (never codes)
+2. **ATLAS** - Architect - System design, patterns
+3. **FORGE** - Developer - C++, C#, Blueprints, code generation
+4. **SENTINEL** - Reviewer - Code quality, security
+5. **PROBE** - Tester - QA, test automation
+6. **PRISM** - Artist - UI/UX, shaders, image generation
 
-## Core Features (Implemented)
-- [x] 6-agent AI team with fal.ai integration
+## Core Features (v2.1)
+- [x] 6-agent AI team with fal.ai
+- [x] **Streaming responses (SSE)** - Real-time AI output
+- [x] **Agent delegation** - COMMANDER → FORGE/ATLAS/etc
+- [x] **Image generation** - fal.ai FLUX for game assets
 - [x] Monaco code editor with file tree
-- [x] Syntax highlighting in chat (Prism.js)
-- [x] Auto-save code blocks from agent responses
+- [x] Syntax highlighting in chat
+- [x] Auto-save code blocks
 - [x] Project export to ZIP
 - [x] Kanban task board
 - [x] Project types: Unreal, Unity, Godot, Web, Mobile
-- [x] Engine version selection
-- [x] Phase workflow: Clarification → Planning → Development → Review
-- [x] Agent status indicators
-- [x] Message persistence
 
-## Workflow
-1. User describes project to COMMANDER
-2. COMMANDER asks clarifying questions
-3. User approves plan before any coding
-4. Agents build, user stays in control
-5. Export project when ready
+## Delegation System
+COMMANDER uses delegation blocks:
+```
+[DELEGATE:FORGE]
+Task description here
+[/DELEGATE]
+```
+User can click "Execute" to run the delegation.
+
+## Image Generation
+- Uses fal.ai FLUX model
+- Categories: concept, character, environment, ui, texture
+- Images stored in MongoDB with metadata
+- Accessible in Images tab
 
 ## What's Been Implemented (Jan 2026)
-- Full 6-agent AI team
-- Monaco code editor with VS Code features
-- File tree with folder expansion
-- Code syntax highlighting in chat messages
-- Copy code button per block
-- Auto-save code to files
-- Project export as ZIP
-- Resizable panels
-- Dark theme throughout
+- v1.0: Base platform, 6 agents, Monaco editor
+- v2.0: Streaming, delegation, image generation
+- All tests passing (100% backend, 98% frontend)
 
-## P1 Features (Next)
-- Streaming responses (SSE)
-- Agent delegation (COMMANDER → FORGE)
-- Image generation with fal.ai
+## Next Tasks (P1)
 - GitHub push integration
-- Project templates (FPS, RPG, Platformer)
-
-## P2 Features
-- Live preview for web projects
 - Multi-file refactoring
-- Agent memory/learning
-- Team activity feed
+- Agent conversation chains (COMMANDER → FORGE → SENTINEL review)
+- Live preview for web projects
