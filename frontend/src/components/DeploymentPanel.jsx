@@ -51,7 +51,13 @@ const DeploymentPanel = ({ projectId, projectName }) => {
   const fetchPlatforms = async () => {
     try {
       const res = await axios.get(`${API}/deploy/platforms`);
-      setPlatforms(res.data);
+      // Convert object to array if needed
+      const data = res.data;
+      if (Array.isArray(data)) {
+        setPlatforms(data);
+      } else if (typeof data === 'object' && data !== null) {
+        setPlatforms(Object.values(data));
+      }
     } catch (e) {}
   };
 
