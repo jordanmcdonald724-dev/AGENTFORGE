@@ -82,6 +82,12 @@ try:
     from routes.god_mode_v2 import router as god_mode_v2_router
     from routes.intelligence.core import router as intelligence_router
     
+    # New Mission Control features
+    from routes.websocket import router as websocket_router
+    from routes.evolution import router as evolution_router
+    from routes.night_shift import router as night_shift_router
+    from routes.time_travel import router as time_travel_router
+    
     # Register all routers with /api prefix
     # Core routes
     app.include_router(health_router, prefix="/api", tags=["health"])
@@ -138,6 +144,12 @@ try:
     app.include_router(voice_router, prefix="/api", tags=["voice"])
     app.include_router(god_mode_v2_router, prefix="/api", tags=["god-mode-v2"])
     app.include_router(intelligence_router, prefix="/api", tags=["intelligence"])
+    
+    # New Mission Control features
+    app.include_router(websocket_router, prefix="/api", tags=["websocket"])
+    app.include_router(evolution_router, prefix="/api", tags=["evolution"])
+    app.include_router(night_shift_router, prefix="/api", tags=["night-shift"])
+    app.include_router(time_travel_router, prefix="/api", tags=["time-travel"])
     
     logger.info("Successfully loaded all modular routers")
     

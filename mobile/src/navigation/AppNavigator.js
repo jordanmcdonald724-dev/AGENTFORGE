@@ -3,13 +3,15 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, Folder, Mic, Users, Settings } from 'lucide-react-native';
+import { Home, Folder, Mic, Rocket, Settings } from 'lucide-react-native';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
 import ProjectsScreen from '../screens/ProjectsScreen';
 import ProjectDetailScreen from '../screens/ProjectDetailScreen';
 import VoiceScreen from '../screens/VoiceScreen';
+import BuildsScreen from '../screens/BuildsScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -51,11 +53,27 @@ const TabNavigator = () => (
       }}
     />
     <Tab.Screen
+      name="BuildsTab"
+      component={BuildsScreen}
+      options={{
+        tabBarLabel: 'Builds',
+        tabBarIcon: ({ color, size }) => <Rocket size={size} color={color} />,
+      }}
+    />
+    <Tab.Screen
       name="VoiceTab"
       component={VoiceScreen}
       options={{
         tabBarLabel: 'Voice',
         tabBarIcon: ({ color, size }) => <Mic size={size} color={color} />,
+      }}
+    />
+    <Tab.Screen
+      name="SettingsTab"
+      component={SettingsScreen}
+      options={{
+        tabBarLabel: 'Settings',
+        tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
       }}
     />
   </Tab.Navigator>
@@ -73,6 +91,8 @@ const AppNavigator = () => (
       <Stack.Screen name="Projects" component={ProjectsScreen} />
       <Stack.Screen name="ProjectDetail" component={ProjectDetailScreen} />
       <Stack.Screen name="Voice" component={VoiceScreen} />
+      <Stack.Screen name="Builds" component={BuildsScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   </NavigationContainer>
 );

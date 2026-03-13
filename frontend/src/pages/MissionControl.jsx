@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { 
   Brain, Rocket, Network, Factory, Globe, Database, 
   Terminal, Activity, Zap, ChevronRight, Command, Mic,
-  Play, Settings, ArrowLeft, Sparkles, Eye
+  Play, Settings, ArrowLeft, Sparkles, Eye, Moon, History, Dna
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,9 @@ import GodModePanel from '@/components/mission-control/GodModePanel';
 import VisualProjectBrain from '@/components/mission-control/VisualProjectBrain';
 import BuildTimeline from '@/components/mission-control/BuildTimeline';
 import KnowledgeGraphPanel from '@/components/mission-control/KnowledgeGraphPanel';
+import NightShiftPanel from '@/components/mission-control/NightShiftPanel';
+import TimeTravelPanel from '@/components/mission-control/TimeTravelPanel';
+import EvolutionPanel from '@/components/mission-control/EvolutionPanel';
 
 const MissionControl = () => {
   const { projectId } = useParams();
@@ -83,7 +86,10 @@ const MissionControl = () => {
     { id: 'project-brain', label: 'Project Brain', icon: Network, color: '#06b6d4' },
     { id: 'god-mode', label: 'God Mode', icon: Rocket, color: '#f59e0b' },
     { id: 'timeline', label: 'Build Timeline', icon: Activity, color: '#22c55e' },
-    { id: 'knowledge', label: 'Knowledge Graph', icon: Database, color: '#ec4899' }
+    { id: 'knowledge', label: 'Knowledge Graph', icon: Database, color: '#ec4899' },
+    { id: 'evolution', label: 'Evolution', icon: Dna, color: '#10b981' },
+    { id: 'night-shift', label: 'Night Shift', icon: Moon, color: '#6366f1' },
+    { id: 'time-travel', label: 'Time Travel', icon: History, color: '#f97316' }
   ];
 
   return (
@@ -208,6 +214,9 @@ const MissionControl = () => {
           {activePanel === 'project-brain' && <VisualProjectBrain projectId={projectId} files={files} />}
           {activePanel === 'timeline' && <BuildTimeline projectId={projectId} />}
           {activePanel === 'knowledge' && <KnowledgeGraphPanel />}
+          {activePanel === 'evolution' && <EvolutionPanel projectId={projectId} />}
+          {activePanel === 'night-shift' && <NightShiftPanel projectId={projectId} />}
+          {activePanel === 'time-travel' && <TimeTravelPanel projectId={projectId} />}
         </div>
       </div>
     </div>

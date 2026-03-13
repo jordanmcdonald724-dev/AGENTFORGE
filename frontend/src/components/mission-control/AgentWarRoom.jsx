@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { 
   Brain, Cpu, Activity, Zap, Target, Network, Globe, Rocket,
-  Play, Pause, ChevronRight, Terminal, Eye, Sparkles, Command
+  Play, Pause, ChevronRight, Terminal, Eye, Sparkles, Command, Wifi, WifiOff
 } from 'lucide-react';
 import { API } from '@/App';
 
@@ -11,7 +11,10 @@ const AgentWarRoom = ({ projectId }) => {
   const [agents, setAgents] = useState([]);
   const [activities, setActivities] = useState([]);
   const [selectedAgent, setSelectedAgent] = useState(null);
+  const [agentStates, setAgentStates] = useState({});
+  const [wsConnected, setWsConnected] = useState(false);
   const logRef = useRef(null);
+  const wsRef = useRef(null);
 
   const AGENT_CONFIG = {
     'commander': { icon: Brain, color: '#8b5cf6', glow: 'shadow-violet-500/50' },
@@ -22,11 +25,93 @@ const AgentWarRoom = ({ projectId }) => {
     'prism': { icon: Sparkles, color: '#ec4899', glow: 'shadow-pink-500/50' }
   };
 
+  // WebSocket connection for real-time updates
+  const connectWebSocket = useCallback(() => {
+    if (!projectId) return;
+    
+    const wsUrl = API.replace('https://', 'wss://').replace('http://', 'ws://');
+    const ws = new WebSocket(`${wsUrl}/ws/agents/${projectId}`);
+    
+    ws.onopen = () => {
+      setWsConnected(true);
+      console.log('WebSocket connected');
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'agent_activity' || data.type === 'agent_complete') {
+          // Update agent state
+          setAgentStates(prev => ({
+            ...prev,
+            [data.agent_id]: {
+              status: data.status,
+              activity: data.activity,
+              progress: data.progress || 0
+            }
+          }));
+          
+          // Add to activity log
+          if (data.type === 'agent_activity') {
+            setActivities(prev => [...prev.slice(-50), {
+              id: Date.now(),
+              agent: data.agent_name,
+              action: data.activity,
+              timestamp: new Date().toLocaleTimeString()
+            }]);
+          }
+        }
+        
+        if (data.type === 'agent_progress') {
+          setAgentStates(prev => ({
+            ...prev,
+            [data.agent_id]: {
+              ...prev[data.agent_id],
+              progress: data.progress
+            }
+          }));
+        }
+      } catch (e) {
+        console.error('WebSocket message error:', e);
+      }
+    };
+    
+    ws.onclose = () => {
+      setWsConnected(false);
+      // Reconnect after 3 seconds
+      setTimeout(connectWebSocket, 3000);
+    };
+    
+    ws.onerror = (err) => {
+      console.error('WebSocket error:', err);
+      ws.close();
+    };
+    
+    wsRef.current = ws;
+    
+    return () => {
+      ws.close();
+    };
+  }, [projectId]);
+
   useEffect(() => {
     fetchAgents();
-    const interval = setInterval(simulateActivity, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    const cleanup = connectWebSocket();
+    
+    // Fallback: simulate activity if WebSocket isn't working
+    const interval = setInterval(() => {
+      if (!wsConnected) {
+        simulateActivity();
+      }
+    }, 3000);
+    
+    return () => {
+      clearInterval(interval);
+      if (cleanup) cleanup();
+      if (wsRef.current) wsRef.current.close();
+    };
+  }, [connectWebSocket, wsConnected]);
 
   useEffect(() => {
     if (logRef.current) {

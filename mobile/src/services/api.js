@@ -55,11 +55,13 @@ export const filesApi = {
 
 // Builds
 export const buildsApi = {
+  list: () => api.get('/god-mode/sessions'),
   getByProject: (projectId) => api.get(`/builds/${projectId}`),
   trigger: (projectId, buildType) => api.post('/celery/jobs/submit', null, { 
     params: { project_id: projectId, job_type: buildType || 'build' }
   }),
   getStatus: (jobId) => api.get(`/celery/jobs/${jobId}`),
+  createGodMode: (prompt, template) => api.post('/god-mode/create', { prompt, template }),
 };
 
 // Voice Commands

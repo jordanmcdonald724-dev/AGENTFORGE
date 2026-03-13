@@ -376,40 +376,89 @@ const VisualProjectBrain = ({ projectId, files = [] }) => {
   const [selectedNode, setSelectedNode] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showStats, setShowStats] = useState(true);
+  const [viewMode, setViewMode] = useState('architecture'); // architecture, files, dependencies
 
-  // Initialize architecture nodes
+  // Analyze files and create dynamic nodes
   useEffect(() => {
     setLoading(true);
     
-    // Create architecture nodes based on project analysis
-    const architectureNodes = [
-      { id: 'frontend', label: 'Frontend', type: 'frontend', icon: Globe, description: 'React UI Layer' },
-      { id: 'api', label: 'API Gateway', type: 'api', icon: Network, description: 'REST/GraphQL Endpoints' },
-      { id: 'backend', label: 'Backend Services', type: 'backend', icon: Server, description: 'Business Logic' },
-      { id: 'database', label: 'Database', type: 'database', icon: Database, description: 'MongoDB Storage' },
-      { id: 'auth', label: 'Authentication', type: 'auth', icon: Shield, description: 'JWT/OAuth' },
-      { id: 'payments', label: 'Payments', type: 'payments', icon: CreditCard, description: 'Stripe Integration' },
-      { id: 'cache', label: 'Cache Layer', type: 'cache', icon: Zap, description: 'Redis Cache' },
-      { id: 'cdn', label: 'CDN', type: 'cdn', icon: Cloud, description: 'Static Assets' },
-    ];
+    if (viewMode === 'files' && files.length > 0) {
+      // Create nodes from actual project files
+      const fileNodes = [];
+      const fileConnections = [];
+      
+      // Group files by directory
+      const directories = {};
+      files.forEach(file => {
+        const path = file.filepath || file.filename || '';
+        const dir = path.split('/').slice(0, -1).join('/') || '/';
+        if (!directories[dir]) {
+          directories[dir] = [];
+        }
+        directories[dir].push(file);
+      });
 
-    // Create connections based on typical architecture
-    const architectureConnections = [
-      { from: 'cdn', to: 'frontend' },
-      { from: 'frontend', to: 'api' },
-      { from: 'api', to: 'backend' },
-      { from: 'api', to: 'auth' },
-      { from: 'api', to: 'payments' },
-      { from: 'backend', to: 'database' },
-      { from: 'backend', to: 'cache' },
-      { from: 'auth', to: 'database' },
-      { from: 'payments', to: 'backend' },
-    ];
+      // Create directory nodes
+      Object.keys(directories).forEach((dir, i) => {
+        const dirFiles = directories[dir];
+        const type = dir.includes('frontend') || dir.includes('src') ? 'frontend' :
+                     dir.includes('backend') || dir.includes('routes') ? 'backend' :
+                     dir.includes('models') ? 'database' :
+                     dir.includes('auth') ? 'auth' : 'default';
+        
+        fileNodes.push({
+          id: dir,
+          label: dir.split('/').pop() || 'root',
+          type,
+          icon: type === 'frontend' ? Globe : type === 'backend' ? Server : FileCode,
+          description: `${dirFiles.length} files`,
+          fileCount: dirFiles.length
+        });
+      });
 
-    setNodes(architectureNodes);
-    setConnections(architectureConnections);
+      // Create connections between related directories
+      const dirList = Object.keys(directories);
+      for (let i = 0; i < dirList.length; i++) {
+        for (let j = i + 1; j < dirList.length; j++) {
+          if (dirList[i].includes(dirList[j]) || dirList[j].includes(dirList[i])) {
+            fileConnections.push({ from: dirList[i], to: dirList[j] });
+          }
+        }
+      }
+
+      setNodes(fileNodes.slice(0, 12)); // Limit to 12 nodes for performance
+      setConnections(fileConnections.slice(0, 15));
+    } else {
+      // Default architecture view
+      const architectureNodes = [
+        { id: 'frontend', label: 'Frontend', type: 'frontend', icon: Globe, description: 'React UI Layer' },
+        { id: 'api', label: 'API Gateway', type: 'api', icon: Network, description: 'REST/GraphQL Endpoints' },
+        { id: 'backend', label: 'Backend Services', type: 'backend', icon: Server, description: 'Business Logic' },
+        { id: 'database', label: 'Database', type: 'database', icon: Database, description: 'MongoDB Storage' },
+        { id: 'auth', label: 'Authentication', type: 'auth', icon: Shield, description: 'JWT/OAuth' },
+        { id: 'payments', label: 'Payments', type: 'payments', icon: CreditCard, description: 'Stripe Integration' },
+        { id: 'cache', label: 'Cache Layer', type: 'cache', icon: Zap, description: 'Redis Cache' },
+        { id: 'cdn', label: 'CDN', type: 'cdn', icon: Cloud, description: 'Static Assets' },
+      ];
+
+      const architectureConnections = [
+        { from: 'cdn', to: 'frontend' },
+        { from: 'frontend', to: 'api' },
+        { from: 'api', to: 'backend' },
+        { from: 'api', to: 'auth' },
+        { from: 'api', to: 'payments' },
+        { from: 'backend', to: 'database' },
+        { from: 'backend', to: 'cache' },
+        { from: 'auth', to: 'database' },
+        { from: 'payments', to: 'backend' },
+      ];
+
+      setNodes(architectureNodes);
+      setConnections(architectureConnections);
+    }
+    
     setLoading(false);
-  }, [projectId]);
+  }, [projectId, files, viewMode]);
 
   const handleSelectNode = useCallback((node) => {
     setSelectedNode(prev => prev?.id === node.id ? null : node);
@@ -441,6 +490,29 @@ const VisualProjectBrain = ({ projectId, files = [] }) => {
             </Badge>
           </div>
           <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex bg-zinc-900 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('architecture')}
+                className={`px-3 py-1 text-xs rounded-md transition-all ${
+                  viewMode === 'architecture' 
+                    ? 'bg-cyan-500/20 text-cyan-400' 
+                    : 'text-zinc-500 hover:text-white'
+                }`}
+              >
+                Architecture
+              </button>
+              <button
+                onClick={() => setViewMode('files')}
+                className={`px-3 py-1 text-xs rounded-md transition-all ${
+                  viewMode === 'files' 
+                    ? 'bg-cyan-500/20 text-cyan-400' 
+                    : 'text-zinc-500 hover:text-white'
+                }`}
+              >
+                Files
+              </button>
+            </div>
             <Button
               size="sm"
               variant="ghost"
