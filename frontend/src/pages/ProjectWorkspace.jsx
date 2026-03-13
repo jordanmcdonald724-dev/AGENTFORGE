@@ -33,7 +33,8 @@ const PHASE_CONFIG = {
   planning: { label: "Planning", color: "bg-blue-500/20 text-blue-400", icon: Layers },
   development: { label: "Development", color: "bg-emerald-500/20 text-emerald-400", icon: Code2 },
   review: { label: "Review", color: "bg-purple-500/20 text-purple-400", icon: Shield },
-  building: { label: "Building", color: "bg-cyan-500/20 text-cyan-400 animate-pulse", icon: Rocket }
+  building: { label: "Building", color: "bg-cyan-500/20 text-cyan-400 animate-pulse", icon: Rocket },
+  scheduled: { label: "Scheduled", color: "bg-purple-500/20 text-purple-400", icon: Clock }
 };
 
 const LANGUAGE_MAP = {
@@ -136,6 +137,8 @@ const ProjectWorkspace = () => {
   const [simulating, setSimulating] = useState(false);
   const [buildDialog, setBuildDialog] = useState(false);
   const [buildRunning, setBuildRunning] = useState(false);
+  const [scheduleBuild, setScheduleBuild] = useState(false);
+  const [scheduleTime, setScheduleTime] = useState("");
 
   useEffect(() => { fetchProjectData(); }, [projectId]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingContent]);
@@ -330,29 +333,57 @@ const ProjectWorkspace = () => {
   };
 
   // ========== AUTONOMOUS BUILDS ==========
-  const startAutonomousBuild = async () => {
+  const startAutonomousBuild = async (isScheduled = false) => {
     if (!simulationResult || !simulationResult.ready_to_build) {
       toast.error("Run simulation first and resolve all high-severity warnings");
       return;
     }
+    
+    if (isScheduled && !scheduleTime) {
+      toast.error("Please select a time to schedule the build");
+      return;
+    }
+    
     setBuildRunning(true);
     try {
-      const res = await axios.post(`${API}/builds/start`, {
+      const buildData = {
         project_id: projectId,
         build_type: "full",
         target_engine: targetEngine,
         systems_to_build: selectedSystems
-      });
+      };
+      
+      if (isScheduled && scheduleTime) {
+        // Convert local time to ISO string
+        const scheduledDate = new Date(scheduleTime);
+        buildData.scheduled_at = scheduledDate.toISOString();
+      }
+      
+      const res = await axios.post(`${API}/builds/start`, buildData);
       setCurrentBuild(res.data);
       setBuildDialog(false);
       setSimulationDialog(false);
       setActiveTab("warroom");
-      toast.success("Autonomous build started!");
       
-      // Start running stages
-      await axios.post(`${API}/builds/${res.data.id}/run-full`);
+      if (isScheduled) {
+        const scheduledDate = new Date(scheduleTime);
+        toast.success(`Build scheduled for ${scheduledDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}! Sweet dreams 🌙`);
+      } else {
+        toast.success("Autonomous build started!");
+        // Start running stages immediately
+        await axios.post(`${API}/builds/${res.data.id}/run-full`);
+      }
     } catch (error) { toast.error(error.response?.data?.detail || "Build failed to start"); }
-    finally { setBuildRunning(false); }
+    finally { setBuildRunning(false); setScheduleBuild(false); setScheduleTime(""); }
+  };
+
+  const startScheduledBuildNow = async () => {
+    if (!currentBuild || currentBuild.status !== "scheduled") return;
+    try {
+      await axios.post(`${API}/builds/${currentBuild.id}/start-scheduled`);
+      await fetchCurrentBuild();
+      toast.success("Scheduled build started!");
+    } catch (error) { toast.error("Failed to start scheduled build"); }
   };
 
   const pauseBuild = async () => {
@@ -648,13 +679,49 @@ const ProjectWorkspace = () => {
                         <p className="text-xs text-zinc-400">{simulationResult.architecture_summary}</p>
                       </div>
 
-                      {/* Start Build Button */}
-                      <Button onClick={startAutonomousBuild} disabled={!simulationResult.ready_to_build || buildRunning}
-                        className={`w-full ${simulationResult.ready_to_build ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-zinc-700 cursor-not-allowed'}`}>
-                        {buildRunning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting Build...</> : 
-                          simulationResult.ready_to_build ? <><Rocket className="w-4 h-4 mr-2" />Start Autonomous Build</> :
-                          <><AlertTriangle className="w-4 h-4 mr-2" />Resolve Warnings First</>}
-                      </Button>
+                      {/* Schedule Build Option */}
+                      {simulationResult.ready_to_build && (
+                        <div className="p-4 rounded-lg bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30">
+                          <div className="flex items-center gap-2 mb-3">
+                            <input type="checkbox" id="schedule-build" checked={scheduleBuild} onChange={(e) => setScheduleBuild(e.target.checked)} className="rounded" />
+                            <label htmlFor="schedule-build" className="text-sm text-white flex items-center gap-2">
+                              <Clock className="w-4 h-4 text-purple-400" />
+                              Schedule for tonight (12+ hour build)
+                            </label>
+                          </div>
+                          {scheduleBuild && (
+                            <div className="mt-3">
+                              <label className="text-xs text-zinc-400 mb-2 block">Start build at:</label>
+                              <Input 
+                                type="datetime-local" 
+                                value={scheduleTime} 
+                                onChange={(e) => setScheduleTime(e.target.value)} 
+                                className="bg-zinc-900 border-zinc-700" 
+                                data-testid="schedule-time-input"
+                              />
+                              <p className="text-[10px] text-zinc-500 mt-2">💤 Set it before bed and wake up to a complete project!</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Start Build Buttons */}
+                      <div className="flex gap-2">
+                        {scheduleBuild ? (
+                          <Button onClick={() => startAutonomousBuild(true)} disabled={!simulationResult.ready_to_build || buildRunning || !scheduleTime}
+                            className={`flex-1 ${simulationResult.ready_to_build && scheduleTime ? 'bg-purple-500 hover:bg-purple-600' : 'bg-zinc-700 cursor-not-allowed'}`}>
+                            {buildRunning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scheduling...</> : 
+                              <><Clock className="w-4 h-4 mr-2" />Schedule Overnight Build</>}
+                          </Button>
+                        ) : (
+                          <Button onClick={() => startAutonomousBuild(false)} disabled={!simulationResult.ready_to_build || buildRunning}
+                            className={`flex-1 ${simulationResult.ready_to_build ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-zinc-700 cursor-not-allowed'}`}>
+                            {buildRunning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting Build...</> : 
+                              simulationResult.ready_to_build ? <><Rocket className="w-4 h-4 mr-2" />Start Build Now</> :
+                              <><AlertTriangle className="w-4 h-4 mr-2" />Resolve Warnings First</>}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -662,6 +729,14 @@ const ProjectWorkspace = () => {
             </Dialog>
 
             {/* Current Build Status */}
+            {currentBuild && currentBuild.status === "scheduled" && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/50">
+                <Clock className="w-4 h-4 text-purple-400" />
+                <span className="text-xs text-purple-400">Scheduled {currentBuild.scheduled_at ? new Date(currentBuild.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</span>
+                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={startScheduledBuildNow} title="Start Now"><Play className="w-3 h-3" /></Button>
+                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={cancelBuild} title="Cancel"><X className="w-3 h-3" /></Button>
+              </div>
+            )}
             {currentBuild && currentBuild.status === "running" && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/50">
                 <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />

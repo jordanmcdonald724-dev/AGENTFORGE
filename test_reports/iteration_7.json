@@ -1,0 +1,96 @@
+{
+  "summary": "AgentForge v3.1 Build Scheduling testing complete. All features working: Extended 15h+ build time, scheduled builds with datetime picker, War Room COMMANDER scheduling messages, start/cancel scheduled builds.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Simulation Dialog",
+        "issues": ["Console warning: Missing aria-describedby for DialogContent - minor accessibility issue from previous version"]
+      }
+    ]
+  },
+
+  "passed_tests": [
+    "✅ GET /api/build-stages/unreal - returns 8 stages",
+    "✅ GET /api/build-stages/unreal - total 930 minutes (15h 30m) - exceeds 12+ hour requirement",
+    "✅ GET /api/build-stages/unity - returns 8 stages",
+    "✅ GET /api/build-stages/unity - total 930 minutes (15h 30m)",
+    "✅ POST /api/builds/start with scheduled_at - creates build with status='scheduled'",
+    "✅ GET /api/builds/scheduled - returns builds ready to start",
+    "✅ POST /api/builds/{build_id}/start-scheduled - starts scheduled build correctly",
+    "✅ War Room shows COMMANDER scheduled message with clock emoji and build time",
+    "✅ Build estimated_completion shows '15h 30m' format",
+    "✅ Cannot start-scheduled a non-scheduled build (returns 400 error)",
+    "✅ Frontend: Simulate button opens simulation dialog",
+    "✅ Frontend: 'Schedule for tonight (12+ hour build)' checkbox visible after simulation",
+    "✅ Frontend: datetime-local input for schedule time available",
+    "✅ Frontend: 'Schedule Overnight Build' button appears when scheduling enabled",
+    "✅ Frontend: War Room tab shows COMMANDER SCHEDULED message",
+    "✅ Frontend: Build stages displayed in War Room (Project Setup, Core Framework, etc.)"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_v31_scheduling.py",
+    "/app/test_reports/pytest/pytest_v31_results.xml"
+  ],
+
+  "action_items": [],
+
+  "critical_code_review_comments": [],
+
+  "updated_files": [
+    "/app/backend/tests/test_v31_scheduling.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (10/10 tests passed)",
+    "frontend": "100% (All v3.1 scheduling features accessible and functional)"
+  },
+
+  "seed_data_creation": "Test scheduled builds created and cleaned up during testing",
+
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "AgentForge v3.1 Build Scheduling fully tested. Key features: 1) Build stages total 930 minutes (15h 30m) for both Unreal and Unity engines, 2) POST /api/builds/start with 'scheduled_at' parameter creates a scheduled build, 3) GET /api/builds/scheduled returns builds ready to start, 4) POST /api/builds/{build_id}/start-scheduled starts scheduled builds, 5) War Room shows COMMANDER message with scheduling details. The test file /app/backend/tests/test_v31_scheduling.py covers all v3.1 endpoints.",
+
+  "v31_features_tested": {
+    "extended_build_time": {
+      "status": "WORKING",
+      "details": "8 stages totaling 930 minutes (15h 30m) for both Unreal and Unity",
+      "stages": [
+        "Project Setup & Configuration (30m)",
+        "Core Framework & Architecture (90m)",
+        "Game Systems Implementation (180m)",
+        "AI & NPC Systems (150m)",
+        "UI/UX Framework (120m)",
+        "World Building & Environment (150m)",
+        "Audio & Effects Integration (90m)",
+        "Polish, Testing & Documentation (120m)"
+      ]
+    },
+    "scheduled_builds": {
+      "status": "WORKING",
+      "endpoints_tested": [
+        "POST /api/builds/start with scheduled_at - creates scheduled build",
+        "GET /api/builds/scheduled - returns ready builds",
+        "POST /api/builds/{build_id}/start-scheduled - starts scheduled build",
+        "GET /api/builds/{project_id}/current - shows scheduled_at time"
+      ],
+      "ui_tested": true,
+      "notes": "Schedule checkbox with datetime picker appears after running simulation"
+    },
+    "war_room_scheduling_message": {
+      "status": "WORKING",
+      "message_format": "⏰ Build SCHEDULED for {time}! Target: {engine}. Estimated time: {duration}. Get some rest, I'll handle this.",
+      "notes": "COMMANDER automatically posts scheduling message when build is scheduled"
+    }
+  }
+}

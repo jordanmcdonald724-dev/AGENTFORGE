@@ -300,7 +300,7 @@ class AutonomousBuild(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     project_id: str
-    status: str = "queued"  # queued, running, paused, completed, failed
+    status: str = "queued"  # queued, scheduled, running, paused, completed, failed
     build_type: str = "full"
     target_engine: str = "unreal"
     current_stage: int = 0
@@ -308,6 +308,7 @@ class AutonomousBuild(BaseModel):
     stages: List[Dict[str, Any]] = []  # [{name, status, started_at, completed_at, files_created, test_results}]
     progress_percent: int = 0
     estimated_completion: Optional[str] = None
+    scheduled_at: Optional[datetime] = None  # When to start the build
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -330,7 +331,8 @@ class StartBuildRequest(BaseModel):
     build_type: str = "full"  # full, prototype, demo
     target_engine: str = "unreal"
     systems_to_build: List[str] = []
-    estimated_hours: int = 8
+    estimated_hours: int = 12
+    scheduled_at: Optional[str] = None  # ISO datetime string for scheduled builds
 
 # Quick Actions Configuration
 QUICK_ACTIONS = {
@@ -591,27 +593,27 @@ OPEN_WORLD_SYSTEMS = {
     }
 }
 
-# Build stage templates for autonomous builds
+# Build stage templates for autonomous builds (12+ hour builds)
 BUILD_STAGES = {
     "unreal": [
-        {"name": "Project Setup", "duration_minutes": 15, "tasks": ["Create project structure", "Configure build settings", "Setup source control"]},
-        {"name": "Core Framework", "duration_minutes": 45, "tasks": ["Game instance", "Game mode", "Player controller base", "Character base"]},
-        {"name": "Game Systems", "duration_minutes": 120, "tasks": ["Selected systems implementation", "System integration", "Data assets"]},
-        {"name": "AI & NPCs", "duration_minutes": 90, "tasks": ["Behavior trees", "NPC classes", "AI controllers", "Perception setup"]},
-        {"name": "UI/UX", "duration_minutes": 60, "tasks": ["HUD", "Menus", "Widget library", "Input bindings"]},
-        {"name": "World Building", "duration_minutes": 90, "tasks": ["Level design", "Environment assets", "Lighting", "Post-processing"]},
-        {"name": "Audio Integration", "duration_minutes": 45, "tasks": ["Sound cues", "Music system", "Ambient audio", "UI sounds"]},
-        {"name": "Polish & Testing", "duration_minutes": 60, "tasks": ["Bug fixes", "Performance optimization", "Automated tests", "Documentation"]}
+        {"name": "Project Setup & Configuration", "duration_minutes": 30, "tasks": ["Create project structure", "Configure build settings", "Setup source control", "Configure editor preferences", "Setup coding standards", "Initialize plugins"]},
+        {"name": "Core Framework & Architecture", "duration_minutes": 90, "tasks": ["Game instance", "Game mode base", "Player controller framework", "Character base class", "Component architecture", "Subsystem setup", "Data asset structure", "Event dispatcher system"]},
+        {"name": "Game Systems Implementation", "duration_minutes": 180, "tasks": ["Selected systems full implementation", "System integration layer", "Data assets for all systems", "Blueprint exposure", "Debug commands", "System unit tests", "Performance profiling hooks"]},
+        {"name": "AI & NPC Systems", "duration_minutes": 150, "tasks": ["Behavior tree framework", "AI controller base", "NPC base classes", "Perception system config", "Blackboard templates", "Navigation setup", "Crowd management", "NPC spawn system", "AI debugging tools"]},
+        {"name": "UI/UX Framework", "duration_minutes": 120, "tasks": ["Widget architecture", "HUD framework", "Menu system", "Input handling", "Localization setup", "UI animations", "Tooltip system", "Notification system", "Loading screens", "Settings menus"]},
+        {"name": "World Building & Environment", "duration_minutes": 150, "tasks": ["Level streaming setup", "Environment base classes", "Lighting framework", "Post-processing presets", "Foliage system", "Weather integration", "Day/night support", "LOD configuration", "Collision presets"]},
+        {"name": "Audio & Effects Integration", "duration_minutes": 90, "tasks": ["Sound cue architecture", "Music system", "Ambient audio", "UI sounds", "MetaSounds setup", "Niagara systems", "Decal system", "Footstep system", "Environmental audio"]},
+        {"name": "Polish, Testing & Documentation", "duration_minutes": 120, "tasks": ["Automated tests", "Performance optimization", "Memory profiling", "Bug fixes", "Code cleanup", "API documentation", "Blueprint documentation", "README generation", "Build packaging test"]}
     ],
     "unity": [
-        {"name": "Project Setup", "duration_minutes": 15, "tasks": ["Create project structure", "Configure build settings", "Package imports"]},
-        {"name": "Core Framework", "duration_minutes": 45, "tasks": ["Game manager", "Scene management", "Player controller", "Character controller"]},
-        {"name": "Game Systems", "duration_minutes": 120, "tasks": ["ScriptableObject architecture", "System managers", "Event system"]},
-        {"name": "AI & NPCs", "duration_minutes": 90, "tasks": ["NavMesh setup", "AI state machines", "NPC behaviors", "Spawning system"]},
-        {"name": "UI/UX", "duration_minutes": 60, "tasks": ["Canvas setup", "UI managers", "Prefab library", "Input system"]},
-        {"name": "World Building", "duration_minutes": 90, "tasks": ["Scene composition", "Prefab variants", "Lighting", "Post-processing"]},
-        {"name": "Audio Integration", "duration_minutes": 45, "tasks": ["Audio mixer", "Sound manager", "Music controller", "Ambient system"]},
-        {"name": "Polish & Testing", "duration_minutes": 60, "tasks": ["Bug fixes", "Profiling", "Unit tests", "Documentation"]}
+        {"name": "Project Setup & Configuration", "duration_minutes": 30, "tasks": ["Create project structure", "Configure build settings", "Package imports", "Assembly definitions", "Editor tools setup", "Code standards config"]},
+        {"name": "Core Framework & Architecture", "duration_minutes": 90, "tasks": ["Game manager singleton", "Scene management system", "Player controller", "Character controller", "Service locator", "Event system", "ScriptableObject architecture", "Object pooling"]},
+        {"name": "Game Systems Implementation", "duration_minutes": 180, "tasks": ["ScriptableObject data", "System managers", "Event integration", "Inspector tools", "Gizmo debugging", "System unit tests", "Editor windows", "Performance hooks"]},
+        {"name": "AI & NPC Systems", "duration_minutes": 150, "tasks": ["NavMesh configuration", "AI state machines", "NPC behaviors", "Spawning system", "Perception system", "Formation system", "Crowd simulation", "AI debugging", "Pathfinding optimization"]},
+        {"name": "UI/UX Framework", "duration_minutes": 120, "tasks": ["Canvas architecture", "UI managers", "Prefab library", "Input system new", "Localization", "DOTween animations", "Modal system", "HUD framework", "Settings system", "Tutorial framework"]},
+        {"name": "World Building & Environment", "duration_minutes": 150, "tasks": ["Addressables setup", "Scene composition", "Prefab variants", "Lighting presets", "Post-processing", "Terrain tools", "Streaming system", "LOD groups", "Occlusion culling"]},
+        {"name": "Audio & Effects Integration", "duration_minutes": 90, "tasks": ["Audio mixer groups", "Sound manager", "Music controller", "Ambient system", "FMOD/Wwise ready", "VFX graph systems", "Particle prefabs", "Footstep manager", "Impact system"]},
+        {"name": "Polish, Testing & Documentation", "duration_minutes": 120, "tasks": ["Unity Test Framework", "Profiler analysis", "Memory optimization", "Bug fixes", "Code cleanup", "XML documentation", "Asset labels", "README generation", "Build automation"]}
     ]
 }
 
@@ -2490,15 +2492,15 @@ async def broadcast_to_war_room(project_id: str, from_agent: str, content: str, 
 
 @api_router.post("/builds/start")
 async def start_autonomous_build(request: StartBuildRequest):
-    """Start an autonomous overnight build"""
+    """Start or schedule an autonomous overnight build"""
     project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
     # Check for existing running build
-    existing = await db.builds.find_one({"project_id": request.project_id, "status": "running"})
+    existing = await db.builds.find_one({"project_id": request.project_id, "status": {"$in": ["running", "scheduled"]}})
     if existing:
-        raise HTTPException(status_code=400, detail="A build is already running for this project")
+        raise HTTPException(status_code=400, detail="A build is already running or scheduled for this project")
     
     # Get build stages
     base_stages = BUILD_STAGES.get(request.target_engine, BUILD_STAGES["unreal"])
@@ -2518,34 +2520,59 @@ async def start_autonomous_build(request: StartBuildRequest):
         })
     
     total_minutes = sum(s["duration_minutes"] for s in stages)
+    hours = total_minutes // 60
+    mins = total_minutes % 60
+    
+    # Parse scheduled time
+    scheduled_time = None
+    status = "queued"
+    if request.scheduled_at:
+        try:
+            scheduled_time = datetime.fromisoformat(request.scheduled_at.replace('Z', '+00:00'))
+            status = "scheduled"
+        except:
+            pass
     
     build = AutonomousBuild(
         project_id=request.project_id,
         build_type=request.build_type,
         target_engine=request.target_engine,
-        status="queued",
+        status=status,
         total_stages=len(stages),
         stages=stages,
-        estimated_completion=f"{total_minutes // 60}h {total_minutes % 60}m"
+        estimated_completion=f"{hours}h {mins}m",
+        scheduled_at=scheduled_time
     )
     
     doc = build.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
+    if doc.get('scheduled_at'):
+        doc['scheduled_at'] = doc['scheduled_at'].isoformat()
     await db.builds.insert_one(doc)
     
     # Post to war room
-    await broadcast_to_war_room(
-        request.project_id,
-        "COMMANDER",
-        f"🚀 Autonomous build initiated! Target: {request.target_engine.upper()}. Estimated time: {build.estimated_completion}. {len(stages)} stages queued.",
-        "progress",
-        build.id
-    )
+    if scheduled_time:
+        scheduled_str = scheduled_time.strftime("%I:%M %p on %b %d")
+        await broadcast_to_war_room(
+            request.project_id,
+            "COMMANDER",
+            f"⏰ Build SCHEDULED for {scheduled_str}! Target: {request.target_engine.upper()}. Estimated time: {build.estimated_completion}. Get some rest, I'll handle this.",
+            "progress",
+            build.id
+        )
+    else:
+        await broadcast_to_war_room(
+            request.project_id,
+            "COMMANDER",
+            f"🚀 Autonomous build initiated! Target: {request.target_engine.upper()}. Estimated time: {build.estimated_completion}. {len(stages)} stages queued.",
+            "progress",
+            build.id
+        )
     
     # Update project status
     await db.projects.update_one(
         {"id": request.project_id},
-        {"$set": {"status": "building", "build_id": build.id}}
+        {"$set": {"status": "scheduled" if scheduled_time else "building", "build_id": build.id}}
     )
     
     return serialize_doc(doc)
@@ -2664,6 +2691,80 @@ async def cancel_build(build_id: str):
     await broadcast_to_war_room(build["project_id"], "COMMANDER", "❌ Build cancelled.", "progress", build_id)
     await db.projects.update_one({"id": build["project_id"]}, {"$set": {"status": "planning"}})
     return {"success": True}
+
+@api_router.get("/builds/scheduled")
+async def get_scheduled_builds():
+    """Get all scheduled builds that should start now"""
+    now = datetime.now(timezone.utc)
+    builds = await db.builds.find({
+        "status": "scheduled",
+        "scheduled_at": {"$lte": now.isoformat()}
+    }, {"_id": 0}).to_list(100)
+    return builds
+
+@api_router.post("/builds/{build_id}/start-scheduled")
+async def start_scheduled_build(build_id: str, background_tasks: BackgroundTasks):
+    """Start a scheduled build that is ready"""
+    build = await db.builds.find_one({"id": build_id})
+    if not build:
+        raise HTTPException(status_code=404, detail="Build not found")
+    
+    if build["status"] != "scheduled":
+        raise HTTPException(status_code=400, detail="Build is not in scheduled status")
+    
+    # Update status to running
+    await db.builds.update_one(
+        {"id": build_id},
+        {"$set": {"status": "running", "started_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    await broadcast_to_war_room(
+        build["project_id"],
+        "COMMANDER",
+        "⏰ Scheduled build starting NOW! All agents, prepare for overnight shift. ☕",
+        "progress",
+        build_id
+    )
+    
+    # Start background execution
+    async def execute_all_stages():
+        for i in range(len(build["stages"])):
+            current_build = await db.builds.find_one({"id": build_id})
+            if current_build["status"] in ["cancelled", "paused"]:
+                break
+            
+            try:
+                await execute_build_stage(build_id, i)
+                await asyncio.sleep(2)
+            except Exception as e:
+                logger.error(f"Build stage {i} failed: {e}")
+                break
+        
+        final_build = await db.builds.find_one({"id": build_id})
+        if final_build["status"] == "running":
+            all_complete = all(s["status"] == "completed" for s in final_build["stages"])
+            await db.builds.update_one(
+                {"id": build_id},
+                {"$set": {
+                    "status": "completed" if all_complete else "partial",
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "progress_percent": 100 if all_complete else final_build.get("progress_percent", 0)
+                }}
+            )
+            
+            # Final war room message
+            if all_complete:
+                await broadcast_to_war_room(
+                    final_build["project_id"],
+                    "COMMANDER",
+                    "🎉 OVERNIGHT BUILD COMPLETE! All stages finished. Your project is ready! Time to review the generated files.",
+                    "progress",
+                    build_id
+                )
+    
+    background_tasks.add_task(execute_all_stages)
+    
+    return {"success": True, "message": "Scheduled build started"}
 
 @api_router.post("/builds/{build_id}/stage/{stage_index}/execute")
 async def execute_build_stage(build_id: str, stage_index: int):
