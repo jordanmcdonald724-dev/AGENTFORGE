@@ -1,0 +1,159 @@
+/* Main app container */
+.app-container {
+  min-height: 100vh;
+  background-color: #09090b;
+}
+
+/* Bento grid layout for dashboard */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1rem;
+  padding: 1rem;
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Agent card */
+.agent-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.agent-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.agent-card:hover::before {
+  opacity: 1;
+}
+
+/* Message bubble */
+.message-bubble {
+  max-width: 80%;
+  word-wrap: break-word;
+}
+
+.message-bubble.user {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  margin-left: auto;
+  border-radius: 16px 16px 4px 16px;
+}
+
+.message-bubble.agent {
+  background: #18181b;
+  border: 1px solid #27272a;
+  border-radius: 16px 16px 16px 4px;
+}
+
+/* Task card priorities */
+.task-critical {
+  border-left: 3px solid #ef4444;
+}
+
+.task-high {
+  border-left: 3px solid #f59e0b;
+}
+
+.task-medium {
+  border-left: 3px solid #3b82f6;
+}
+
+.task-low {
+  border-left: 3px solid #71717a;
+}
+
+/* Kanban columns */
+.kanban-column {
+  min-height: 400px;
+  background: #18181b;
+  border-radius: 8px;
+  border: 1px solid #27272a;
+}
+
+/* Code editor styling */
+.code-editor {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+/* Hero section */
+.hero-bg {
+  background: radial-gradient(ellipse at top, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+}
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: #0d0d0f;
+  border-right: 1px solid #27272a;
+}
+
+/* Main content area */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* Button glow on hover */
+.btn-glow:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+}
+
+/* Input focus states */
+input:focus, textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
+}
