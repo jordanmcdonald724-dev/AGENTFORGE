@@ -1,56 +1,65 @@
-# AgentForge - Personal AI Development Studio v2.1
+# AgentForge - Personal AI Development Studio v2.2
 
 ## Original Problem Statement
-Build a personal AI development studio with 6 agents that builds AAA games, apps, everything. Emergent-style workflow: clarify → plan → build. User in complete control. No templates - builds from scratch.
+Personal AI development studio with 6 agents. Builds AAA games, apps, everything from scratch. Emergent-style workflow: clarify → plan → build. Complete user control.
 
 ## Architecture
-- **Frontend**: React 19, Tailwind, Shadcn UI, Monaco Editor, Framer Motion
-- **Backend**: FastAPI, Motor (async MongoDB), SSE streaming
-- **AI**: fal.ai OpenRouter (Gemini 2.5 Flash) + fal.ai FLUX (image gen)
-- **Database**: MongoDB
+- **Frontend**: React 19, Tailwind, Shadcn UI, Monaco Editor
+- **Backend**: FastAPI, Motor (MongoDB), SSE streaming
+- **AI**: fal.ai OpenRouter (Gemini 2.5 Flash) + fal.ai FLUX (images)
+- **Integrations**: GitHub API (PyGithub)
 
-## Agent Team (6 Agents)
-1. **COMMANDER** - Lead - Clarifies, plans, delegates (never codes)
-2. **ATLAS** - Architect - System design, patterns
-3. **FORGE** - Developer - C++, C#, Blueprints, code generation
-4. **SENTINEL** - Reviewer - Code quality, security
-5. **PROBE** - Tester - QA, test automation
-6. **PRISM** - Artist - UI/UX, shaders, image generation
+## Agent Team (6)
+1. COMMANDER - Lead, clarifies, delegates
+2. ATLAS - Architect, system design
+3. FORGE - Developer, code generation
+4. SENTINEL - Reviewer, code quality
+5. PROBE - Tester, QA
+6. PRISM - Artist, visuals
 
-## Core Features (v2.1)
+## Features (v2.2 Complete)
 - [x] 6-agent AI team with fal.ai
-- [x] **Streaming responses (SSE)** - Real-time AI output
-- [x] **Agent delegation** - COMMANDER → FORGE/ATLAS/etc
-- [x] **Image generation** - fal.ai FLUX for game assets
+- [x] Streaming responses (SSE)
+- [x] Agent delegation ([DELEGATE:AGENT]...[/DELEGATE])
+- [x] Image generation (fal.ai FLUX)
+- [x] **GitHub Push** - Push to repo with token
+- [x] **Agent Chains** - Sequential COMMANDER → FORGE → SENTINEL
+- [x] **Quick Actions** - 8 one-click workflows:
+  - Player Controller
+  - Inventory System
+  - Save/Load System
+  - Health & Damage
+  - AI Behavior Tree
+  - Dialogue System
+  - UI Framework
+  - Audio Manager
+- [x] **Live Preview** - iframe preview for web projects
 - [x] Monaco code editor with file tree
-- [x] Syntax highlighting in chat
-- [x] Auto-save code blocks
-- [x] Project export to ZIP
 - [x] Kanban task board
-- [x] Project types: Unreal, Unity, Godot, Web, Mobile
+- [x] Project export to ZIP
 
-## Delegation System
-COMMANDER uses delegation blocks:
-```
-[DELEGATE:FORGE]
-Task description here
-[/DELEGATE]
-```
-User can click "Execute" to run the delegation.
+## Quick Actions System
+Pre-built prompts that trigger agent chains automatically:
+- Click action → Sends prompt → Executes chain → Auto-saves files
 
-## Image Generation
-- Uses fal.ai FLUX model
-- Categories: concept, character, environment, ui, texture
-- Images stored in MongoDB with metadata
-- Accessible in Images tab
+## GitHub Integration
+- Personal Access Token authentication
+- Create new repo or push to existing
+- Commits all project files
+- Auto-generates README
 
-## What's Been Implemented (Jan 2026)
-- v1.0: Base platform, 6 agents, Monaco editor
-- v2.0: Streaming, delegation, image generation
-- All tests passing (100% backend, 98% frontend)
+## Live Preview
+- Available for web_app and web_game projects
+- Renders HTML/CSS/JS in iframe
+- Refresh button to reload changes
+
+## Test Results (v2.2)
+- Backend: 98.2%
+- Frontend: 95%
+- Overall: 97%
 
 ## Next Tasks (P1)
-- GitHub push integration
-- Multi-file refactoring
-- Agent conversation chains (COMMANDER → FORGE → SENTINEL review)
-- Live preview for web projects
+- Multi-file refactoring tools
+- Agent memory/context persistence
+- Project duplication
+- Undo/redo in editor
