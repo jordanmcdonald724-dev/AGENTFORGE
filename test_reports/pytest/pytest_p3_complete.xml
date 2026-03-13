@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="20" skipped="0" tests="20" time="416.305" timestamp="2026-03-13T20:45:38.336943+00:00" hostname="agent-env-2ee3ce96-0e3b-49aa-94f7-af42499b4607"><testcase classname="backend.tests.test_p3_complete_features.TestHealthAndBasics" name="test_health_endpoint" time="60.290"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:17: in test_health_endpoint
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestUnrealEngineAPIs" name="test_get_templates" time="60.275"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:29: in test_get_templates
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestUnrealEngineAPIs" name="test_get_blueprint_types" time="60.201"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:45: in test_get_blueprint_types
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestUnrealEngineAPIs" name="test_list_projects" time="60.323"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:58: in test_list_projects
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestUnrealEngineAPIs" name="test_create_project" time="60.225"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:72: in test_create_project
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestResearchModeAPIs" name="test_get_categories" time="60.269"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:85: in test_get_categories
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestResearchModeAPIs" name="test_list_searches" time="52.606"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:98: in test_list_searches
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestResearchModeAPIs" name="test_list_prototypes" time="0.171"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:105: in test_list_prototypes
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestResearchModeAPIs" name="test_search_arxiv" time="0.123"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:118: in test_search_arxiv
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestHardwareAPIs" name="test_get_platforms" time="0.122"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:131: in test_get_platforms
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestHardwareAPIs" name="test_get_sensors" time="0.147"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:147: in test_get_sensors
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestHardwareAPIs" name="test_get_actuators" time="0.202"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:160: in test_get_actuators
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestHardwareAPIs" name="test_list_projects" time="0.191"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:168: in test_list_projects
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestHardwareAPIs" name="test_create_project" time="0.166"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:183: in test_create_project
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestAutoDeployAPIs" name="test_get_platforms" time="0.106"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:195: in test_get_platforms
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestAutoDeployAPIs" name="test_list_deployments" time="0.135"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:208: in test_list_deployments
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestAutoDeployAPIs" name="test_get_config" time="0.113"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:215: in test_get_config
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestAIReviewAPIs" name="test_get_patterns" time="0.110"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:227: in test_get_patterns
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestAIReviewAPIs" name="test_review_single_file" time="0.133"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:254: in test_review_single_file
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase><testcase classname="backend.tests.test_p3_complete_features.TestMissionControlPanels" name="test_agents_endpoint" time="0.226"><failure message="assert 502 == 200&#10; +  where 502 = &lt;Response [502]&gt;.status_code">backend/tests/test_p3_complete_features.py:267: in test_agents_endpoint
+    assert response.status_code == 200
+E   assert 502 == 200
+E    +  where 502 = &lt;Response [502]&gt;.status_code</failure></testcase></testsuite></testsuites>

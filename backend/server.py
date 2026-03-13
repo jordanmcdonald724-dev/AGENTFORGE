@@ -88,6 +88,12 @@ try:
     from routes.night_shift import router as night_shift_router
     from routes.time_travel import router as time_travel_router
     
+    # New P3 features
+    from routes.unreal_engine import router as unreal_router
+    from routes.research import router as research_router
+    from routes.auto_deploy import router as auto_deploy_router
+    from routes.ai_review import router as ai_review_router
+    
     # Register all routers with /api prefix
     # Core routes
     app.include_router(health_router, prefix="/api", tags=["health"])
@@ -150,6 +156,12 @@ try:
     app.include_router(evolution_router, prefix="/api", tags=["evolution"])
     app.include_router(night_shift_router, prefix="/api", tags=["night-shift"])
     app.include_router(time_travel_router, prefix="/api", tags=["time-travel"])
+    
+    # New P3 features
+    app.include_router(unreal_router, prefix="/api", tags=["unreal-engine"])
+    app.include_router(research_router, prefix="/api", tags=["research"])
+    app.include_router(auto_deploy_router, prefix="/api", tags=["auto-deploy"])
+    app.include_router(ai_review_router, prefix="/api", tags=["ai-review"])
     
     logger.info("Successfully loaded all modular routers")
     

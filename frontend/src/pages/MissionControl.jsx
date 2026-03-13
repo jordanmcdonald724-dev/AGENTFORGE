@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { 
   Brain, Rocket, Network, Factory, Globe, Database, 
   Terminal, Activity, Zap, ChevronRight, Command, Mic,
-  Play, Settings, ArrowLeft, Sparkles, Eye, Moon, History, Dna
+  Play, Settings, ArrowLeft, Sparkles, Eye, Moon, History, Dna,
+  Gamepad2, BookOpen, Cpu
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,9 @@ import KnowledgeGraphPanel from '@/components/mission-control/KnowledgeGraphPane
 import NightShiftPanel from '@/components/mission-control/NightShiftPanel';
 import TimeTravelPanel from '@/components/mission-control/TimeTravelPanel';
 import EvolutionPanel from '@/components/mission-control/EvolutionPanel';
+import UnrealEnginePanel from '@/components/mission-control/UnrealEnginePanel';
+import ResearchPanel from '@/components/mission-control/ResearchPanel';
+import HardwarePanel from '@/components/mission-control/HardwarePanel';
 
 const MissionControl = () => {
   const { projectId } = useParams();
@@ -89,7 +93,10 @@ const MissionControl = () => {
     { id: 'knowledge', label: 'Knowledge Graph', icon: Database, color: '#ec4899' },
     { id: 'evolution', label: 'Evolution', icon: Dna, color: '#10b981' },
     { id: 'night-shift', label: 'Night Shift', icon: Moon, color: '#6366f1' },
-    { id: 'time-travel', label: 'Time Travel', icon: History, color: '#f97316' }
+    { id: 'time-travel', label: 'Time Travel', icon: History, color: '#f97316' },
+    { id: 'unreal', label: 'Unreal Engine', icon: Gamepad2, color: '#8b5cf6' },
+    { id: 'research', label: 'Research Mode', icon: BookOpen, color: '#3b82f6' },
+    { id: 'hardware', label: 'Hardware', icon: Cpu, color: '#f59e0b' }
   ];
 
   return (
@@ -217,6 +224,9 @@ const MissionControl = () => {
           {activePanel === 'evolution' && <EvolutionPanel projectId={projectId} />}
           {activePanel === 'night-shift' && <NightShiftPanel projectId={projectId} />}
           {activePanel === 'time-travel' && <TimeTravelPanel projectId={projectId} />}
+          {activePanel === 'unreal' && <UnrealEnginePanel />}
+          {activePanel === 'research' && <ResearchPanel />}
+          {activePanel === 'hardware' && <HardwarePanel />}
         </div>
       </div>
     </div>
