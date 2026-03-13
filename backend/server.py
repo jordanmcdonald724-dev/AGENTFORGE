@@ -7998,6 +7998,20 @@ try:
     from routes.god_mode import router as god_mode_router
     from routes.discovery import router as discovery_router
     from routes.marketplace import router as marketplace_router
+    # Phase 1-5 routes
+    from routes.github_universe import router as github_universe_router
+    from routes.cloud_deploy import router as cloud_deploy_router
+    from routes.dev_env import router as dev_env_router
+    from routes.asset_factory import router as asset_factory_router
+    from routes.saas_factory import router as saas_factory_router
+    from routes.game_engine import router as game_engine_router
+    from routes.game_studio import router as game_studio_router
+    from routes.knowledge_engine import router as knowledge_engine_router
+    from routes.live_monitoring import router as live_monitoring_router
+    from routes.self_improve import router as self_improve_router
+    from routes.hardware import router as hardware_router
+    from routes.agent_network import router as agent_network_router
+    from routes.global_intelligence import router as global_intelligence_router
     
     app.include_router(celery_router, prefix="/api", tags=["celery"])
     app.include_router(k8s_router, prefix="/api", tags=["kubernetes"])
@@ -8016,7 +8030,21 @@ try:
     app.include_router(god_mode_router, prefix="/api", tags=["god-mode"])
     app.include_router(discovery_router, prefix="/api", tags=["discovery"])
     app.include_router(marketplace_router, prefix="/api", tags=["marketplace"])
-    logger.info("Successfully loaded modular routers including LABS features")
+    # Phase 1-5 routes
+    app.include_router(github_universe_router, prefix="/api", tags=["github-universe"])
+    app.include_router(cloud_deploy_router, prefix="/api", tags=["cloud-deploy"])
+    app.include_router(dev_env_router, prefix="/api", tags=["dev-environment"])
+    app.include_router(asset_factory_router, prefix="/api", tags=["asset-factory"])
+    app.include_router(saas_factory_router, prefix="/api", tags=["saas-factory"])
+    app.include_router(game_engine_router, prefix="/api", tags=["game-engine"])
+    app.include_router(game_studio_router, prefix="/api", tags=["game-studio"])
+    app.include_router(knowledge_engine_router, prefix="/api", tags=["knowledge-engine"])
+    app.include_router(live_monitoring_router, prefix="/api", tags=["live-monitoring"])
+    app.include_router(self_improve_router, prefix="/api", tags=["self-improve"])
+    app.include_router(hardware_router, prefix="/api", tags=["hardware"])
+    app.include_router(agent_network_router, prefix="/api", tags=["agent-network"])
+    app.include_router(global_intelligence_router, prefix="/api", tags=["global-intelligence"])
+    logger.info("Successfully loaded ALL modular routers including LABS and OS features")
 except Exception as e:
     logger.warning(f"Could not load modular routers: {e}")
 
