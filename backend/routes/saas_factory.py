@@ -324,6 +324,7 @@ async def get_saas_build(build_id: str):
 def _generate_landing_page(plan: dict, name: str) -> dict:
     tagline = plan.get("tagline", "The future of software")
     features = plan.get("features", ["Feature 1", "Feature 2", "Feature 3"])
+    features_str = ', '.join([f'"{f}"' for f in features[:6]])
     
     return {
         "filename": "LandingPage.jsx",
@@ -354,12 +355,12 @@ const LandingPage = () => {{
       <section className="container mx-auto px-6 py-16">
         <h2 className="text-3xl font-bold text-center mb-12">Features</h2>
         <div className="grid md:grid-cols-3 gap-8">
-          {[{', '.join([f'"{f}"' for f in features[:6]])}].map((feature, i) => (
+          {{[{features_str}].map((feature, i) => (
             <div key={{i}} className="p-6 bg-gray-800 rounded-xl">
               <h3 className="text-xl font-semibold mb-2">{{feature}}</h3>
               <p className="text-gray-400">Powerful functionality to help you succeed.</p>
             </div>
-          ))}
+          ))}}
         </div>
       </section>
       
