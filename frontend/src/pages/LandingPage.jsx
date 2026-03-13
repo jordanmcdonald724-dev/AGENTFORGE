@@ -12,122 +12,129 @@ import {
   Cpu,
   Users,
   Rocket,
-  Shield
+  Shield,
+  Gamepad2,
+  Globe,
+  Smartphone,
+  Palette,
+  Sparkles,
+  CheckCircle
 } from "lucide-react";
 
 const LandingPage = () => {
   const navigate = useNavigate();
 
   const agents = [
-    { name: "NEXUS", role: "Project Manager", icon: Users, color: "text-blue-400" },
-    { name: "ATLAS", role: "Architect", icon: Layers, color: "text-cyan-400" },
-    { name: "FORGE", role: "Developer", icon: Code2, color: "text-emerald-400" },
-    { name: "SENTINEL", role: "Reviewer", icon: Shield, color: "text-amber-400" },
-    { name: "PROBE", role: "Tester", icon: Zap, color: "text-purple-400" },
+    { name: "COMMANDER", role: "Lead", icon: Users, color: "text-blue-400", desc: "Project Director & Coordinator" },
+    { name: "ATLAS", role: "Architect", icon: Layers, color: "text-cyan-400", desc: "System Design & Architecture" },
+    { name: "FORGE", role: "Developer", icon: Code2, color: "text-emerald-400", desc: "C++, C#, Blueprints Expert" },
+    { name: "SENTINEL", role: "Reviewer", icon: Shield, color: "text-amber-400", desc: "Code Quality & Security" },
+    { name: "PROBE", role: "Tester", icon: Zap, color: "text-purple-400", desc: "QA & Test Automation" },
+    { name: "PRISM", role: "Artist", icon: Palette, color: "text-pink-400", desc: "UI/UX & Shader Expert" },
   ];
 
   const features = [
     {
-      icon: Bot,
-      title: "AI-Powered Dev Team",
-      description: "Five specialized AI agents working together to build your projects"
+      icon: Gamepad2,
+      title: "AAA Game Development",
+      description: "Unreal Engine 5, Unity, Godot - build professional games"
+    },
+    {
+      icon: Globe,
+      title: "Web Applications",
+      description: "Full-stack apps with modern frameworks"
+    },
+    {
+      icon: Smartphone,
+      title: "Mobile Apps",
+      description: "iOS & Android development"
     },
     {
       icon: GitBranch,
-      title: "Git Integration",
-      description: "Full version control workflow with automatic commits and branches"
-    },
-    {
-      icon: Cpu,
-      title: "Unreal Engine Ready",
-      description: "Build AAA game projects with Ubisoft-style architecture"
-    },
-    {
-      icon: Rocket,
-      title: "Rapid Deployment",
-      description: "From concept to production in record time"
+      title: "Export & Deploy",
+      description: "Download as ZIP or push to GitHub"
     }
+  ];
+
+  const workflow = [
+    { step: "01", title: "Describe", desc: "Tell COMMANDER your vision in detail" },
+    { step: "02", title: "Clarify", desc: "Answer questions to refine the scope" },
+    { step: "03", title: "Plan", desc: "Review and approve the architecture" },
+    { step: "04", title: "Build", desc: "Watch agents create your project" },
   ];
 
   return (
     <div className="min-h-screen bg-[#09090b] overflow-hidden">
-      {/* Hero Section */}
+      {/* Hero */}
       <div className="hero-bg relative">
-        {/* Navigation */}
         <nav className="absolute top-0 left-0 right-0 z-50 px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded bg-blue-500/20 flex items-center justify-center">
-                <Bot className="w-6 h-6 text-blue-400" />
+              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-blue-400" />
               </div>
-              <span className="font-rajdhani text-xl font-bold tracking-tight text-white">
+              <span className="font-rajdhani text-xl font-bold text-white">
                 AGENT<span className="text-blue-400">FORGE</span>
               </span>
             </div>
             <Button 
-              data-testid="nav-get-started-btn"
+              data-testid="nav-start-btn"
               onClick={() => navigate("/dashboard")}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-6"
+              className="bg-blue-500 hover:bg-blue-600"
             >
-              Get Started
+              Launch Studio
             </Button>
           </div>
         </nav>
 
-        {/* Hero Content */}
-        <div className="max-w-7xl mx-auto px-6 pt-32 pb-20">
+        <div className="max-w-7xl mx-auto px-6 pt-32 pb-24">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
             className="text-center"
           >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 mb-8">
+              <Sparkles className="w-4 h-4 text-blue-400" />
+              <span className="text-sm text-blue-400">Personal AI Development Studio</span>
+            </div>
+            
             <h1 className="font-rajdhani text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
-              YOUR AI <span className="text-blue-400">DEV TEAM</span>
-              <br />
-              <span className="text-zinc-400">AWAITS</span>
+              YOUR <span className="text-blue-400">6-AGENT</span><br />
+              DEV TEAM
             </h1>
             <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-10">
-              Five specialized AI agents. One unified team. Build games, apps, and 
-              full-stack projects with Ubisoft-level architecture.
+              Build AAA games, full-stack apps, and everything in between. 
+              Six specialized AI agents. One unified workflow. Complete control.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
-                data-testid="hero-start-building-btn"
+                data-testid="hero-start-btn"
                 onClick={() => navigate("/dashboard")}
                 size="lg"
-                className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-6 text-lg font-medium glow-blue btn-glow"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-10 py-6 text-lg font-medium glow-blue btn-glow"
               >
                 Start Building <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-              <Button 
-                data-testid="hero-view-agents-btn"
-                variant="outline"
-                size="lg"
-                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 px-8 py-6 text-lg"
-              >
-                View Agent Roster
               </Button>
             </div>
           </motion.div>
 
-          {/* Agent Cards */}
+          {/* Agent Grid */}
           <motion.div 
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-20 grid grid-cols-2 md:grid-cols-5 gap-4"
+            transition={{ delay: 0.3 }}
+            className="mt-20 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"
           >
             {agents.map((agent, index) => (
               <motion.div
                 key={agent.name}
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.4, delay: 0.4 + index * 0.1 }}
-                data-testid={`agent-card-${agent.name.toLowerCase()}`}
-                className="glass rounded-lg p-4 text-center group hover:border-blue-500/50 transition-all duration-300"
+                transition={{ delay: 0.4 + index * 0.08 }}
+                data-testid={`landing-agent-${agent.name.toLowerCase()}`}
+                className="glass rounded-lg p-4 text-center group hover:border-blue-500/50 transition-all"
               >
-                <div className={`w-12 h-12 mx-auto mb-3 rounded-lg bg-zinc-800 flex items-center justify-center ${agent.color} group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`w-12 h-12 mx-auto mb-3 rounded-lg bg-zinc-800 flex items-center justify-center ${agent.color} group-hover:scale-110 transition-transform`}>
                   <agent.icon className="w-6 h-6" />
                 </div>
                 <h3 className="font-rajdhani font-bold text-white text-sm">{agent.name}</h3>
@@ -138,67 +145,132 @@ const LandingPage = () => {
         </div>
       </div>
 
-      {/* Features Section */}
+      {/* Workflow Section */}
       <section className="py-20 px-6 bg-[#0d0d0f]">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="font-rajdhani text-3xl md:text-5xl font-bold text-white mb-4">
-              BUILT FOR <span className="text-cyan-400">PROFESSIONALS</span>
+            <h2 className="font-rajdhani text-3xl md:text-4xl font-bold text-white mb-4">
+              HOW IT <span className="text-cyan-400">WORKS</span>
             </h2>
-            <p className="text-zinc-400 max-w-xl mx-auto">
-              Enterprise-grade AI development workflow designed for studios and teams
-            </p>
+            <p className="text-zinc-400">You stay in complete control at every step</p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, index) => (
+          <div className="grid md:grid-cols-4 gap-6">
+            {workflow.map((item, idx) => (
               <motion.div
-                key={feature.title}
+                key={item.step}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                data-testid={`feature-card-${index}`}
-                className="bg-[#18181b] border border-zinc-800 rounded-lg p-6 hover:border-blue-500/50 transition-colors duration-300"
+                transition={{ delay: idx * 0.1 }}
+                className="relative"
               >
-                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center mb-4">
-                  <feature.icon className="w-6 h-6 text-blue-400" />
+                <div className="bg-[#18181b] border border-zinc-800 rounded-lg p-6 text-center hover:border-blue-500/30 transition-colors h-full">
+                  <div className="text-4xl font-rajdhani font-bold text-blue-500/30 mb-2">{item.step}</div>
+                  <h3 className="font-rajdhani font-bold text-white text-lg mb-2">{item.title}</h3>
+                  <p className="text-sm text-zinc-500">{item.desc}</p>
                 </div>
-                <h3 className="font-rajdhani font-bold text-white text-lg mb-2">{feature.title}</h3>
-                <p className="text-sm text-zinc-400">{feature.description}</p>
+                {idx < workflow.length - 1 && (
+                  <div className="hidden md:block absolute top-1/2 -right-3 transform -translate-y-1/2 text-zinc-700">
+                    <ArrowRight className="w-6 h-6" />
+                  </div>
+                )}
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Features */}
+      <section className="py-20 px-6">
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="font-rajdhani text-3xl md:text-4xl font-bold text-white mb-4">
+              BUILD <span className="text-emerald-400">ANYTHING</span>
+            </h2>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {features.map((feature, idx) => (
+              <motion.div
+                key={feature.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className="bg-[#18181b] border border-zinc-800 rounded-lg p-6 hover:border-blue-500/30 transition-colors"
+              >
+                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center mb-4">
+                  <feature.icon className="w-6 h-6 text-blue-400" />
+                </div>
+                <h3 className="font-rajdhani font-bold text-white text-lg mb-2">{feature.title}</h3>
+                <p className="text-sm text-zinc-500">{feature.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Key Benefits */}
+      <section className="py-20 px-6 bg-[#0d0d0f]">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="glass rounded-2xl p-10"
+          >
+            <h2 className="font-rajdhani text-2xl md:text-3xl font-bold text-white mb-8 text-center">
+              WHY AGENTFORGE?
+            </h2>
+            <div className="grid md:grid-cols-2 gap-4">
+              {[
+                "Clarifies before coding - no guessing",
+                "You approve every major decision",
+                "Full code editor with Monaco",
+                "Export projects anytime",
+                "Six specialized agents working together",
+                "Supports AAA game engines"
+              ].map((benefit, idx) => (
+                <div key={idx} className="flex items-center gap-3 text-zinc-300">
+                  <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                  <span>{benefit}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* CTA */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="glass rounded-2xl p-12"
           >
             <h2 className="font-rajdhani text-3xl md:text-4xl font-bold text-white mb-4">
               READY TO BUILD?
             </h2>
-            <p className="text-zinc-400 mb-8">
-              Your AI dev team is standing by. Start your first project in seconds.
-            </p>
+            <p className="text-zinc-400 mb-8">Your AI dev team is standing by.</p>
             <Button 
-              data-testid="cta-launch-dashboard-btn"
+              data-testid="cta-btn"
               onClick={() => navigate("/dashboard")}
               size="lg"
-              className="bg-blue-500 hover:bg-blue-600 text-white px-10 py-6 text-lg font-medium glow-blue btn-glow"
+              className="bg-blue-500 hover:bg-blue-600 px-12 py-6 text-lg glow-blue btn-glow"
             >
-              Launch Dashboard <ArrowRight className="ml-2 w-5 h-5" />
+              Launch Studio <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </motion.div>
         </div>
@@ -208,12 +280,10 @@ const LandingPage = () => {
       <footer className="py-8 px-6 border-t border-zinc-800">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Bot className="w-5 h-5 text-blue-400" />
+            <Sparkles className="w-5 h-5 text-blue-400" />
             <span className="font-rajdhani font-bold text-white">AGENTFORGE</span>
           </div>
-          <p className="text-sm text-zinc-500">
-            Powered by fal.ai • Built for builders
-          </p>
+          <p className="text-sm text-zinc-500">Powered by fal.ai • Your Personal Dev Studio</p>
         </div>
       </footer>
     </div>

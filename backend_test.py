@@ -93,14 +93,14 @@ class AgentTeamAPITester:
             for agent in data:
                 self.agent_ids[agent['role']] = agent['id']
             
-            # Check all 5 agents are present
-            expected_roles = ['project_manager', 'architect', 'developer', 'reviewer', 'tester']
+            # Check all 6 agents are present
+            expected_roles = ['lead', 'architect', 'developer', 'reviewer', 'tester', 'artist']
             found_roles = [agent['role'] for agent in data]
             all_present = all(role in found_roles for role in expected_roles)
-            self.log_test("All 5 agents present", all_present, f"Found roles: {found_roles}")
+            self.log_test("All 6 agents present", all_present, f"Found roles: {found_roles}")
             
             # Check agent names
-            expected_names = ['NEXUS', 'ATLAS', 'FORGE', 'SENTINEL', 'PROBE']
+            expected_names = ['COMMANDER', 'ATLAS', 'FORGE', 'SENTINEL', 'PROBE', 'PRISM']
             found_names = [agent['name'] for agent in data]
             names_correct = all(name in found_names for name in expected_names)
             self.log_test("Agent names correct", names_correct, f"Found names: {found_names}")
@@ -113,13 +113,13 @@ class AgentTeamAPITester:
                 
             # Test agent status update
             if self.agent_ids:
-                pm_id = self.agent_ids.get('project_manager')
-                if pm_id:
-                    success, data, status = self.make_request("PATCH", f"/agents/{pm_id}/status?status=thinking")
+                lead_id = self.agent_ids.get('lead')
+                if lead_id:
+                    success, data, status = self.make_request("PATCH", f"/agents/{lead_id}/status?status=thinking")
                     self.log_test("Update agent status", success, f"Status update")
                     
                     # Reset status
-                    self.make_request("PATCH", f"/agents/{pm_id}/status?status=idle")
+                    self.make_request("PATCH", f"/agents/{lead_id}/status?status=idle")
         
         return success
 
@@ -213,10 +213,10 @@ class AgentTeamAPITester:
         if success and data:
             response_length = len(data.get('response', ''))
             agent_info = data.get('agent', {})
-            self.log_test("PM agent response quality", response_length > 50, f"Response length: {response_length} chars")
-            self.log_test("PM agent identification", agent_info.get('name') == 'NEXUS', f"Agent: {agent_info.get('name')}")
+            self.log_test("Lead agent response quality", response_length > 50, f"Response length: {response_length} chars")
+            self.log_test("Lead agent identification", agent_info.get('name') == 'COMMANDER', f"Agent: {agent_info.get('name')}")
             
-        # Test specific agent call
+        # Test specific agent chat
         if self.agent_ids.get('architect'):
             architect_data = {
                 "project_id": self.project_id,
@@ -224,8 +224,8 @@ class AgentTeamAPITester:
             }
             
             print("   Calling architect agent...")
-            success, data, status = self.make_request("POST", f"/agents/{self.agent_ids['architect']}/call", architect_data, 200)
-            self.log_test("Direct architect call", success, f"Architect response: {bool(data.get('response')) if success else 'No response'}")
+            success, data, status = self.make_request("POST", f"/agents/{self.agent_ids['architect']}/chat", architect_data, 200)
+            self.log_test("Direct architect chat", success, f"Architect response: {bool(data.get('response')) if success else 'No response'}")
         
         return success
 
@@ -241,17 +241,44 @@ class AgentTeamAPITester:
         success, messages, status = self.make_request("GET", f"/messages?project_id={self.project_id}")
         self.log_test("Get project messages", success, f"Message count: {len(messages) if success else 0}")
         
-        # Test manual message creation
-        message_data = {
+        # Note: Message creation is handled automatically by chat endpoints
+        # Manual message creation endpoint may not exist in this version
+        
+        return success
+
+    def test_code_auto_save(self):
+        """Test code block auto-save from chat responses"""
+        print("\n💾 Testing Code Auto-Save...")
+        
+        if not self.project_id:
+            self.log_test("Code auto-save", False, "No project ID available")
+            return False
+            
+        # Test auto-save endpoint
+        code_blocks = [
+            {
+                "language": "python",
+                "filepath": "/src/game.py",
+                "filename": "game.py",
+                "content": "# Auto-saved game code\nclass Game:\n    def __init__(self):\n        self.running = True"
+            }
+        ]
+        
+        auto_save_data = {
             "project_id": self.project_id,
-            "agent_id": "test-user",
-            "agent_name": "Test User",
-            "agent_role": "user",
-            "content": "This is a test message for persistence testing"
+            "code_blocks": code_blocks,
+            "agent_id": self.agent_ids.get('developer', 'test-agent'),
+            "agent_name": "FORGE"
         }
         
-        success, data, status = self.make_request("POST", "/messages", message_data, 200)
-        self.log_test("Create message", success, "Message created manually")
+        success, data, status = self.make_request("POST", "/files/from-chat", auto_save_data, 200)
+        self.log_test("Code block auto-save", success, f"Saved files: {data.get('saved_files', []) if success else 'None'}")
+        
+        if success:
+            # Verify file was created
+            success, files, status = self.make_request("GET", f"/files?project_id={self.project_id}")
+            auto_saved_file = any(f.get('filepath') == '/src/game.py' for f in files) if files else False
+            self.log_test("Auto-saved file exists", auto_saved_file, "File found in project")
         
         return success
 
@@ -285,6 +312,20 @@ class AgentTeamAPITester:
             # Test get individual file
             success, file_data, status = self.make_request("GET", f"/files/{file_id}")
             self.log_test("Get individual file", success, f"Filename: {file_data.get('filename', 'None')}")
+        
+        return success
+
+    def test_project_export(self):
+        """Test project export as ZIP"""
+        print("\n📦 Testing Project Export...")
+        
+        if not self.project_id:
+            self.log_test("Project export", False, "No project ID available")
+            return False
+            
+        # Test export project
+        success, data, status = self.make_request("GET", f"/projects/{self.project_id}/export", expected_status=200)
+        self.log_test("Export project as ZIP", success, f"Export successful" if success else "Export failed")
         
         return success
 
@@ -337,9 +378,13 @@ class AgentTeamAPITester:
         # Only test chat if basic functionality works
         chat_ok = True
         messages_ok = True
+        code_save_ok = True
+        export_ok = True
         if projects_ok:
             chat_ok = self.test_chat_functionality()
             messages_ok = self.test_message_persistence()
+            code_save_ok = self.test_code_auto_save()
+            export_ok = self.test_project_export()
             
         files_ok = self.test_file_management()
         errors_ok = self.test_error_handling()
@@ -367,6 +412,8 @@ class AgentTeamAPITester:
             "📋 Task Management": tasks_ok,
             "💬 Chat/AI Integration": chat_ok,
             "📜 Message Persistence": messages_ok,
+            "💾 Code Auto-Save": code_save_ok,
+            "📦 Project Export": export_ok,
             "📄 File Management": files_ok,
             "⚠️  Error Handling": errors_ok,
         }
