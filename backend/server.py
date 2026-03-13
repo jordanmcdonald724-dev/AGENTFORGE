@@ -1,5 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, HTMLResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -18,6 +18,8 @@ import zipfile
 import io
 import re
 import fal_client
+import base64
+from github import Github, GithubException
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -186,6 +188,144 @@ class TaskCreate(BaseModel):
 class PlanApproval(BaseModel):
     approved: bool
     feedback: Optional[str] = None
+
+class GitHubPushRequest(BaseModel):
+    project_id: str
+    github_token: str
+    repo_name: str
+    commit_message: str = "Update from AgentForge"
+    branch: str = "main"
+    create_repo: bool = False
+
+class AgentChainRequest(BaseModel):
+    project_id: str
+    message: str
+    chain: List[str] = ["COMMANDER", "FORGE", "SENTINEL"]  # Default chain
+    auto_execute: bool = True
+
+class QuickActionRequest(BaseModel):
+    project_id: str
+    action_id: str
+    parameters: Dict[str, Any] = {}
+
+# Quick Actions Configuration
+QUICK_ACTIONS = {
+    "player_controller": {
+        "id": "player_controller",
+        "name": "Player Controller",
+        "description": "Generate a complete player movement system",
+        "icon": "gamepad",
+        "chain": ["COMMANDER", "FORGE"],
+        "prompt": """Create a complete player controller system with:
+- WASD movement with variable speed
+- Sprint (Shift) and crouch (Ctrl)
+- Jump with coyote time
+- Camera controller with mouse look
+- Ground detection and physics
+Include all necessary files for {engine_type}."""
+    },
+    "inventory_system": {
+        "id": "inventory_system", 
+        "name": "Inventory System",
+        "description": "Generate a flexible inventory system",
+        "icon": "package",
+        "chain": ["COMMANDER", "ATLAS", "FORGE"],
+        "prompt": """Design and implement a complete inventory system:
+- Item base class with properties (name, description, icon, stackable, max_stack)
+- Inventory container with slots
+- Add/remove/move items
+- Save/load functionality
+- UI data binding ready
+For {engine_type} with best practices."""
+    },
+    "save_system": {
+        "id": "save_system",
+        "name": "Save/Load System", 
+        "description": "Generate a save game system",
+        "icon": "save",
+        "chain": ["COMMANDER", "FORGE"],
+        "prompt": """Create a robust save/load system:
+- Serialization manager
+- Auto-save functionality
+- Multiple save slots
+- Save file versioning
+- Async save/load operations
+For {engine_type}."""
+    },
+    "health_system": {
+        "id": "health_system",
+        "name": "Health & Damage",
+        "description": "Generate health and damage system",
+        "icon": "heart",
+        "chain": ["COMMANDER", "FORGE"],
+        "prompt": """Create a health and damage system:
+- Health component with max/current health
+- Damage types (physical, fire, ice, etc)
+- Damage resistance/vulnerability
+- Healing mechanics
+- Death handling
+- UI hooks for health bars
+For {engine_type}."""
+    },
+    "ai_behavior": {
+        "id": "ai_behavior",
+        "name": "AI Behavior Tree",
+        "description": "Generate enemy AI with behavior tree",
+        "icon": "bot",
+        "chain": ["COMMANDER", "ATLAS", "FORGE"],
+        "prompt": """Create an AI system with behavior trees:
+- Behavior tree base nodes (Selector, Sequence, Decorator)
+- Common behaviors (Patrol, Chase, Attack, Flee)
+- Perception system (sight, hearing)
+- Blackboard for AI memory
+- Example enemy AI implementation
+For {engine_type}."""
+    },
+    "dialogue_system": {
+        "id": "dialogue_system",
+        "name": "Dialogue System",
+        "description": "Generate branching dialogue system",
+        "icon": "message-square",
+        "chain": ["COMMANDER", "ATLAS", "FORGE"],
+        "prompt": """Create a branching dialogue system:
+- Dialogue node structure (text, choices, conditions)
+- Dialogue manager
+- Character/speaker data
+- Conditions and triggers
+- Quest/variable integration hooks
+- Localization ready
+For {engine_type}."""
+    },
+    "ui_framework": {
+        "id": "ui_framework",
+        "name": "UI Framework",
+        "description": "Generate base UI system",
+        "icon": "layout",
+        "chain": ["COMMANDER", "PRISM", "FORGE"],
+        "prompt": """Create a UI framework foundation:
+- Screen manager (push/pop screens)
+- Base widget classes
+- Navigation system
+- Animation helpers
+- Input handling
+- Common widgets (Button, Panel, List)
+For {engine_type}."""
+    },
+    "audio_manager": {
+        "id": "audio_manager",
+        "name": "Audio Manager",
+        "description": "Generate audio management system",
+        "icon": "volume-2",
+        "chain": ["COMMANDER", "FORGE"],
+        "prompt": """Create an audio management system:
+- Sound effect playback with pooling
+- Music system with crossfade
+- Volume controls (master, sfx, music)
+- 3D spatial audio support
+- Audio bus/mixer setup
+For {engine_type}."""
+    }
+}
 
 # ============ AGENT CONFIGURATION ============
 
@@ -520,7 +660,11 @@ async def generate_image_fal(prompt: str, width: int = 1024, height: int = 1024)
 
 @api_router.get("/")
 async def root():
-    return {"message": "AgentForge Development Studio API", "version": "2.1.0", "features": ["streaming", "delegation", "image_generation"]}
+    return {
+        "message": "AgentForge Development Studio API",
+        "version": "2.2.0",
+        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview"]
+    }
 
 @api_router.get("/health")
 async def health():
@@ -996,6 +1140,435 @@ async def save_files_from_chat(data: dict):
             saved_files.append(block.get("filepath"))
     
     return {"success": True, "saved_files": saved_files}
+
+# ============ GITHUB INTEGRATION ============
+
+@api_router.post("/github/push")
+async def push_to_github(request: GitHubPushRequest):
+    """Push project files to GitHub repository"""
+    try:
+        g = Github(request.github_token)
+        user = g.get_user()
+        
+        # Get or create repo
+        repo = None
+        if request.create_repo:
+            try:
+                repo = user.create_repo(
+                    request.repo_name,
+                    description=f"Created with AgentForge AI Development Studio",
+                    private=False,
+                    auto_init=True
+                )
+                await asyncio.sleep(2)  # Wait for repo initialization
+            except GithubException as e:
+                if e.status == 422:  # Repo already exists
+                    repo = user.get_repo(request.repo_name)
+                else:
+                    raise
+        else:
+            repo = user.get_repo(request.repo_name)
+        
+        # Get project files
+        files = await db.files.find({"project_id": request.project_id}, {"_id": 0}).to_list(500)
+        project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+        
+        if not files:
+            raise HTTPException(status_code=400, detail="No files to push")
+        
+        # Push each file
+        pushed_files = []
+        for f in files:
+            filepath = f['filepath'].lstrip('/')
+            content = f['content']
+            
+            try:
+                # Try to get existing file
+                existing = repo.get_contents(filepath, ref=request.branch)
+                repo.update_file(
+                    filepath,
+                    request.commit_message,
+                    content,
+                    existing.sha,
+                    branch=request.branch
+                )
+            except GithubException:
+                # File doesn't exist, create it
+                repo.create_file(
+                    filepath,
+                    request.commit_message,
+                    content,
+                    branch=request.branch
+                )
+            pushed_files.append(filepath)
+        
+        # Update README
+        readme_content = f"""# {project['name']}
+
+{project['description']}
+
+## Project Type
+{project['type']} {project.get('engine_version', '')}
+
+## Generated by AgentForge
+AI Development Studio - https://agentforge.dev
+
+## Files
+{chr(10).join(['- ' + fp for fp in pushed_files])}
+"""
+        try:
+            existing_readme = repo.get_contents("README.md", ref=request.branch)
+            repo.update_file("README.md", "Update README", readme_content, existing_readme.sha, branch=request.branch)
+        except GithubException:
+            repo.create_file("README.md", "Add README", readme_content, branch=request.branch)
+        
+        # Update project with repo URL
+        await db.projects.update_one(
+            {"id": request.project_id},
+            {"$set": {"repo_url": repo.html_url, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        return {
+            "success": True,
+            "repo_url": repo.html_url,
+            "pushed_files": pushed_files,
+            "branch": request.branch
+        }
+        
+    except GithubException as e:
+        logger.error(f"GitHub error: {e}")
+        raise HTTPException(status_code=400, detail=f"GitHub error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Push error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ============ AGENT CHAINS ============
+
+@api_router.post("/chain")
+async def execute_agent_chain(request: AgentChainRequest):
+    """Execute a chain of agents sequentially"""
+    agents = await get_or_create_agents()
+    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    context = await build_project_context(request.project_id)
+    results = []
+    accumulated_context = request.message
+    all_code_blocks = []
+    
+    for agent_name in request.chain:
+        agent = next((a for a in agents if a['name'].upper() == agent_name.upper()), None)
+        if not agent:
+            continue
+        
+        # Update status
+        await db.agents.update_one({"id": agent['id']}, {"$set": {"status": "working"}})
+        
+        # Build message with accumulated context
+        if len(results) > 0:
+            prev_agent = results[-1]['agent']
+            prev_content = results[-1]['content'][:1000]
+            chain_prompt = f"""Previous agent ({prev_agent}) provided this context:
+---
+{prev_content}
+---
+
+Now continue the work based on your role."""
+            messages = [{"role": "user", "content": chain_prompt}]
+        else:
+            messages = [{"role": "user", "content": accumulated_context}]
+        
+        # Call agent
+        response = await call_agent(agent, messages, context + f"\n\nProject Type: {project['type']}")
+        code_blocks = extract_code_blocks(response)
+        all_code_blocks.extend(code_blocks)
+        
+        # Save message
+        msg = Message(
+            project_id=request.project_id,
+            agent_id=agent['id'],
+            agent_name=agent['name'],
+            agent_role=agent['role'],
+            content=response,
+            code_blocks=code_blocks,
+            message_type="chain"
+        )
+        msg_doc = msg.model_dump()
+        msg_doc['timestamp'] = msg_doc['timestamp'].isoformat()
+        await db.messages.insert_one(msg_doc)
+        
+        results.append({
+            "agent": agent['name'],
+            "role": agent['role'],
+            "content": response,
+            "code_blocks": code_blocks
+        })
+        
+        # Reset status
+        await db.agents.update_one({"id": agent['id']}, {"$set": {"status": "idle"}})
+        
+        # Update accumulated context
+        accumulated_context = response
+    
+    # Auto-save all code blocks
+    if all_code_blocks:
+        valid_blocks = [b for b in all_code_blocks if b.get('filepath')]
+        if valid_blocks:
+            for block in valid_blocks:
+                file = ProjectFile(
+                    project_id=request.project_id,
+                    filename=block.get("filename", ""),
+                    filepath=block.get("filepath"),
+                    content=block.get("content", ""),
+                    language=block.get("language", "text")
+                )
+                doc = file.model_dump()
+                doc['created_at'] = doc['created_at'].isoformat()
+                doc['updated_at'] = doc['updated_at'].isoformat()
+                
+                existing = await db.files.find_one({"project_id": request.project_id, "filepath": block.get("filepath")})
+                if existing:
+                    await db.files.update_one(
+                        {"id": existing['id']},
+                        {"$set": {"content": block.get("content", ""), "version": existing.get('version', 1) + 1}}
+                    )
+                else:
+                    await db.files.insert_one(doc)
+    
+    return {
+        "success": True,
+        "chain": request.chain,
+        "results": results,
+        "total_code_blocks": len(all_code_blocks)
+    }
+
+@api_router.post("/chain/stream")
+async def stream_agent_chain(request: AgentChainRequest):
+    """Stream agent chain execution"""
+    agents = await get_or_create_agents()
+    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    context = await build_project_context(request.project_id)
+    
+    async def generate():
+        accumulated_context = request.message
+        all_code_blocks = []
+        
+        for idx, agent_name in enumerate(request.chain):
+            agent = next((a for a in agents if a['name'].upper() == agent_name.upper()), None)
+            if not agent:
+                continue
+            
+            yield f"data: {json.dumps({'type': 'agent_start', 'agent': agent['name'], 'role': agent['role'], 'step': idx + 1, 'total': len(request.chain)})}\n\n"
+            
+            await db.agents.update_one({"id": agent['id']}, {"$set": {"status": "working"}})
+            
+            if idx > 0:
+                chain_prompt = f"Continue based on the previous work. Your task:\n{accumulated_context[:2000]}"
+            else:
+                chain_prompt = accumulated_context
+            
+            messages = [{"role": "user", "content": chain_prompt}]
+            full_content = ""
+            
+            try:
+                stream = llm_client.chat.completions.create(
+                    model=agent.get('model', 'google/gemini-2.5-flash'),
+                    messages=[
+                        {"role": "system", "content": agent['system_prompt'] + f"\n\nContext:\n{context}\nProject: {project['type']}"},
+                        *messages
+                    ],
+                    max_tokens=8000,
+                    temperature=0.7,
+                    stream=True
+                )
+                
+                for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                        content = chunk.choices[0].delta.content
+                        full_content += content
+                        yield f"data: {json.dumps({'type': 'content', 'agent': agent['name'], 'content': content})}\n\n"
+                
+                code_blocks = extract_code_blocks(full_content)
+                all_code_blocks.extend(code_blocks)
+                
+                yield f"data: {json.dumps({'type': 'agent_done', 'agent': agent['name'], 'code_blocks': code_blocks})}\n\n"
+                
+                # Save message
+                msg = Message(
+                    project_id=request.project_id,
+                    agent_id=agent['id'],
+                    agent_name=agent['name'],
+                    agent_role=agent['role'],
+                    content=full_content,
+                    code_blocks=code_blocks,
+                    message_type="chain"
+                )
+                msg_doc = msg.model_dump()
+                msg_doc['timestamp'] = msg_doc['timestamp'].isoformat()
+                await db.messages.insert_one(msg_doc)
+                
+                accumulated_context = full_content
+                
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'error', 'agent': agent['name'], 'error': str(e)})}\n\n"
+            finally:
+                await db.agents.update_one({"id": agent['id']}, {"$set": {"status": "idle"}})
+        
+        # Auto-save code blocks
+        saved_files = []
+        for block in all_code_blocks:
+            if block.get('filepath'):
+                existing = await db.files.find_one({"project_id": request.project_id, "filepath": block.get("filepath")})
+                if existing:
+                    await db.files.update_one({"id": existing['id']}, {"$set": {"content": block.get("content", ""), "version": existing.get('version', 1) + 1}})
+                else:
+                    file = ProjectFile(project_id=request.project_id, filename=block.get("filename", ""), filepath=block.get("filepath"), content=block.get("content", ""), language=block.get("language", "text"))
+                    doc = file.model_dump()
+                    doc['created_at'] = doc['created_at'].isoformat()
+                    doc['updated_at'] = doc['updated_at'].isoformat()
+                    await db.files.insert_one(doc)
+                saved_files.append(block.get("filepath"))
+        
+        yield f"data: {json.dumps({'type': 'chain_complete', 'saved_files': saved_files, 'total_code_blocks': len(all_code_blocks)})}\n\n"
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+# ============ QUICK ACTIONS ============
+
+@api_router.get("/quick-actions")
+async def get_quick_actions():
+    """Get available quick actions"""
+    return list(QUICK_ACTIONS.values())
+
+@api_router.post("/quick-actions/execute")
+async def execute_quick_action(request: QuickActionRequest):
+    """Execute a quick action"""
+    action = QUICK_ACTIONS.get(request.action_id)
+    if not action:
+        raise HTTPException(status_code=404, detail="Quick action not found")
+    
+    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Fill in template variables
+    prompt = action['prompt'].format(
+        engine_type=project.get('type', 'game'),
+        engine_version=project.get('engine_version', ''),
+        **request.parameters
+    )
+    
+    # Execute as agent chain
+    chain_request = AgentChainRequest(
+        project_id=request.project_id,
+        message=prompt,
+        chain=action['chain']
+    )
+    
+    return await execute_agent_chain(chain_request)
+
+@api_router.post("/quick-actions/execute/stream")
+async def stream_quick_action(request: QuickActionRequest):
+    """Stream execute a quick action"""
+    action = QUICK_ACTIONS.get(request.action_id)
+    if not action:
+        raise HTTPException(status_code=404, detail="Quick action not found")
+    
+    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    prompt = action['prompt'].format(
+        engine_type=project.get('type', 'game'),
+        engine_version=project.get('engine_version', ''),
+        **request.parameters
+    )
+    
+    chain_request = AgentChainRequest(
+        project_id=request.project_id,
+        message=prompt,
+        chain=action['chain']
+    )
+    
+    return await stream_agent_chain(chain_request)
+
+# ============ LIVE PREVIEW ============
+
+@api_router.get("/projects/{project_id}/preview")
+async def get_project_preview(project_id: str):
+    """Get live preview HTML for web projects"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    if project['type'] not in ['web_app', 'web_game']:
+        raise HTTPException(status_code=400, detail="Preview only available for web projects")
+    
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+    
+    # Find HTML file
+    html_file = next((f for f in files if f['filepath'].endswith('.html') or f['filename'] == 'index.html'), None)
+    css_files = [f for f in files if f['filepath'].endswith('.css')]
+    js_files = [f for f in files if f['filepath'].endswith('.js')]
+    
+    if not html_file:
+        # Generate basic preview HTML
+        html_content = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preview</title>
+    <style>{css}</style>
+</head>
+<body>
+    <div id="app">
+        <h1>Project Preview</h1>
+        <p>No index.html found. Create an HTML file to see your preview.</p>
+    </div>
+    <script>{js}</script>
+</body>
+</html>"""
+        css_content = "\n".join([f['content'] for f in css_files])
+        js_content = "\n".join([f['content'] for f in js_files])
+        html_content = html_content.format(css=css_content, js=js_content)
+    else:
+        html_content = html_file['content']
+        
+        # Inject CSS and JS if not already included
+        if css_files and '<style>' not in html_content:
+            css_content = "\n".join([f['content'] for f in css_files])
+            html_content = html_content.replace('</head>', f'<style>{css_content}</style></head>')
+        
+        if js_files and '</body>' in html_content:
+            js_content = "\n".join([f['content'] for f in js_files])
+            html_content = html_content.replace('</body>', f'<script>{js_content}</script></body>')
+    
+    return HTMLResponse(content=html_content)
+
+@api_router.get("/projects/{project_id}/preview-data")
+async def get_preview_data(project_id: str):
+    """Get preview data including HTML, CSS, JS separately"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+    
+    html_files = [f for f in files if f['filepath'].endswith('.html')]
+    css_files = [f for f in files if f['filepath'].endswith('.css')]
+    js_files = [f for f in files if f['filepath'].endswith('.js')]
+    
+    return {
+        "html": [{"path": f['filepath'], "content": f['content']} for f in html_files],
+        "css": [{"path": f['filepath'], "content": f['content']} for f in css_files],
+        "js": [{"path": f['filepath'], "content": f['content']} for f in js_files],
+        "project_type": project['type']
+    }
 
 # Include router
 app.include_router(api_router)

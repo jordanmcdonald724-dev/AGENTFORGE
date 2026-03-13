@@ -441,6 +441,153 @@ class AgentTeamAPITester:
         
         return success
 
+    def test_quick_actions_v22(self):
+        """Test Quick Actions v2.2 feature"""
+        print("\n⚡ Testing Quick Actions v2.2...")
+        
+        # Test get quick actions
+        success, data, status = self.make_request("GET", "/quick-actions")
+        self.log_test("Get quick actions", success, f"Status: {status}")
+        
+        if success:
+            actions_count = len(data) if isinstance(data, list) else 0
+            self.log_test("8 Quick Actions available", actions_count == 8, f"Found {actions_count} actions")
+            
+            # Check expected action IDs
+            if isinstance(data, list) and actions_count > 0:
+                action_ids = [action.get('id') for action in data]
+                expected_ids = ['player_controller', 'inventory_system', 'save_system', 'health_system', 
+                              'ai_behavior', 'dialogue_system', 'ui_framework', 'audio_manager']
+                ids_correct = all(expected_id in action_ids for expected_id in expected_ids)
+                self.log_test("All expected action IDs present", ids_correct, f"Found: {action_ids}")
+                
+                # Test quick action execution (non-streaming)
+                if self.project_id and action_ids:
+                    execute_data = {
+                        "project_id": self.project_id,
+                        "action_id": "player_controller",
+                        "parameters": {}
+                    }
+                    success, data, status = self.make_request("POST", "/quick-actions/execute", execute_data, 200)
+                    self.log_test("Execute quick action", success, f"Status: {status}")
+                    
+                    if success:
+                        results = data.get('results', [])
+                        self.log_test("Quick action results", len(results) > 0, f"Results count: {len(results)}")
+        
+        return success
+
+    def test_agent_chains_v22(self):
+        """Test Agent Chains v2.2 feature"""
+        print("\n🔗 Testing Agent Chains v2.2...")
+        
+        if not self.project_id:
+            self.log_test("Agent chains", False, "No project ID available")
+            return False
+        
+        # Test agent chain execution
+        chain_data = {
+            "project_id": self.project_id,
+            "message": "Create a simple health system for the game",
+            "chain": ["COMMANDER", "FORGE"],
+            "auto_execute": True
+        }
+        
+        success, data, status = self.make_request("POST", "/chain", chain_data, 200)
+        self.log_test("Execute agent chain", success, f"Status: {status}")
+        
+        if success:
+            chain_results = data.get('results', [])
+            total_code_blocks = data.get('total_code_blocks', 0)
+            
+            self.log_test("Chain results received", len(chain_results) > 0, f"Results: {len(chain_results)}")
+            self.log_test("Code blocks generated", total_code_blocks > 0, f"Code blocks: {total_code_blocks}")
+            
+            # Verify chain executed agents in sequence
+            if chain_results:
+                executed_agents = [result.get('agent') for result in chain_results]
+                expected_sequence = ["COMMANDER", "FORGE"]
+                sequence_correct = executed_agents == expected_sequence
+                self.log_test("Agent chain sequence", sequence_correct, f"Executed: {executed_agents}")
+        
+        return success
+
+    def test_github_push_v22(self):
+        """Test GitHub Push v2.2 feature"""
+        print("\n🐙 Testing GitHub Push v2.2...")
+        
+        if not self.project_id:
+            self.log_test("GitHub push", False, "No project ID available")
+            return False
+        
+        # Test GitHub push endpoint (will fail without valid token, but endpoint should accept request)
+        github_data = {
+            "project_id": self.project_id,
+            "github_token": "fake-token-for-testing",
+            "repo_name": "test-repo",
+            "commit_message": "Test commit from AgentForge",
+            "branch": "main",
+            "create_repo": True
+        }
+        
+        success, data, status = self.make_request("POST", "/github/push", github_data, 400)
+        # Expect 400 due to invalid token, but endpoint should process the request
+        valid_error_status = status in [400, 401, 403]  # GitHub auth errors
+        self.log_test("GitHub push endpoint available", valid_error_status, f"Status: {status}")
+        
+        if not valid_error_status:
+            # Try to check if it's a different error (like missing files)
+            error_detail = data.get('detail', '')
+            no_files_error = 'No files to push' in str(error_detail)
+            self.log_test("GitHub push validates files", no_files_error, f"Error: {error_detail}")
+            
+        return valid_error_status or 'No files' in str(data.get('detail', ''))
+
+    def test_live_preview_v22(self):
+        """Test Live Preview v2.2 feature"""
+        print("\n👁️  Testing Live Preview v2.2...")
+        
+        if not self.project_id:
+            self.log_test("Live preview", False, "No project ID available")
+            return False
+        
+        # First create a web project for testing
+        web_project_data = {
+            "name": "Test Web Project",
+            "description": "A test web project for live preview",
+            "type": "web_app"
+        }
+        
+        success, project_data, status = self.make_request("POST", "/projects", web_project_data, 200)
+        web_project_id = project_data.get('id') if success else None
+        
+        if success and web_project_id:
+            # Test live preview data endpoint
+            success, data, status = self.make_request("GET", f"/projects/{web_project_id}/preview-data")
+            self.log_test("Get preview data", success, f"Status: {status}")
+            
+            if success:
+                has_html_key = 'html' in data
+                has_css_key = 'css' in data  
+                has_js_key = 'js' in data
+                has_project_type = 'project_type' in data
+                
+                self.log_test("Preview data structure", 
+                            has_html_key and has_css_key and has_js_key and has_project_type,
+                            f"Keys present: {list(data.keys())}")
+            
+            # Test live preview HTML endpoint
+            success, html_data, status = self.make_request("GET", f"/projects/{web_project_id}/preview")
+            self.log_test("Get preview HTML", success, f"Status: {status}")
+            
+            # Cleanup web project
+            self.make_request("DELETE", f"/projects/{web_project_id}")
+        else:
+            self.log_test("Create web project for preview", success, "Failed to create test web project")
+            return False
+            
+        return success
+
     def test_error_handling(self):
         """Test API error handling"""
         print("\n⚠️  Testing Error Handling...")
@@ -495,6 +642,12 @@ class AgentTeamAPITester:
         messages_ok = True
         code_save_ok = True
         export_ok = True
+        # v2.2 features
+        quick_actions_ok = True
+        agent_chains_ok = True
+        github_push_ok = True
+        live_preview_ok = True
+        
         if projects_ok:
             chat_ok = self.test_chat_functionality()
             streaming_ok = self.test_streaming_chat()
@@ -503,6 +656,12 @@ class AgentTeamAPITester:
             messages_ok = self.test_message_persistence()
             code_save_ok = self.test_code_auto_save()
             export_ok = self.test_project_export()
+            
+            # Test v2.2 features
+            quick_actions_ok = self.test_quick_actions_v22()
+            agent_chains_ok = self.test_agent_chains_v22()
+            github_push_ok = self.test_github_push_v22()
+            live_preview_ok = self.test_live_preview_v22()
             
         files_ok = self.test_file_management()
         errors_ok = self.test_error_handling()
@@ -537,6 +696,11 @@ class AgentTeamAPITester:
             "📦 Project Export": export_ok,
             "📄 File Management": files_ok,
             "⚠️  Error Handling": errors_ok,
+            # v2.2 features
+            "⚡ Quick Actions v2.2": quick_actions_ok,
+            "🔗 Agent Chains v2.2": agent_chains_ok,
+            "🐙 GitHub Push v2.2": github_push_ok,
+            "👁️  Live Preview v2.2": live_preview_ok,
         }
         
         for category, result in category_results.items():
@@ -559,6 +723,14 @@ class AgentTeamAPITester:
             critical_failures.append("Agent delegation broken")
         if not image_gen_ok:
             critical_failures.append("Image generation failing")
+        if not quick_actions_ok:
+            critical_failures.append("Quick Actions v2.2 not working")
+        if not agent_chains_ok:
+            critical_failures.append("Agent Chains v2.2 not working")
+        if not github_push_ok:
+            critical_failures.append("GitHub Push v2.2 not working")
+        if not live_preview_ok:
+            critical_failures.append("Live Preview v2.2 not working")
             
         if critical_failures:
             print(f"\n🚨 CRITICAL ISSUES:")
