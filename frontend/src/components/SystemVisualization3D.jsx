@@ -209,46 +209,159 @@ const ThreeJSCanvas = ({ nodes, edges, selectedNode, onSelectNode, showLabels, v
 
     // Calculate positions based on view mode
     const positions = {};
-    nodes.forEach((node, i) => {
-      let x, y, z;
+    
+    // For force-directed, we need to simulate forces
+    const simulateForces = () => {
+      // Initialize positions randomly
+      const pos = {};
+      nodes.forEach((node, i) => {
+        pos[node.id] = {
+          x: (Math.random() - 0.5) * 10,
+          y: (Math.random() - 0.5) * 6,
+          z: (Math.random() - 0.5) * 10,
+          vx: 0, vy: 0, vz: 0
+        };
+      });
       
-      switch (viewMode) {
-        case 'spiral':
-          const angle = i * 0.5;
-          const radius = 2 + i * 0.3;
-          x = Math.cos(angle) * radius;
-          z = Math.sin(angle) * radius;
-          y = (i / nodes.length) * 4 - 2;
-          break;
-        case 'cluster':
-          // Group by file type
-          const typeIndex = Object.keys(FILE_COLORS).indexOf(node.type);
-          const groupAngle = (typeIndex / Object.keys(FILE_COLORS).length) * Math.PI * 2;
-          const groupRadius = 5;
-          const innerAngle = (i * 0.7) % (Math.PI * 2);
-          x = Math.cos(groupAngle) * groupRadius + Math.cos(innerAngle) * 2;
-          z = Math.sin(groupAngle) * groupRadius + Math.sin(innerAngle) * 2;
-          y = ((i % 5) - 2) * 0.5;
-          break;
-        case 'tree':
-          // Tree layout
-          const depth = Math.floor(Math.log2(i + 1));
-          const posInLevel = i - Math.pow(2, depth) + 1;
-          const levelWidth = Math.pow(2, depth);
-          x = (posInLevel / levelWidth - 0.5) * (10 / (depth + 1));
-          y = depth * -2;
-          z = 0;
-          break;
-        default: // radial
-          const radAngle = (i / nodes.length) * Math.PI * 2;
-          const radRadius = 4 + (i % 3) * 2;
-          x = Math.cos(radAngle) * radRadius;
-          z = Math.sin(radAngle) * radRadius;
-          y = ((i % 5) - 2) * 0.5;
+      // Run force simulation iterations
+      for (let iter = 0; iter < 50; iter++) {
+        // Repulsion between nodes
+        nodes.forEach((n1, i) => {
+          nodes.forEach((n2, j) => {
+            if (i >= j) return;
+            const dx = pos[n1.id].x - pos[n2.id].x;
+            const dy = pos[n1.id].y - pos[n2.id].y;
+            const dz = pos[n1.id].z - pos[n2.id].z;
+            const dist = Math.sqrt(dx*dx + dy*dy + dz*dz) + 0.01;
+            const force = 2 / (dist * dist);
+            const fx = (dx / dist) * force;
+            const fy = (dy / dist) * force;
+            const fz = (dz / dist) * force;
+            pos[n1.id].vx += fx; pos[n1.id].vy += fy; pos[n1.id].vz += fz;
+            pos[n2.id].vx -= fx; pos[n2.id].vy -= fy; pos[n2.id].vz -= fz;
+          });
+        });
+        
+        // Attraction along edges
+        edges.forEach(edge => {
+          const p1 = pos[edge.from];
+          const p2 = pos[edge.to];
+          if (!p1 || !p2) return;
+          const dx = p2.x - p1.x;
+          const dy = p2.y - p1.y;
+          const dz = p2.z - p1.z;
+          const dist = Math.sqrt(dx*dx + dy*dy + dz*dz) + 0.01;
+          const force = dist * 0.1;
+          p1.vx += (dx / dist) * force;
+          p1.vy += (dy / dist) * force;
+          p1.vz += (dz / dist) * force;
+          p2.vx -= (dx / dist) * force;
+          p2.vy -= (dy / dist) * force;
+          p2.vz -= (dz / dist) * force;
+        });
+        
+        // Apply velocities with damping
+        nodes.forEach(node => {
+          const p = pos[node.id];
+          p.x += p.vx * 0.1;
+          p.y += p.vy * 0.1;
+          p.z += p.vz * 0.1;
+          p.vx *= 0.8; p.vy *= 0.8; p.vz *= 0.8;
+        });
       }
       
-      positions[node.id] = { x, y, z };
-    });
+      return pos;
+    };
+    
+    // For treemap, calculate 2D layout based on file sizes
+    const calculateTreemap = () => {
+      const pos = {};
+      const totalSize = nodes.reduce((sum, n) => sum + Math.max(n.size, 100), 0);
+      const gridSize = 12;
+      let currentX = -gridSize / 2;
+      let currentZ = -gridSize / 2;
+      let rowHeight = 0;
+      
+      // Sort by size descending
+      const sortedNodes = [...nodes].sort((a, b) => b.size - a.size);
+      
+      sortedNodes.forEach((node, i) => {
+        const proportion = Math.max(node.size, 100) / totalSize;
+        const width = Math.max(0.5, Math.min(4, Math.sqrt(proportion * gridSize * gridSize)));
+        const depth = width;
+        
+        if (currentX + width > gridSize / 2) {
+          currentX = -gridSize / 2;
+          currentZ += rowHeight + 0.3;
+          rowHeight = 0;
+        }
+        
+        pos[node.id] = {
+          x: currentX + width / 2,
+          y: 0,
+          z: currentZ + depth / 2
+        };
+        
+        currentX += width + 0.2;
+        rowHeight = Math.max(rowHeight, depth);
+      });
+      
+      return pos;
+    };
+    
+    // Calculate positions based on selected view mode
+    if (viewMode === 'force') {
+      const forcePos = simulateForces();
+      nodes.forEach(node => {
+        positions[node.id] = { x: forcePos[node.id].x, y: forcePos[node.id].y, z: forcePos[node.id].z };
+      });
+    } else if (viewMode === 'treemap') {
+      const treemapPos = calculateTreemap();
+      nodes.forEach(node => {
+        positions[node.id] = treemapPos[node.id] || { x: 0, y: 0, z: 0 };
+      });
+    } else {
+      nodes.forEach((node, i) => {
+        let x, y, z;
+        
+        switch (viewMode) {
+          case 'spiral':
+            const angle = i * 0.5;
+            const radius = 2 + i * 0.3;
+            x = Math.cos(angle) * radius;
+            z = Math.sin(angle) * radius;
+            y = (i / nodes.length) * 4 - 2;
+            break;
+          case 'cluster':
+            // Group by file type
+            const typeIndex = Object.keys(FILE_COLORS).indexOf(node.type);
+            const groupAngle = (typeIndex / Object.keys(FILE_COLORS).length) * Math.PI * 2;
+            const groupRadius = 5;
+            const innerAngle = (i * 0.7) % (Math.PI * 2);
+            x = Math.cos(groupAngle) * groupRadius + Math.cos(innerAngle) * 2;
+            z = Math.sin(groupAngle) * groupRadius + Math.sin(innerAngle) * 2;
+            y = ((i % 5) - 2) * 0.5;
+            break;
+          case 'tree':
+            // Tree layout
+            const depth = Math.floor(Math.log2(i + 1));
+            const posInLevel = i - Math.pow(2, depth) + 1;
+            const levelWidth = Math.pow(2, depth);
+            x = (posInLevel / levelWidth - 0.5) * (10 / (depth + 1));
+            y = depth * -2;
+            z = 0;
+            break;
+          default: // radial
+            const radAngle = (i / nodes.length) * Math.PI * 2;
+            const radRadius = 4 + (i % 3) * 2;
+            x = Math.cos(radAngle) * radRadius;
+            z = Math.sin(radAngle) * radRadius;
+            y = ((i % 5) - 2) * 0.5;
+        }
+        
+        positions[node.id] = { x, y, z };
+      });
+    }
 
     // Create node meshes
     nodes.forEach((node) => {
@@ -386,7 +499,9 @@ const SystemVisualization3D = ({ projectId }) => {
     { id: 'radial', name: 'Radial', icon: CircleDot },
     { id: 'spiral', name: 'Spiral', icon: GitBranch },
     { id: 'cluster', name: 'Cluster', icon: Network },
-    { id: 'tree', name: 'Tree', icon: Layers }
+    { id: 'tree', name: 'Tree', icon: Layers },
+    { id: 'force', name: 'Force Graph', icon: Network },
+    { id: 'treemap', name: 'Treemap', icon: BarChart3 }
   ];
 
   return (

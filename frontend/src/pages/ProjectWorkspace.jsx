@@ -25,7 +25,7 @@ import {
   Sparkles, ArrowRightCircle, Github, Play, Eye, Gamepad2, Package, Heart, Volume2, Layout, MessageCircle,
   Rocket, ChevronUp, RefreshCw, Brain, Wand2, CopyPlus, Search, Replace, Radio, AlertTriangle, Clock,
   Pause, Square, SkipForward, Swords, Mountain, Car, Sun, Map, Hammer, Coins, Ghost, Timer, Camera, Wifi,
-  Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music, Terminal, Command, FlaskConical
+  Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music, Terminal, Command, FlaskConical, Cpu
 } from "lucide-react";
 import { API } from "@/App";
 import BlueprintEditor from "@/components/BlueprintEditor";
@@ -38,6 +38,7 @@ import SandboxPanel from "@/components/SandboxPanel";
 import AssetPipelinePanel from "@/components/AssetPipelinePanel";
 import CommandCenter from "@/components/CommandCenter";
 import LabsPanel from "@/components/LabsPanel";
+import OSFeaturesPanel from "@/components/OSFeaturesPanel";
 
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
@@ -187,7 +188,7 @@ const ProjectWorkspace = () => {
         axios.get(`${API}/quick-actions`).catch(() => ({ data: [] })),
         axios.get(`${API}/custom-actions?project_id=${projectId}`).catch(() => ({ data: [] })),
         axios.get(`${API}/memory?project_id=${projectId}`).catch(() => ({ data: [] })),
-        axios.get(`${API}/systems/open-world`).catch(() => ({ data: [] }))
+        axios.get(`${API}/refactor/systems/open-world`).catch(() => ({ data: [] }))
       ]);
       setProject(projectRes.data);
       setAgents(agentsRes.data);
@@ -198,7 +199,7 @@ const ProjectWorkspace = () => {
       setQuickActions(actionsRes.data);
       setCustomActions(customRes.data);
       setMemories(memRes.data);
-      setOpenWorldSystems(systemsRes.data);
+      setOpenWorldSystems(Object.entries(systemsRes.data).map(([id, system]) => ({ id, ...system })));
       setGithubRepoName(projectRes.data.name.toLowerCase().replace(/\s+/g, '-'));
       setDuplicateName(projectRes.data.name + " Copy");
       
@@ -221,7 +222,7 @@ const ProjectWorkspace = () => {
 
   const fetchWarRoom = async () => {
     try {
-      const res = await axios.get(`${API}/war-room/${projectId}`);
+      const res = await axios.get(`${API}/war-room/${projectId}/messages`);
       setWarRoomMessages(res.data);
     } catch (e) {}
   };
@@ -279,7 +280,7 @@ const ProjectWorkspace = () => {
 
   const fetchCurrentBuild = async () => {
     try {
-      const res = await axios.get(`${API}/builds/${projectId}/current`);
+      const res = await axios.get(`${API}/builds/${projectId}/latest`);
       setCurrentBuild(res.data);
       // If build just completed, fetch the demo
       if (res.data?.status === "completed" && res.data?.demo_id) {
@@ -1047,6 +1048,7 @@ const ProjectWorkspace = () => {
                   <TabsTrigger value="deploy" className="data-[state=active]:bg-zinc-800" data-testid="deploy-tab"><Rocket className="w-4 h-4 mr-2" />Deploy</TabsTrigger>
                   <TabsTrigger value="notifications" className="data-[state=active]:bg-zinc-800" data-testid="notifications-tab"><Bell className="w-4 h-4 mr-2" />Alerts</TabsTrigger>
                   <TabsTrigger value="labs" className="data-[state=active]:bg-violet-900/50 text-violet-400" data-testid="labs-tab"><FlaskConical className="w-4 h-4 mr-2" />Labs<Badge variant="secondary" className="ml-2 text-xs bg-violet-500/20 text-violet-400">NEW</Badge></TabsTrigger>
+                  <TabsTrigger value="os" className="data-[state=active]:bg-cyan-900/50 text-cyan-400" data-testid="os-tab"><Cpu className="w-4 h-4 mr-2" />OS</TabsTrigger>
                 </TabsList>
 
                 {/* Chat Tab */}
@@ -1251,6 +1253,9 @@ const ProjectWorkspace = () => {
 
                 <TabsContent value="labs" className="flex-1 m-0 overflow-hidden">
                   <LabsPanel projectId={projectId} />
+                </TabsContent>
+                <TabsContent value="os" className="flex-1 m-0 overflow-hidden">
+                  <OSFeaturesPanel projectId={projectId} />
                 </TabsContent>
               </Tabs>
             </div>
