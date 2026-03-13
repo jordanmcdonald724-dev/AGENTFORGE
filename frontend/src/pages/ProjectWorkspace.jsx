@@ -14,14 +14,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   ArrowLeft, Send, Bot, Code2, Layers, Users, Shield, Zap, Plus, Loader2, FileCode, ListTodo, MessageSquare,
   Folder, FolderOpen, ChevronRight, ChevronDown, Save, Download, Trash2, Palette, Copy, Check, X, Image,
   Sparkles, ArrowRightCircle, Github, Play, Eye, Gamepad2, Package, Heart, Volume2, Layout, MessageCircle,
-  Rocket, ChevronUp, RefreshCw, Brain, Wand2, CopyPlus, Search, Replace
+  Rocket, ChevronUp, RefreshCw, Brain, Wand2, CopyPlus, Search, Replace, Radio, AlertTriangle, Clock,
+  Pause, Square, SkipForward, Swords, Mountain, Car, Sun, Map, Hammer, Coins, Ghost, Timer, Camera, Wifi
 } from "lucide-react";
 import { API } from "@/App";
 
@@ -29,7 +32,8 @@ const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
   planning: { label: "Planning", color: "bg-blue-500/20 text-blue-400", icon: Layers },
   development: { label: "Development", color: "bg-emerald-500/20 text-emerald-400", icon: Code2 },
-  review: { label: "Review", color: "bg-purple-500/20 text-purple-400", icon: Shield }
+  review: { label: "Review", color: "bg-purple-500/20 text-purple-400", icon: Shield },
+  building: { label: "Building", color: "bg-cyan-500/20 text-cyan-400 animate-pulse", icon: Rocket }
 };
 
 const LANGUAGE_MAP = {
@@ -54,11 +58,18 @@ const QUICK_ACTION_ICONS = {
   "message-square": MessageCircle, layout: Layout, "volume-2": Volume2, sparkles: Sparkles
 };
 
+const SYSTEM_ICONS = {
+  terrain: Mountain, npc_population: Users, quest_system: Map, vehicle_system: Car,
+  day_night_cycle: Sun, combat_system: Swords, crafting_system: Hammer, economy_system: Coins,
+  stealth_system: Ghost, mount_system: Gamepad2, building_system: Layers, skill_tree: Sparkles,
+  fast_travel: Timer, photo_mode: Camera, multiplayer: Wifi
+};
+
 const ProjectWorkspace = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const chatEndRef = useRef(null);
-  const previewRef = useRef(null);
+  const warRoomEndRef = useRef(null);
   
   const [project, setProject] = useState(null);
   const [agents, setAgents] = useState([]);
@@ -70,6 +81,12 @@ const ProjectWorkspace = () => {
   const [customActions, setCustomActions] = useState([]);
   const [memories, setMemories] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // War Room & Builds
+  const [warRoomMessages, setWarRoomMessages] = useState([]);
+  const [openWorldSystems, setOpenWorldSystems] = useState([]);
+  const [currentBuild, setCurrentBuild] = useState(null);
+  const [simulationResult, setSimulationResult] = useState(null);
   
   const [chatInput, setChatInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -102,7 +119,7 @@ const ProjectWorkspace = () => {
   const [pushing, setPushing] = useState(false);
   const [previewHtml, setPreviewHtml] = useState("");
   
-  // New v2.3 states
+  // v2.3 states
   const [customActionDialog, setCustomActionDialog] = useState(false);
   const [newCustomAction, setNewCustomAction] = useState({ name: "", description: "", prompt: "", chain: ["COMMANDER", "FORGE"], icon: "sparkles", is_global: false });
   const [refactorDialog, setRefactorDialog] = useState(false);
@@ -111,13 +128,33 @@ const ProjectWorkspace = () => {
   const [memoryDialog, setMemoryDialog] = useState(false);
   const [duplicateDialog, setDuplicateDialog] = useState(false);
   const [duplicateName, setDuplicateName] = useState("");
+  
+  // v3.0 states - Simulation & Build
+  const [simulationDialog, setSimulationDialog] = useState(false);
+  const [selectedSystems, setSelectedSystems] = useState([]);
+  const [targetEngine, setTargetEngine] = useState("unreal");
+  const [simulating, setSimulating] = useState(false);
+  const [buildDialog, setBuildDialog] = useState(false);
+  const [buildRunning, setBuildRunning] = useState(false);
 
   useEffect(() => { fetchProjectData(); }, [projectId]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingContent]);
+  useEffect(() => { warRoomEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [warRoomMessages]);
+  
+  // Poll for war room and build updates
+  useEffect(() => {
+    if (activeTab === "warroom" || currentBuild?.status === "running") {
+      const interval = setInterval(() => {
+        fetchWarRoom();
+        fetchCurrentBuild();
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, currentBuild?.status]);
 
   const fetchProjectData = async () => {
     try {
-      const [projectRes, agentsRes, messagesRes, tasksRes, filesRes, imagesRes, actionsRes, customRes, memRes] = await Promise.all([
+      const [projectRes, agentsRes, messagesRes, tasksRes, filesRes, imagesRes, actionsRes, customRes, memRes, systemsRes] = await Promise.all([
         axios.get(`${API}/projects/${projectId}`),
         axios.get(`${API}/agents`),
         axios.get(`${API}/messages?project_id=${projectId}`),
@@ -126,7 +163,8 @@ const ProjectWorkspace = () => {
         axios.get(`${API}/images?project_id=${projectId}`).catch(() => ({ data: [] })),
         axios.get(`${API}/quick-actions`).catch(() => ({ data: [] })),
         axios.get(`${API}/custom-actions?project_id=${projectId}`).catch(() => ({ data: [] })),
-        axios.get(`${API}/memory?project_id=${projectId}`).catch(() => ({ data: [] }))
+        axios.get(`${API}/memory?project_id=${projectId}`).catch(() => ({ data: [] })),
+        axios.get(`${API}/systems/open-world`).catch(() => ({ data: [] }))
       ]);
       setProject(projectRes.data);
       setAgents(agentsRes.data);
@@ -137,14 +175,36 @@ const ProjectWorkspace = () => {
       setQuickActions(actionsRes.data);
       setCustomActions(customRes.data);
       setMemories(memRes.data);
+      setOpenWorldSystems(systemsRes.data);
       setGithubRepoName(projectRes.data.name.toLowerCase().replace(/\s+/g, '-'));
       setDuplicateName(projectRes.data.name + " Copy");
+      
+      // Set default engine based on project type
+      if (projectRes.data.type === "unity") setTargetEngine("unity");
+      
+      // Fetch war room and build
+      await fetchWarRoom();
+      await fetchCurrentBuild();
     } catch (error) {
       toast.error("Failed to load project");
       navigate("/dashboard");
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchWarRoom = async () => {
+    try {
+      const res = await axios.get(`${API}/war-room/${projectId}`);
+      setWarRoomMessages(res.data);
+    } catch (e) {}
+  };
+
+  const fetchCurrentBuild = async () => {
+    try {
+      const res = await axios.get(`${API}/builds/${projectId}/current`);
+      setCurrentBuild(res.data);
+    } catch (e) {}
   };
 
   const sendMessageStreaming = async () => {
@@ -244,7 +304,79 @@ const ProjectWorkspace = () => {
     } catch (error) { toast.error(`Delegation failed`); }
   };
 
-  // Custom Actions
+  // ========== SIMULATION MODE ==========
+  const runSimulation = async () => {
+    if (selectedSystems.length === 0) { toast.error("Select at least one system"); return; }
+    setSimulating(true);
+    try {
+      const res = await axios.post(`${API}/simulate`, {
+        project_id: projectId,
+        build_type: "full",
+        target_engine: targetEngine,
+        include_systems: selectedSystems
+      });
+      setSimulationResult(res.data);
+      toast.success("Simulation complete!");
+    } catch (error) { toast.error("Simulation failed"); }
+    finally { setSimulating(false); }
+  };
+
+  const toggleSystem = (systemId) => {
+    setSelectedSystems(prev => 
+      prev.includes(systemId) 
+        ? prev.filter(s => s !== systemId) 
+        : [...prev, systemId]
+    );
+  };
+
+  // ========== AUTONOMOUS BUILDS ==========
+  const startAutonomousBuild = async () => {
+    if (!simulationResult || !simulationResult.ready_to_build) {
+      toast.error("Run simulation first and resolve all high-severity warnings");
+      return;
+    }
+    setBuildRunning(true);
+    try {
+      const res = await axios.post(`${API}/builds/start`, {
+        project_id: projectId,
+        build_type: "full",
+        target_engine: targetEngine,
+        systems_to_build: selectedSystems
+      });
+      setCurrentBuild(res.data);
+      setBuildDialog(false);
+      setSimulationDialog(false);
+      setActiveTab("warroom");
+      toast.success("Autonomous build started!");
+      
+      // Start running stages
+      await axios.post(`${API}/builds/${res.data.id}/run-full`);
+    } catch (error) { toast.error(error.response?.data?.detail || "Build failed to start"); }
+    finally { setBuildRunning(false); }
+  };
+
+  const pauseBuild = async () => {
+    if (!currentBuild) return;
+    await axios.post(`${API}/builds/${currentBuild.id}/pause`);
+    await fetchCurrentBuild();
+    toast.info("Build paused");
+  };
+
+  const resumeBuild = async () => {
+    if (!currentBuild) return;
+    await axios.post(`${API}/builds/${currentBuild.id}/resume`);
+    await fetchCurrentBuild();
+    toast.success("Build resumed");
+  };
+
+  const cancelBuild = async () => {
+    if (!currentBuild) return;
+    await axios.post(`${API}/builds/${currentBuild.id}/cancel`);
+    await fetchCurrentBuild();
+    toast.info("Build cancelled");
+  };
+
+  // Custom Actions, Refactoring, Memory, Duplicate (same as before)
   const createCustomAction = async () => {
     if (!newCustomAction.name || !newCustomAction.prompt) { toast.error("Name and prompt required"); return; }
     try {
@@ -261,7 +393,6 @@ const ProjectWorkspace = () => {
     setCustomActions(customActions.filter(a => a.id !== id));
   };
 
-  // Refactoring
   const previewRefactor = async () => {
     if (!refactorData.target) { toast.error("Target required"); return; }
     try {
@@ -280,7 +411,6 @@ const ProjectWorkspace = () => {
     } catch (error) { toast.error("Refactor failed"); }
   };
 
-  // Memory
   const extractMemories = async () => {
     try {
       const res = await axios.post(`${API}/memory/auto-extract?project_id=${projectId}`);
@@ -296,7 +426,6 @@ const ProjectWorkspace = () => {
     setMemories(memories.filter(m => m.id !== id));
   };
 
-  // Duplicate Project
   const duplicateProject = async () => {
     if (!duplicateName) { toast.error("Name required"); return; }
     try {
@@ -307,7 +436,7 @@ const ProjectWorkspace = () => {
     } catch (error) { toast.error("Duplication failed"); }
   };
 
-  // GitHub, Image, File operations (same as before)
+  // GitHub, Image, File operations
   const pushToGithub = async () => {
     if (!githubToken || !githubRepoName) { toast.error("Token and repo required"); return; }
     setPushing(true);
@@ -379,6 +508,7 @@ const ProjectWorkspace = () => {
   const getAgentColor = (role) => AGENTS[role]?.color || "text-zinc-400";
   const getStatusColor = (status) => ({ idle: "bg-zinc-500", thinking: "bg-amber-500 animate-pulse", working: "bg-blue-500 animate-pulse" }[status] || "bg-zinc-500");
   const getPriorityColor = (priority) => ({ critical: "border-l-red-500 bg-red-500/5", high: "border-l-amber-500 bg-amber-500/5", medium: "border-l-blue-500 bg-blue-500/5", low: "border-l-zinc-500 bg-zinc-500/5" }[priority] || "border-l-zinc-500");
+  const getWarRoomTypeColor = (type) => ({ discussion: "text-zinc-400", handoff: "text-cyan-400", question: "text-amber-400", decision: "text-emerald-400", warning: "text-red-400", progress: "text-blue-400" }[type] || "text-zinc-400");
 
   const renderCodeBlock = (block, index, messageId) => {
     const blockId = `${messageId}-${index}`;
@@ -400,7 +530,7 @@ const ProjectWorkspace = () => {
 
   if (loading) return <div className="min-h-screen bg-[#09090b] flex items-center justify-center"><Loader2 className="w-10 h-10 text-blue-400 animate-spin" /></div>;
 
-  const phaseConfig = PHASE_CONFIG[project?.phase] || PHASE_CONFIG.clarification;
+  const phaseConfig = PHASE_CONFIG[project?.status === "building" ? "building" : project?.phase] || PHASE_CONFIG.clarification;
   const PhaseIcon = phaseConfig.icon;
   const tasksByStatus = { backlog: tasks.filter(t => t.status === "backlog"), todo: tasks.filter(t => t.status === "todo"), in_progress: tasks.filter(t => t.status === "in_progress"), review: tasks.filter(t => t.status === "review"), done: tasks.filter(t => t.status === "done") };
   const isWebProject = ['web_app', 'web_game'].includes(project?.type);
@@ -412,7 +542,7 @@ const ProjectWorkspace = () => {
       <header className="flex-shrink-0 bg-[#0d0d0f]/95 backdrop-blur-lg border-b border-zinc-800 z-50">
         <div className="px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}><ArrowLeft className="w-5 h-5" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} data-testid="back-btn"><ArrowLeft className="w-5 h-5" /></Button>
             <div>
               <h1 className="font-rajdhani text-lg font-bold text-white flex items-center gap-2">{project?.name}<Badge className={`${phaseConfig.color} text-xs`}><PhaseIcon className="w-3 h-3 mr-1" />{phaseConfig.label}</Badge>{project?.repo_url && <a href={project.repo_url} target="_blank" rel="noopener noreferrer"><Badge className="bg-zinc-800 text-zinc-400 hover:bg-zinc-700"><Github className="w-3 h-3 mr-1" />GitHub</Badge></a>}</h1>
               <p className="text-xs text-zinc-500">{project?.type?.replace('_', ' ')} {project?.engine_version && `• ${project.engine_version}`}</p>
@@ -427,11 +557,124 @@ const ProjectWorkspace = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Refactor Button */}
+            {/* Simulation Mode Button */}
+            <Dialog open={simulationDialog} onOpenChange={setSimulationDialog}>
+              <DialogTrigger asChild><Button variant="outline" size="sm" className="border-cyan-700 text-cyan-400 hover:bg-cyan-500/10" data-testid="simulation-btn"><Radio className="w-4 h-4 mr-1" />Simulate</Button></DialogTrigger>
+              <DialogContent className="bg-[#18181b] border-zinc-700 max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader><DialogTitle className="font-rajdhani text-white flex items-center gap-2"><Radio className="w-5 h-5 text-cyan-400" />Build Simulation (Dry Run)</DialogTitle></DialogHeader>
+                <div className="py-4 space-y-4">
+                  {/* Engine Selection */}
+                  <div className="flex gap-4">
+                    <Button variant={targetEngine === "unreal" ? "default" : "outline"} className={targetEngine === "unreal" ? "bg-blue-500" : "border-zinc-700"} onClick={() => setTargetEngine("unreal")}>Unreal Engine 5</Button>
+                    <Button variant={targetEngine === "unity" ? "default" : "outline"} className={targetEngine === "unity" ? "bg-blue-500" : "border-zinc-700"} onClick={() => setTargetEngine("unity")}>Unity</Button>
+                  </div>
+
+                  {/* System Selection */}
+                  <div>
+                    <h4 className="text-sm font-medium text-white mb-3">Select Game Systems</h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      {openWorldSystems.map((system) => {
+                        const Icon = SYSTEM_ICONS[system.id] || Sparkles;
+                        const isSelected = selectedSystems.includes(system.id);
+                        return (
+                          <button key={system.id} onClick={() => toggleSystem(system.id)}
+                            className={`p-3 rounded-lg border text-left transition-all ${isSelected ? 'bg-cyan-500/20 border-cyan-500/50' : 'bg-zinc-900 border-zinc-700 hover:border-zinc-600'}`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <Icon className={`w-4 h-4 ${isSelected ? 'text-cyan-400' : 'text-zinc-500'}`} />
+                              <span className={`text-sm font-medium ${isSelected ? 'text-cyan-400' : 'text-zinc-300'}`}>{system.name}</span>
+                            </div>
+                            <p className="text-[10px] text-zinc-500 line-clamp-1">{system.description}</p>
+                            <div className="flex gap-2 mt-2 text-[10px] text-zinc-600">
+                              <span>{system.files_estimate} files</span>
+                              <span>~{system.time_estimate_minutes}m</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-zinc-500 mt-2">{selectedSystems.length} systems selected</p>
+                  </div>
+
+                  {/* Run Simulation Button */}
+                  <Button onClick={runSimulation} disabled={simulating || selectedSystems.length === 0} className="w-full bg-cyan-500 hover:bg-cyan-600">
+                    {simulating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Simulating...</> : <><Radio className="w-4 h-4 mr-2" />Run Simulation</>}
+                  </Button>
+
+                  {/* Simulation Results */}
+                  {simulationResult && (
+                    <div className="space-y-4 border-t border-zinc-700 pt-4">
+                      <h4 className="font-rajdhani font-bold text-white">Simulation Results</h4>
+                      
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-4 gap-3">
+                        <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
+                          <Clock className="w-5 h-5 text-blue-400 mb-1" />
+                          <p className="text-lg font-bold text-white">{simulationResult.estimated_build_time}</p>
+                          <p className="text-[10px] text-zinc-500">Build Time</p>
+                        </div>
+                        <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
+                          <FileCode className="w-5 h-5 text-emerald-400 mb-1" />
+                          <p className="text-lg font-bold text-white">{simulationResult.file_count}</p>
+                          <p className="text-[10px] text-zinc-500">Files</p>
+                        </div>
+                        <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
+                          <Package className="w-5 h-5 text-amber-400 mb-1" />
+                          <p className="text-lg font-bold text-white">{simulationResult.total_size_kb}KB</p>
+                          <p className="text-[10px] text-zinc-500">Total Size</p>
+                        </div>
+                        <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
+                          <Sparkles className="w-5 h-5 text-purple-400 mb-1" />
+                          <p className="text-lg font-bold text-white">{simulationResult.feasibility_score}%</p>
+                          <p className="text-[10px] text-zinc-500">Feasibility</p>
+                        </div>
+                      </div>
+
+                      {/* Warnings */}
+                      {simulationResult.warnings.length > 0 && (
+                        <div className="space-y-2">
+                          <h5 className="text-sm font-medium text-amber-400 flex items-center gap-2"><AlertTriangle className="w-4 h-4" />Warnings ({simulationResult.warnings.length})</h5>
+                          {simulationResult.warnings.map((warning, i) => (
+                            <div key={i} className={`p-3 rounded border ${warning.severity === 'high' ? 'bg-red-500/10 border-red-500/30' : warning.severity === 'medium' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-zinc-800 border-zinc-700'}`}>
+                              <p className="text-sm text-zinc-200">{warning.message}</p>
+                              <p className="text-xs text-zinc-500 mt-1">{warning.suggestion}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Architecture Summary */}
+                      <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
+                        <h5 className="text-sm font-medium text-white mb-2">Architecture Summary</h5>
+                        <p className="text-xs text-zinc-400">{simulationResult.architecture_summary}</p>
+                      </div>
+
+                      {/* Start Build Button */}
+                      <Button onClick={startAutonomousBuild} disabled={!simulationResult.ready_to_build || buildRunning}
+                        className={`w-full ${simulationResult.ready_to_build ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-zinc-700 cursor-not-allowed'}`}>
+                        {buildRunning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting Build...</> : 
+                          simulationResult.ready_to_build ? <><Rocket className="w-4 h-4 mr-2" />Start Autonomous Build</> :
+                          <><AlertTriangle className="w-4 h-4 mr-2" />Resolve Warnings First</>}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Current Build Status */}
+            {currentBuild && currentBuild.status === "running" && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/50">
+                <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                <span className="text-xs text-blue-400">Building {currentBuild.progress_percent}%</span>
+                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={pauseBuild}><Pause className="w-3 h-3" /></Button>
+              </div>
+            )}
+
+            {/* Other header buttons */}
             <Dialog open={refactorDialog} onOpenChange={setRefactorDialog}>
               <DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><Replace className="w-4 h-4 mr-1" />Refactor</Button></DialogTrigger>
-              <DialogContent className="bg-[#18181b] border-zinc-700 max-w-lg" aria-describedby="refactor-desc">
-                <DialogHeader><DialogTitle className="font-rajdhani text-white flex items-center gap-2"><Wand2 className="w-5 h-5 text-blue-400" />Multi-File Refactor</DialogTitle><p id="refactor-desc" className="sr-only">Refactor across files</p></DialogHeader>
+              <DialogContent className="bg-[#18181b] border-zinc-700 max-w-lg">
+                <DialogHeader><DialogTitle className="font-rajdhani text-white flex items-center gap-2"><Wand2 className="w-5 h-5 text-blue-400" />Multi-File Refactor</DialogTitle></DialogHeader>
                 <div className="space-y-4 py-4">
                   <Select value={refactorData.type} onValueChange={(v) => setRefactorData({ ...refactorData, type: v })}><SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="find_replace">Find & Replace</SelectItem><SelectItem value="rename">Rename Symbol</SelectItem></SelectContent></Select>
                   <Input placeholder="Find what..." value={refactorData.target} onChange={(e) => setRefactorData({ ...refactorData, target: e.target.value })} className="bg-zinc-900 border-zinc-700" />
@@ -443,11 +686,10 @@ const ProjectWorkspace = () => {
               </DialogContent>
             </Dialog>
 
-            {/* Memory Button */}
             <Dialog open={memoryDialog} onOpenChange={setMemoryDialog}>
               <DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><Brain className="w-4 h-4 mr-1" />Memory</Button></DialogTrigger>
-              <DialogContent className="bg-[#18181b] border-zinc-700 max-w-lg" aria-describedby="mem-desc">
-                <DialogHeader><DialogTitle className="font-rajdhani text-white flex items-center gap-2"><Brain className="w-5 h-5 text-purple-400" />Agent Memories ({memories.length})</DialogTitle><p id="mem-desc" className="sr-only">Agent memories</p></DialogHeader>
+              <DialogContent className="bg-[#18181b] border-zinc-700 max-w-lg">
+                <DialogHeader><DialogTitle className="font-rajdhani text-white flex items-center gap-2"><Brain className="w-5 h-5 text-purple-400" />Agent Memories ({memories.length})</DialogTitle></DialogHeader>
                 <div className="py-4">
                   <Button variant="outline" className="w-full mb-4 border-zinc-700" onClick={extractMemories}><Sparkles className="w-4 h-4 mr-2" />Extract Memories from Conversation</Button>
                   <ScrollArea className="h-[300px]">
@@ -459,21 +701,18 @@ const ProjectWorkspace = () => {
               </DialogContent>
             </Dialog>
 
-            {/* Duplicate Button */}
             <Dialog open={duplicateDialog} onOpenChange={setDuplicateDialog}>
               <DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><CopyPlus className="w-4 h-4" /></Button></DialogTrigger>
-              <DialogContent className="bg-[#18181b] border-zinc-700" aria-describedby="dup-desc">
-                <DialogHeader><DialogTitle className="font-rajdhani text-white">Duplicate Project</DialogTitle><p id="dup-desc" className="sr-only">Duplicate this project</p></DialogHeader>
+              <DialogContent className="bg-[#18181b] border-zinc-700">
+                <DialogHeader><DialogTitle className="font-rajdhani text-white">Duplicate Project</DialogTitle></DialogHeader>
                 <div className="py-4"><Input placeholder="New project name" value={duplicateName} onChange={(e) => setDuplicateName(e.target.value)} className="bg-zinc-900 border-zinc-700" /></div>
                 <DialogFooter><Button onClick={duplicateProject} className="bg-blue-500 hover:bg-blue-600"><CopyPlus className="w-4 h-4 mr-2" />Duplicate with Files</Button></DialogFooter>
               </DialogContent>
             </Dialog>
 
-            {/* GitHub */}
-            <Dialog open={githubDialogOpen} onOpenChange={setGithubDialogOpen}><DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><Github className="w-4 h-4 mr-1" />Push</Button></DialogTrigger><DialogContent className="bg-[#18181b] border-zinc-700" aria-describedby="gh-desc"><DialogHeader><DialogTitle className="font-rajdhani text-white"><Github className="w-5 h-5 inline mr-2" />Push to GitHub</DialogTitle><p id="gh-desc" className="sr-only">Push to GitHub</p></DialogHeader><div className="space-y-4 py-4"><div><label className="text-sm text-zinc-400 mb-2 block">GitHub Token</label><Input type="password" placeholder="ghp_xxxx" value={githubToken} onChange={(e) => setGithubToken(e.target.value)} className="bg-zinc-900 border-zinc-700" /></div><div><label className="text-sm text-zinc-400 mb-2 block">Repo Name</label><Input value={githubRepoName} onChange={(e) => setGithubRepoName(e.target.value)} className="bg-zinc-900 border-zinc-700" /></div><div className="flex items-center gap-2"><input type="checkbox" id="create-new" checked={githubCreateNew} onChange={(e) => setGithubCreateNew(e.target.checked)} /><label htmlFor="create-new" className="text-sm text-zinc-400">Create new if not exists</label></div></div><DialogFooter><Button onClick={pushToGithub} disabled={pushing} className="bg-blue-500 hover:bg-blue-600">{pushing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Rocket className="w-4 h-4 mr-2" />}Push</Button></DialogFooter></DialogContent></Dialog>
+            <Dialog open={githubDialogOpen} onOpenChange={setGithubDialogOpen}><DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><Github className="w-4 h-4 mr-1" />Push</Button></DialogTrigger><DialogContent className="bg-[#18181b] border-zinc-700"><DialogHeader><DialogTitle className="font-rajdhani text-white"><Github className="w-5 h-5 inline mr-2" />Push to GitHub</DialogTitle></DialogHeader><div className="space-y-4 py-4"><div><label className="text-sm text-zinc-400 mb-2 block">GitHub Token</label><Input type="password" placeholder="ghp_xxxx" value={githubToken} onChange={(e) => setGithubToken(e.target.value)} className="bg-zinc-900 border-zinc-700" /></div><div><label className="text-sm text-zinc-400 mb-2 block">Repo Name</label><Input value={githubRepoName} onChange={(e) => setGithubRepoName(e.target.value)} className="bg-zinc-900 border-zinc-700" /></div><div className="flex items-center gap-2"><input type="checkbox" id="create-new" checked={githubCreateNew} onChange={(e) => setGithubCreateNew(e.target.checked)} /><label htmlFor="create-new" className="text-sm text-zinc-400">Create new if not exists</label></div></div><DialogFooter><Button onClick={pushToGithub} disabled={pushing} className="bg-blue-500 hover:bg-blue-600">{pushing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Rocket className="w-4 h-4 mr-2" />}Push</Button></DialogFooter></DialogContent></Dialog>
 
-            {/* Image */}
-            <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}><DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><Image className="w-4 h-4" /></Button></DialogTrigger><DialogContent className="bg-[#18181b] border-zinc-700" aria-describedby="img-desc"><DialogHeader><DialogTitle className="font-rajdhani text-white">Generate Asset</DialogTitle><p id="img-desc" className="sr-only">Generate image</p></DialogHeader><div className="space-y-4 py-4"><Textarea placeholder="Describe..." value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} className="bg-zinc-900 border-zinc-700 min-h-[100px]" /><Select value={imageCategory} onValueChange={setImageCategory}><SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="concept">Concept Art</SelectItem><SelectItem value="character">Character</SelectItem><SelectItem value="environment">Environment</SelectItem><SelectItem value="ui">UI</SelectItem><SelectItem value="texture">Texture</SelectItem></SelectContent></Select></div><DialogFooter><Button onClick={generateImage} disabled={generatingImage} className="bg-blue-500 hover:bg-blue-600">{generatingImage ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}Generate</Button></DialogFooter></DialogContent></Dialog>
+            <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}><DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><Image className="w-4 h-4" /></Button></DialogTrigger><DialogContent className="bg-[#18181b] border-zinc-700"><DialogHeader><DialogTitle className="font-rajdhani text-white">Generate Asset</DialogTitle></DialogHeader><div className="space-y-4 py-4"><Textarea placeholder="Describe..." value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} className="bg-zinc-900 border-zinc-700 min-h-[100px]" /><Select value={imageCategory} onValueChange={setImageCategory}><SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="concept">Concept Art</SelectItem><SelectItem value="character">Character</SelectItem><SelectItem value="environment">Environment</SelectItem><SelectItem value="ui">UI</SelectItem><SelectItem value="texture">Texture</SelectItem></SelectContent></Select></div><DialogFooter><Button onClick={generateImage} disabled={generatingImage} className="bg-blue-500 hover:bg-blue-600">{generatingImage ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}Generate</Button></DialogFooter></DialogContent></Dialog>
 
             <Button variant="outline" size="sm" className="border-zinc-700" onClick={exportProject}><Download className="w-4 h-4" /></Button>
           </div>
@@ -495,8 +734,8 @@ const ProjectWorkspace = () => {
                         <div className="flex gap-2">
                           <Dialog open={customActionDialog} onOpenChange={setCustomActionDialog}>
                             <DialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><Plus className="w-4 h-4" /></Button></DialogTrigger>
-                            <DialogContent className="bg-[#18181b] border-zinc-700" aria-describedby="ca-desc">
-                              <DialogHeader><DialogTitle className="font-rajdhani text-white">Create Custom Action</DialogTitle><p id="ca-desc" className="sr-only">Create custom action</p></DialogHeader>
+                            <DialogContent className="bg-[#18181b] border-zinc-700">
+                              <DialogHeader><DialogTitle className="font-rajdhani text-white">Create Custom Action</DialogTitle></DialogHeader>
                               <div className="space-y-3 py-4">
                                 <Input placeholder="Action name" value={newCustomAction.name} onChange={(e) => setNewCustomAction({ ...newCustomAction, name: e.target.value })} className="bg-zinc-900 border-zinc-700" />
                                 <Input placeholder="Description" value={newCustomAction.description} onChange={(e) => setNewCustomAction({ ...newCustomAction, description: e.target.value })} className="bg-zinc-900 border-zinc-700" />
@@ -531,7 +770,12 @@ const ProjectWorkspace = () => {
               {chainProgress && <div className="px-4 py-2 bg-blue-500/10 border-b border-blue-500/30"><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 text-blue-400 animate-spin" /><span className="text-xs text-blue-400">Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                <TabsList className="flex-shrink-0 bg-transparent border-b border-zinc-800 rounded-none px-4 h-11"><TabsTrigger value="chat" className="data-[state=active]:bg-zinc-800"><MessageSquare className="w-4 h-4 mr-2" />Chat</TabsTrigger><TabsTrigger value="tasks" className="data-[state=active]:bg-zinc-800"><ListTodo className="w-4 h-4 mr-2" />Tasks{tasks.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{tasks.length}</Badge>}</TabsTrigger><TabsTrigger value="images" className="data-[state=active]:bg-zinc-800"><Image className="w-4 h-4 mr-2" />Images{images.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{images.length}</Badge>}</TabsTrigger></TabsList>
+                <TabsList className="flex-shrink-0 bg-transparent border-b border-zinc-800 rounded-none px-4 h-11">
+                  <TabsTrigger value="chat" className="data-[state=active]:bg-zinc-800"><MessageSquare className="w-4 h-4 mr-2" />Chat</TabsTrigger>
+                  <TabsTrigger value="warroom" className="data-[state=active]:bg-zinc-800" data-testid="warroom-tab"><Radio className="w-4 h-4 mr-2" />War Room{warRoomMessages.length > 0 && <Badge variant="secondary" className="ml-2 text-xs bg-cyan-500/20 text-cyan-400">{warRoomMessages.length}</Badge>}</TabsTrigger>
+                  <TabsTrigger value="tasks" className="data-[state=active]:bg-zinc-800"><ListTodo className="w-4 h-4 mr-2" />Tasks{tasks.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{tasks.length}</Badge>}</TabsTrigger>
+                  <TabsTrigger value="images" className="data-[state=active]:bg-zinc-800"><Image className="w-4 h-4 mr-2" />Images</TabsTrigger>
+                </TabsList>
 
                 {/* Chat Tab */}
                 <TabsContent value="chat" className="flex-1 flex flex-col m-0 overflow-hidden">
@@ -550,13 +794,82 @@ const ProjectWorkspace = () => {
                   </div></ScrollArea>
                   <div className="flex-shrink-0 p-4 border-t border-zinc-800">
                     {selectedAgent && <div className="mb-2 flex items-center gap-2"><span className="text-xs text-zinc-500">Speaking to:</span><Badge className="bg-blue-500/20 text-blue-400 border-0">{agents.find(a => a.id === selectedAgent)?.name}</Badge><Button variant="ghost" size="sm" className="h-5 px-2" onClick={() => setSelectedAgent(null)}><X className="w-3 h-3" /></Button></div>}
-                    <div className="flex gap-2"><Textarea placeholder={project?.phase === "clarification" ? "Describe your project..." : "What next?"} value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageStreaming(); }}} className="bg-zinc-900 border-zinc-700 min-h-[80px] resize-none text-sm" /><Button onClick={sendMessageStreaming} disabled={sending || !chatInput.trim()} className="bg-blue-500 hover:bg-blue-600 px-4 self-end">{sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}</Button></div>
+                    <div className="flex gap-2"><Textarea placeholder={project?.phase === "clarification" ? "Describe your project..." : "What next?"} value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageStreaming(); }}} className="bg-zinc-900 border-zinc-700 min-h-[80px] resize-none text-sm" data-testid="chat-input" /><Button onClick={sendMessageStreaming} disabled={sending || !chatInput.trim()} className="bg-blue-500 hover:bg-blue-600 px-4 self-end" data-testid="send-btn">{sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}</Button></div>
                   </div>
+                </TabsContent>
+
+                {/* War Room Tab */}
+                <TabsContent value="warroom" className="flex-1 flex flex-col m-0 overflow-hidden">
+                  <div className="flex-shrink-0 p-3 border-b border-zinc-800 flex items-center justify-between bg-gradient-to-r from-cyan-500/10 to-transparent">
+                    <h3 className="font-rajdhani font-bold text-white text-sm flex items-center gap-2"><Radio className="w-4 h-4 text-cyan-400" />Agent War Room</h3>
+                    {currentBuild && (
+                      <div className="flex items-center gap-2">
+                        <Badge className={`text-xs ${currentBuild.status === 'running' ? 'bg-blue-500/20 text-blue-400' : currentBuild.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                          {currentBuild.status}
+                        </Badge>
+                        {currentBuild.status === "running" && (
+                          <>
+                            <Progress value={currentBuild.progress_percent} className="w-24 h-2" />
+                            <span className="text-xs text-zinc-400">{currentBuild.progress_percent}%</span>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={pauseBuild}><Pause className="w-3 h-3" /></Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={cancelBuild}><Square className="w-3 h-3" /></Button>
+                          </>
+                        )}
+                        {currentBuild.status === "paused" && (
+                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={resumeBuild}><Play className="w-3 h-3 mr-1" />Resume</Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Build Stages */}
+                  {currentBuild && currentBuild.stages && (
+                    <div className="flex-shrink-0 p-3 border-b border-zinc-800 bg-zinc-900/50">
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {currentBuild.stages.map((stage, i) => (
+                          <div key={i} className={`flex-shrink-0 px-3 py-2 rounded border text-xs ${stage.status === 'completed' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : stage.status === 'in_progress' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 animate-pulse' : stage.status === 'failed' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-zinc-800/50 border-zinc-700 text-zinc-500'}`}>
+                            <div className="font-medium">{stage.name}</div>
+                            {stage.files_created?.length > 0 && <div className="text-[10px] mt-1">{stage.files_created.length} files</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <ScrollArea className="flex-1 p-4">
+                    <div className="space-y-3">
+                      {warRoomMessages.length === 0 ? (
+                        <div className="text-center py-12">
+                          <Radio className="w-12 h-12 mx-auto mb-4 text-cyan-400/30" />
+                          <h3 className="font-rajdhani text-lg text-white mb-2">War Room Empty</h3>
+                          <p className="text-sm text-zinc-500 mb-4">Start a simulation to see agents communicate</p>
+                          <Button onClick={() => setSimulationDialog(true)} className="bg-cyan-500 hover:bg-cyan-600"><Radio className="w-4 h-4 mr-2" />Open Simulation</Button>
+                        </div>
+                      ) : (
+                        warRoomMessages.map((msg) => (
+                          <motion.div key={msg.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.message_type === 'warning' ? 'bg-red-500/20' : msg.message_type === 'handoff' ? 'bg-cyan-500/20' : 'bg-zinc-800'}`}>
+                              <Bot className={`w-4 h-4 ${getWarRoomTypeColor(msg.message_type)}`} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-rajdhani font-bold text-sm text-cyan-400">{msg.from_agent}</span>
+                                {msg.to_agent && <><ArrowRightCircle className="w-3 h-3 text-zinc-600" /><span className="text-xs text-zinc-500">{msg.to_agent}</span></>}
+                                <Badge variant="outline" className={`text-[10px] border-zinc-700 ${getWarRoomTypeColor(msg.message_type)}`}>{msg.message_type}</Badge>
+                              </div>
+                              <p className="text-sm text-zinc-300">{msg.content}</p>
+                            </div>
+                          </motion.div>
+                        ))
+                      )}
+                      <div ref={warRoomEndRef} />
+                    </div>
+                  </ScrollArea>
                 </TabsContent>
 
                 {/* Tasks Tab */}
                 <TabsContent value="tasks" className="flex-1 m-0 overflow-hidden flex flex-col">
-                  <div className="flex-shrink-0 p-3 border-b border-zinc-800 flex items-center justify-between"><h3 className="font-rajdhani font-bold text-white text-sm">Task Board</h3><Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}><DialogTrigger asChild><Button size="sm" className="bg-blue-500 hover:bg-blue-600 h-8"><Plus className="w-3 h-3 mr-1" />Add</Button></DialogTrigger><DialogContent className="bg-[#18181b] border-zinc-700" aria-describedby="task-desc"><DialogHeader><DialogTitle className="font-rajdhani text-white">New Task</DialogTitle><p id="task-desc" className="sr-only">Create task</p></DialogHeader><div className="space-y-3 py-4"><Input placeholder="Title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} className="bg-zinc-900 border-zinc-700" /><Textarea placeholder="Description" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} className="bg-zinc-900 border-zinc-700" /><div className="grid grid-cols-2 gap-3"><Select value={newTask.priority} onValueChange={(v) => setNewTask({ ...newTask, priority: v })}><SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="critical">Critical</SelectItem></SelectContent></Select><Select value={newTask.category} onValueChange={(v) => setNewTask({ ...newTask, category: v })}><SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="general">General</SelectItem><SelectItem value="architecture">Architecture</SelectItem><SelectItem value="coding">Coding</SelectItem><SelectItem value="assets">Assets</SelectItem><SelectItem value="testing">Testing</SelectItem></SelectContent></Select></div></div><DialogFooter><Button onClick={createTask} className="bg-blue-500 hover:bg-blue-600">Create</Button></DialogFooter></DialogContent></Dialog></div>
+                  <div className="flex-shrink-0 p-3 border-b border-zinc-800 flex items-center justify-between"><h3 className="font-rajdhani font-bold text-white text-sm">Task Board</h3><Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}><DialogTrigger asChild><Button size="sm" className="bg-blue-500 hover:bg-blue-600 h-8"><Plus className="w-3 h-3 mr-1" />Add</Button></DialogTrigger><DialogContent className="bg-[#18181b] border-zinc-700"><DialogHeader><DialogTitle className="font-rajdhani text-white">New Task</DialogTitle></DialogHeader><div className="space-y-3 py-4"><Input placeholder="Title" value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })} className="bg-zinc-900 border-zinc-700" /><Textarea placeholder="Description" value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })} className="bg-zinc-900 border-zinc-700" /><div className="grid grid-cols-2 gap-3"><Select value={newTask.priority} onValueChange={(v) => setNewTask({ ...newTask, priority: v })}><SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="low">Low</SelectItem><SelectItem value="medium">Medium</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="critical">Critical</SelectItem></SelectContent></Select><Select value={newTask.category} onValueChange={(v) => setNewTask({ ...newTask, category: v })}><SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="general">General</SelectItem><SelectItem value="architecture">Architecture</SelectItem><SelectItem value="coding">Coding</SelectItem><SelectItem value="assets">Assets</SelectItem><SelectItem value="testing">Testing</SelectItem></SelectContent></Select></div></div><DialogFooter><Button onClick={createTask} className="bg-blue-500 hover:bg-blue-600">Create</Button></DialogFooter></DialogContent></Dialog></div>
                   <ScrollArea className="flex-1"><div className="p-3 flex gap-3 min-w-max">{Object.entries(tasksByStatus).map(([status, statusTasks]) => (<div key={status} className="w-56 flex-shrink-0 bg-zinc-900/50 rounded-lg border border-zinc-800"><div className="p-2 border-b border-zinc-800"><h4 className="font-rajdhani font-bold text-xs text-white uppercase">{status.replace('_', ' ')}</h4><span className="text-xs text-zinc-500">{statusTasks.length}</span></div><div className="p-2 space-y-2 min-h-[200px]">{statusTasks.map((task) => (<div key={task.id} className={`p-2 rounded bg-zinc-800/50 border-l-2 ${getPriorityColor(task.priority)} text-xs`}><h5 className="text-white font-medium line-clamp-2 mb-1">{task.title}</h5>{task.description && <p className="text-zinc-500 line-clamp-2 mb-2">{task.description}</p>}<div className="flex items-center justify-between"><Select value={task.status} onValueChange={(v) => updateTaskStatus(task.id, v)}><SelectTrigger className="h-6 w-20 text-[10px] bg-transparent border-zinc-700"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="backlog">Backlog</SelectItem><SelectItem value="todo">To Do</SelectItem><SelectItem value="in_progress">In Progress</SelectItem><SelectItem value="review">Review</SelectItem><SelectItem value="done">Done</SelectItem></SelectContent></Select><Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => deleteTask(task.id)}><Trash2 className="w-3 h-3 text-red-400" /></Button></div></div>))}</div></div>))}</div></ScrollArea>
                 </TabsContent>
 
@@ -580,7 +893,7 @@ const ProjectWorkspace = () => {
                   <ResizablePanel defaultSize={75}><div className="h-full flex flex-col">{selectedFile ? (<><div className="flex-shrink-0 px-4 py-2 border-b border-zinc-800 bg-[#0d0d0f] flex items-center gap-2"><FileCode className="w-4 h-4 text-zinc-500" /><span className="text-sm text-zinc-300 font-mono">{selectedFile.filepath}</span><Badge variant="outline" className="text-[10px] border-zinc-700 ml-auto">v{selectedFile.version || 1}</Badge></div><div className="flex-1"><Editor height="100%" language={LANGUAGE_MAP[selectedFile.language] || selectedFile.language} value={editorContent} onChange={(v) => { setEditorContent(v || ""); setUnsavedChanges(v !== selectedFile.content); }} theme="vs-dark" options={{ minimap: { enabled: true }, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", lineNumbers: 'on', scrollBeyondLastLine: false, automaticLayout: true, tabSize: 2, wordWrap: 'on', padding: { top: 12 }}} /></div></>) : (<div className="h-full flex items-center justify-center text-center"><div><FileCode className="w-16 h-16 mx-auto mb-4 text-zinc-800" /><h3 className="font-rajdhani text-lg text-zinc-600 mb-2">No File Selected</h3><p className="text-sm text-zinc-700">Select a file or use Quick Actions</p></div></div>)}</div></ResizablePanel>
                 </ResizablePanelGroup>
               ) : (
-                <div className="flex-1 flex flex-col"><div className="flex-shrink-0 px-4 py-2 border-b border-zinc-800 flex items-center justify-between"><span className="text-sm text-zinc-400">Live Preview</span><Button size="sm" variant="outline" className="h-7 border-zinc-700" onClick={loadPreview}><Play className="w-3 h-3 mr-1" />Refresh</Button></div><div className="flex-1 bg-white">{previewHtml ? <iframe ref={previewRef} srcDoc={previewHtml} className="w-full h-full border-0" sandbox="allow-scripts" title="Preview" /> : <div className="h-full flex items-center justify-center bg-zinc-900"><p className="text-zinc-500">Click Refresh</p></div>}</div></div>
+                <div className="flex-1 flex flex-col"><div className="flex-shrink-0 px-4 py-2 border-b border-zinc-800 flex items-center justify-between"><span className="text-sm text-zinc-400">Live Preview</span><Button size="sm" variant="outline" className="h-7 border-zinc-700" onClick={loadPreview}><Play className="w-3 h-3 mr-1" />Refresh</Button></div><div className="flex-1 bg-white">{previewHtml ? <iframe srcDoc={previewHtml} className="w-full h-full border-0" sandbox="allow-scripts" title="Preview" /> : <div className="h-full flex items-center justify-center bg-zinc-900"><p className="text-zinc-500">Click Refresh</p></div>}</div></div>
               )}
             </div>
           </ResizablePanel>

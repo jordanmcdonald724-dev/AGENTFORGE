@@ -270,6 +270,68 @@ class QuickActionRequest(BaseModel):
     action_id: str
     parameters: Dict[str, Any] = {}
 
+# ============ v3.0 MODELS - SIMULATION & AUTONOMOUS BUILDS ============
+
+class SimulationRequest(BaseModel):
+    """Request for build simulation/dry run"""
+    project_id: str
+    build_type: str = "full"  # full, prototype, demo
+    target_engine: str = "unreal"  # unreal, unity
+    include_systems: List[str] = []  # gameplay, ai, ui, audio, networking, etc.
+
+class SimulationResult(BaseModel):
+    """Result of build simulation"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    estimated_build_time: str  # e.g., "4h 30m"
+    estimated_build_minutes: int
+    file_count: int
+    total_size_kb: int
+    required_assets: List[Dict[str, Any]] = []
+    warnings: List[Dict[str, str]] = []
+    architecture_summary: str
+    phases: List[Dict[str, Any]] = []
+    feasibility_score: int = 0  # 0-100
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AutonomousBuild(BaseModel):
+    """Autonomous overnight build job"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    status: str = "queued"  # queued, running, paused, completed, failed
+    build_type: str = "full"
+    target_engine: str = "unreal"
+    current_stage: int = 0
+    total_stages: int = 0
+    stages: List[Dict[str, Any]] = []  # [{name, status, started_at, completed_at, files_created, test_results}]
+    progress_percent: int = 0
+    estimated_completion: Optional[str] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class WarRoomMessage(BaseModel):
+    """Agent communication in war room"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    build_id: Optional[str] = None
+    from_agent: str
+    to_agent: Optional[str] = None  # None = broadcast to all
+    message_type: str = "discussion"  # discussion, handoff, question, decision, warning, progress
+    content: str
+    metadata: Dict[str, Any] = {}
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class StartBuildRequest(BaseModel):
+    project_id: str
+    build_type: str = "full"  # full, prototype, demo
+    target_engine: str = "unreal"
+    systems_to_build: List[str] = []
+    estimated_hours: int = 8
+
 # Quick Actions Configuration
 QUICK_ACTIONS = {
     "player_controller": {
@@ -387,6 +449,170 @@ For {engine_type}."""
 - Audio bus/mixer setup
 For {engine_type}."""
     }
+}
+
+# ============ OPEN WORLD GAME SYSTEMS ============
+
+OPEN_WORLD_SYSTEMS = {
+    "terrain": {
+        "id": "terrain",
+        "name": "Terrain & World",
+        "description": "Procedural terrain, biomes, and world streaming",
+        "files_estimate": 15,
+        "time_estimate_minutes": 45,
+        "dependencies": [],
+        "subsystems": ["heightmap_generation", "biome_system", "world_streaming", "lod_management", "foliage_spawning"]
+    },
+    "npc_population": {
+        "id": "npc_population",
+        "name": "NPC Population",
+        "description": "NPC spawning, schedules, and population management",
+        "files_estimate": 20,
+        "time_estimate_minutes": 60,
+        "dependencies": ["ai_behavior"],
+        "subsystems": ["npc_spawner", "schedule_system", "faction_system", "relationship_manager", "npc_archetypes"]
+    },
+    "quest_system": {
+        "id": "quest_system",
+        "name": "Quest System",
+        "description": "Full quest framework with objectives, tracking, rewards",
+        "files_estimate": 25,
+        "time_estimate_minutes": 75,
+        "dependencies": ["dialogue_system"],
+        "subsystems": ["quest_manager", "objective_types", "quest_tracker", "reward_system", "quest_log_ui"]
+    },
+    "vehicle_system": {
+        "id": "vehicle_system",
+        "name": "Vehicle System",
+        "description": "Land, air, and water vehicles with physics",
+        "files_estimate": 30,
+        "time_estimate_minutes": 90,
+        "dependencies": ["player_controller"],
+        "subsystems": ["vehicle_base", "land_vehicle", "air_vehicle", "water_vehicle", "vehicle_damage", "vehicle_ai"]
+    },
+    "day_night_cycle": {
+        "id": "day_night_cycle",
+        "name": "Day/Night Cycle",
+        "description": "Time system with lighting, weather, and NPC schedules",
+        "files_estimate": 12,
+        "time_estimate_minutes": 35,
+        "dependencies": [],
+        "subsystems": ["time_manager", "sky_controller", "lighting_blend", "weather_system", "schedule_hooks"]
+    },
+    "combat_system": {
+        "id": "combat_system",
+        "name": "Combat System",
+        "description": "Melee, ranged combat with combos and abilities",
+        "files_estimate": 35,
+        "time_estimate_minutes": 100,
+        "dependencies": ["health_system", "ai_behavior"],
+        "subsystems": ["melee_combat", "ranged_combat", "ability_system", "combo_manager", "lock_on_system", "hit_reactions"]
+    },
+    "crafting_system": {
+        "id": "crafting_system",
+        "name": "Crafting System",
+        "description": "Resource gathering, recipes, and crafting stations",
+        "files_estimate": 18,
+        "time_estimate_minutes": 50,
+        "dependencies": ["inventory_system"],
+        "subsystems": ["resource_manager", "recipe_system", "crafting_station", "gathering_component", "blueprint_unlock"]
+    },
+    "economy_system": {
+        "id": "economy_system",
+        "name": "Economy System",
+        "description": "Currency, trading, shops, and dynamic pricing",
+        "files_estimate": 15,
+        "time_estimate_minutes": 40,
+        "dependencies": ["inventory_system"],
+        "subsystems": ["currency_manager", "shop_system", "trade_interface", "dynamic_pricing", "vendor_npc"]
+    },
+    "stealth_system": {
+        "id": "stealth_system",
+        "name": "Stealth System",
+        "description": "Visibility, sound propagation, stealth takedowns",
+        "files_estimate": 20,
+        "time_estimate_minutes": 55,
+        "dependencies": ["ai_behavior"],
+        "subsystems": ["visibility_system", "sound_propagation", "stealth_indicator", "takedown_system", "distraction_items"]
+    },
+    "mount_system": {
+        "id": "mount_system",
+        "name": "Mount System",
+        "description": "Rideable creatures with taming and bonding",
+        "files_estimate": 22,
+        "time_estimate_minutes": 65,
+        "dependencies": ["player_controller", "ai_behavior"],
+        "subsystems": ["mount_base", "mount_controller", "taming_system", "mount_combat", "mount_abilities", "bonding_system"]
+    },
+    "building_system": {
+        "id": "building_system",
+        "name": "Building System",
+        "description": "Base building with snapping, blueprints, and upgrades",
+        "files_estimate": 28,
+        "time_estimate_minutes": 80,
+        "dependencies": ["inventory_system"],
+        "subsystems": ["placement_system", "snap_system", "building_pieces", "structure_integrity", "upgrade_system", "blueprint_mode"]
+    },
+    "skill_tree": {
+        "id": "skill_tree",
+        "name": "Skill Tree",
+        "description": "Character progression with skill points and unlocks",
+        "files_estimate": 16,
+        "time_estimate_minutes": 45,
+        "dependencies": [],
+        "subsystems": ["skill_manager", "skill_node", "skill_tree_ui", "perk_system", "stat_modifiers"]
+    },
+    "fast_travel": {
+        "id": "fast_travel",
+        "name": "Fast Travel",
+        "description": "Discoverable locations with teleport and loading",
+        "files_estimate": 10,
+        "time_estimate_minutes": 25,
+        "dependencies": ["save_system"],
+        "subsystems": ["travel_point", "discovery_system", "travel_ui", "loading_screen", "world_map_markers"]
+    },
+    "photo_mode": {
+        "id": "photo_mode",
+        "name": "Photo Mode",
+        "description": "Camera controls, filters, and screenshot system",
+        "files_estimate": 12,
+        "time_estimate_minutes": 30,
+        "dependencies": [],
+        "subsystems": ["photo_camera", "filter_system", "pose_system", "screenshot_manager", "photo_ui"]
+    },
+    "multiplayer": {
+        "id": "multiplayer",
+        "name": "Multiplayer",
+        "description": "Network replication, sessions, and co-op support",
+        "files_estimate": 40,
+        "time_estimate_minutes": 120,
+        "dependencies": ["player_controller", "save_system"],
+        "subsystems": ["network_manager", "replication_system", "session_manager", "lobby_system", "sync_components", "voice_chat"]
+    }
+}
+
+# Build stage templates for autonomous builds
+BUILD_STAGES = {
+    "unreal": [
+        {"name": "Project Setup", "duration_minutes": 15, "tasks": ["Create project structure", "Configure build settings", "Setup source control"]},
+        {"name": "Core Framework", "duration_minutes": 45, "tasks": ["Game instance", "Game mode", "Player controller base", "Character base"]},
+        {"name": "Game Systems", "duration_minutes": 120, "tasks": ["Selected systems implementation", "System integration", "Data assets"]},
+        {"name": "AI & NPCs", "duration_minutes": 90, "tasks": ["Behavior trees", "NPC classes", "AI controllers", "Perception setup"]},
+        {"name": "UI/UX", "duration_minutes": 60, "tasks": ["HUD", "Menus", "Widget library", "Input bindings"]},
+        {"name": "World Building", "duration_minutes": 90, "tasks": ["Level design", "Environment assets", "Lighting", "Post-processing"]},
+        {"name": "Audio Integration", "duration_minutes": 45, "tasks": ["Sound cues", "Music system", "Ambient audio", "UI sounds"]},
+        {"name": "Polish & Testing", "duration_minutes": 60, "tasks": ["Bug fixes", "Performance optimization", "Automated tests", "Documentation"]}
+    ],
+    "unity": [
+        {"name": "Project Setup", "duration_minutes": 15, "tasks": ["Create project structure", "Configure build settings", "Package imports"]},
+        {"name": "Core Framework", "duration_minutes": 45, "tasks": ["Game manager", "Scene management", "Player controller", "Character controller"]},
+        {"name": "Game Systems", "duration_minutes": 120, "tasks": ["ScriptableObject architecture", "System managers", "Event system"]},
+        {"name": "AI & NPCs", "duration_minutes": 90, "tasks": ["NavMesh setup", "AI state machines", "NPC behaviors", "Spawning system"]},
+        {"name": "UI/UX", "duration_minutes": 60, "tasks": ["Canvas setup", "UI managers", "Prefab library", "Input system"]},
+        {"name": "World Building", "duration_minutes": 90, "tasks": ["Scene composition", "Prefab variants", "Lighting", "Post-processing"]},
+        {"name": "Audio Integration", "duration_minutes": 45, "tasks": ["Audio mixer", "Sound manager", "Music controller", "Ambient system"]},
+        {"name": "Polish & Testing", "duration_minutes": 60, "tasks": ["Bug fixes", "Profiling", "Unit tests", "Documentation"]}
+    ]
 }
 
 # ============ AGENT CONFIGURATION ============
@@ -735,8 +961,8 @@ async def generate_image_fal(prompt: str, width: int = 1024, height: int = 1024)
 async def root():
     return {
         "message": "AgentForge Development Studio API",
-        "version": "2.3.0",
-        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor"]
+        "version": "3.0.0",
+        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor", "simulation_mode", "war_room", "autonomous_builds", "open_world_systems"]
     }
 
 @api_router.get("/health")
@@ -2040,6 +2266,591 @@ Respond with a JSON object:
         logger.error(f"AI refactor suggestion failed: {e}")
     
     return {"success": False, "error": "Could not generate suggestion"}
+
+# ============ SIMULATION MODE (DRY RUN) ============
+
+@api_router.get("/systems/open-world")
+async def get_open_world_systems():
+    """Get available open world game systems"""
+    return list(OPEN_WORLD_SYSTEMS.values())
+
+@api_router.get("/build-stages/{engine}")
+async def get_build_stages(engine: str):
+    """Get build stages for an engine"""
+    stages = BUILD_STAGES.get(engine, BUILD_STAGES["unreal"])
+    return stages
+
+@api_router.post("/simulate")
+async def simulate_build(request: SimulationRequest):
+    """Run a simulation/dry run of the build to predict problems"""
+    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    agents = await get_or_create_agents()
+    atlas = next((a for a in agents if a['name'] == 'ATLAS'), agents[0])
+    
+    # Calculate estimates based on selected systems
+    selected_systems = request.include_systems if request.include_systems else list(OPEN_WORLD_SYSTEMS.keys())[:5]
+    
+    total_files = 0
+    total_time_minutes = 0
+    required_assets = []
+    warnings = []
+    phases = []
+    
+    # Base stages from engine
+    base_stages = BUILD_STAGES.get(request.target_engine, BUILD_STAGES["unreal"])
+    for stage in base_stages:
+        total_time_minutes += stage["duration_minutes"]
+        phases.append({
+            "name": stage["name"],
+            "duration_minutes": stage["duration_minutes"],
+            "tasks": stage["tasks"],
+            "status": "pending"
+        })
+    
+    # Add system-specific estimates
+    system_phase = {"name": "Game Systems", "systems": [], "duration_minutes": 0, "files": 0}
+    for sys_id in selected_systems:
+        system = OPEN_WORLD_SYSTEMS.get(sys_id)
+        if system:
+            total_files += system["files_estimate"]
+            additional_time = system["time_estimate_minutes"]
+            system_phase["systems"].append(system["name"])
+            system_phase["duration_minutes"] += additional_time
+            system_phase["files"] += system["files_estimate"]
+            
+            # Check dependencies
+            for dep in system.get("dependencies", []):
+                if dep not in selected_systems:
+                    warnings.append({
+                        "type": "missing_dependency",
+                        "severity": "high",
+                        "message": f"⚠ {system['name']} requires {dep} which is not selected",
+                        "suggestion": f"Add {dep} to your build or implement it separately"
+                    })
+            
+            # Add required assets
+            required_assets.append({
+                "system": system["name"],
+                "assets": system.get("subsystems", []),
+                "type": "code"
+            })
+    
+    total_time_minutes += system_phase["duration_minutes"]
+    
+    # Engine-specific warnings
+    if request.target_engine == "unreal":
+        if "multiplayer" in selected_systems:
+            warnings.append({
+                "type": "complexity",
+                "severity": "medium",
+                "message": "⚠ Unreal multiplayer requires careful replication setup",
+                "suggestion": "Ensure all replicated actors use proper UPROPERTY specifiers"
+            })
+        if total_files > 100:
+            warnings.append({
+                "type": "performance",
+                "severity": "low",
+                "message": "⚠ Large file count may increase compilation times",
+                "suggestion": "Consider using precompiled headers and unity builds"
+            })
+    elif request.target_engine == "unity":
+        if "terrain" in selected_systems:
+            warnings.append({
+                "type": "memory",
+                "severity": "medium",
+                "message": "⚠ Unity terrain can be memory-intensive",
+                "suggestion": "Use terrain LOD and streaming for large worlds"
+            })
+    
+    # Check for common issues
+    if len(selected_systems) > 10:
+        warnings.append({
+            "type": "scope",
+            "severity": "high",
+            "message": "⚠ Project scope is very large (10+ systems)",
+            "suggestion": "Consider building in phases to reduce risk"
+        })
+    
+    if "vehicle_system" in selected_systems and "terrain" not in selected_systems:
+        warnings.append({
+            "type": "missing_dependency",
+            "severity": "medium",
+            "message": "⚠ Vehicle system selected without terrain system",
+            "suggestion": "Vehicles need a world to drive in - add terrain or level design"
+        })
+    
+    # Calculate feasibility score
+    feasibility = 100
+    for w in warnings:
+        if w["severity"] == "high":
+            feasibility -= 15
+        elif w["severity"] == "medium":
+            feasibility -= 8
+        else:
+            feasibility -= 3
+    feasibility = max(0, feasibility)
+    
+    # Build time formatting
+    hours = total_time_minutes // 60
+    minutes = total_time_minutes % 60
+    time_str = f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+    
+    # Estimate total size (rough: ~5KB per file average)
+    total_size_kb = total_files * 5
+    
+    # Use AI to generate architecture summary
+    arch_prompt = f"""Briefly describe the architecture for a {request.target_engine} game with these systems: {', '.join(selected_systems)}.
+Keep it to 2-3 sentences focusing on core patterns and data flow."""
+    
+    try:
+        arch_response = llm_client.chat.completions.create(
+            model=atlas.get('model', 'google/gemini-2.5-flash'),
+            messages=[{"role": "user", "content": arch_prompt}],
+            max_tokens=200
+        )
+        architecture_summary = arch_response.choices[0].message.content
+    except:
+        architecture_summary = f"Modular {request.target_engine} architecture with component-based systems and event-driven communication."
+    
+    result = {
+        "id": str(uuid.uuid4()),
+        "project_id": request.project_id,
+        "build_type": request.build_type,
+        "target_engine": request.target_engine,
+        "estimated_build_time": time_str,
+        "estimated_build_minutes": total_time_minutes,
+        "file_count": total_files,
+        "total_size_kb": total_size_kb,
+        "required_assets": required_assets,
+        "warnings": warnings,
+        "warning_count": len(warnings),
+        "high_severity_warnings": len([w for w in warnings if w["severity"] == "high"]),
+        "architecture_summary": architecture_summary,
+        "phases": phases,
+        "systems_selected": selected_systems,
+        "feasibility_score": feasibility,
+        "ready_to_build": feasibility >= 60 and len([w for w in warnings if w["severity"] == "high"]) == 0
+    }
+    
+    # Save simulation result
+    await db.simulations.insert_one({**result, "created_at": datetime.now(timezone.utc).isoformat()})
+    
+    return result
+
+# ============ WAR ROOM (AGENT COMMUNICATION) ============
+
+@api_router.get("/war-room/{project_id}")
+async def get_war_room_messages(project_id: str, limit: int = 100):
+    """Get war room messages for a project"""
+    messages = await db.war_room.find(
+        {"project_id": project_id},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(limit).to_list(limit)
+    return list(reversed(messages))
+
+@api_router.post("/war-room/message")
+async def post_war_room_message(project_id: str, from_agent: str, content: str, message_type: str = "discussion", to_agent: Optional[str] = None):
+    """Post a message to the war room"""
+    message = WarRoomMessage(
+        project_id=project_id,
+        from_agent=from_agent,
+        to_agent=to_agent,
+        message_type=message_type,
+        content=content
+    )
+    doc = message.model_dump()
+    doc['timestamp'] = doc['timestamp'].isoformat()
+    await db.war_room.insert_one(doc)
+    return serialize_doc(doc)
+
+@api_router.delete("/war-room/{project_id}")
+async def clear_war_room(project_id: str):
+    """Clear war room messages for a project"""
+    await db.war_room.delete_many({"project_id": project_id})
+    return {"success": True}
+
+async def broadcast_to_war_room(project_id: str, from_agent: str, content: str, message_type: str = "progress", build_id: str = None):
+    """Helper to broadcast a message to war room"""
+    message = WarRoomMessage(
+        project_id=project_id,
+        build_id=build_id,
+        from_agent=from_agent,
+        message_type=message_type,
+        content=content
+    )
+    doc = message.model_dump()
+    doc['timestamp'] = doc['timestamp'].isoformat()
+    await db.war_room.insert_one(doc)
+    return doc
+
+# ============ AUTONOMOUS BUILDS ============
+
+@api_router.post("/builds/start")
+async def start_autonomous_build(request: StartBuildRequest):
+    """Start an autonomous overnight build"""
+    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Check for existing running build
+    existing = await db.builds.find_one({"project_id": request.project_id, "status": "running"})
+    if existing:
+        raise HTTPException(status_code=400, detail="A build is already running for this project")
+    
+    # Get build stages
+    base_stages = BUILD_STAGES.get(request.target_engine, BUILD_STAGES["unreal"])
+    stages = []
+    for i, stage in enumerate(base_stages):
+        stages.append({
+            "index": i,
+            "name": stage["name"],
+            "duration_minutes": stage["duration_minutes"],
+            "tasks": stage["tasks"],
+            "status": "pending",
+            "started_at": None,
+            "completed_at": None,
+            "files_created": [],
+            "test_results": None,
+            "agent_notes": []
+        })
+    
+    total_minutes = sum(s["duration_minutes"] for s in stages)
+    
+    build = AutonomousBuild(
+        project_id=request.project_id,
+        build_type=request.build_type,
+        target_engine=request.target_engine,
+        status="queued",
+        total_stages=len(stages),
+        stages=stages,
+        estimated_completion=f"{total_minutes // 60}h {total_minutes % 60}m"
+    )
+    
+    doc = build.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.builds.insert_one(doc)
+    
+    # Post to war room
+    await broadcast_to_war_room(
+        request.project_id,
+        "COMMANDER",
+        f"🚀 Autonomous build initiated! Target: {request.target_engine.upper()}. Estimated time: {build.estimated_completion}. {len(stages)} stages queued.",
+        "progress",
+        build.id
+    )
+    
+    # Update project status
+    await db.projects.update_one(
+        {"id": request.project_id},
+        {"$set": {"status": "building", "build_id": build.id}}
+    )
+    
+    return serialize_doc(doc)
+
+@api_router.get("/builds/{project_id}")
+async def get_project_builds(project_id: str):
+    """Get all builds for a project"""
+    builds = await db.builds.find({"project_id": project_id}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    return builds
+
+@api_router.get("/builds/{project_id}/current")
+async def get_current_build(project_id: str):
+    """Get the current/latest build for a project"""
+    build = await db.builds.find_one(
+        {"project_id": project_id, "status": {"$in": ["queued", "running"]}},
+        {"_id": 0}
+    )
+    if not build:
+        build = await db.builds.find_one(
+            {"project_id": project_id},
+            {"_id": 0},
+            sort=[("created_at", -1)]
+        )
+    return build
+
+@api_router.post("/builds/{build_id}/advance")
+async def advance_build_stage(build_id: str):
+    """Advance to the next build stage (called by build runner or manually)"""
+    build = await db.builds.find_one({"id": build_id})
+    if not build:
+        raise HTTPException(status_code=404, detail="Build not found")
+    
+    current_stage = build["current_stage"]
+    stages = build["stages"]
+    
+    if current_stage >= len(stages):
+        return {"message": "Build already complete"}
+    
+    # Mark current stage as complete
+    if build["status"] == "running":
+        stages[current_stage]["status"] = "completed"
+        stages[current_stage]["completed_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Move to next stage
+    next_stage = current_stage + 1
+    progress = int((next_stage / len(stages)) * 100)
+    
+    if next_stage >= len(stages):
+        # Build complete
+        await db.builds.update_one(
+            {"id": build_id},
+            {"$set": {
+                "status": "completed",
+                "stages": stages,
+                "current_stage": next_stage,
+                "progress_percent": 100,
+                "completed_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        await broadcast_to_war_room(
+            build["project_id"],
+            "COMMANDER",
+            "✅ BUILD COMPLETE! All stages finished successfully. Review the generated files and run tests.",
+            "progress",
+            build_id
+        )
+    else:
+        # Start next stage
+        stages[next_stage]["status"] = "in_progress"
+        stages[next_stage]["started_at"] = datetime.now(timezone.utc).isoformat()
+        
+        await db.builds.update_one(
+            {"id": build_id},
+            {"$set": {
+                "status": "running",
+                "stages": stages,
+                "current_stage": next_stage,
+                "progress_percent": progress,
+                "started_at": build.get("started_at") or datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        
+        # War room update
+        stage_name = stages[next_stage]["name"]
+        await broadcast_to_war_room(
+            build["project_id"],
+            "COMMANDER",
+            f"📍 Stage {next_stage + 1}/{len(stages)}: {stage_name} starting... ({progress}% complete)",
+            "progress",
+            build_id
+        )
+    
+    return await db.builds.find_one({"id": build_id}, {"_id": 0})
+
+@api_router.post("/builds/{build_id}/pause")
+async def pause_build(build_id: str):
+    """Pause a running build"""
+    await db.builds.update_one({"id": build_id}, {"$set": {"status": "paused"}})
+    build = await db.builds.find_one({"id": build_id}, {"_id": 0})
+    await broadcast_to_war_room(build["project_id"], "COMMANDER", "⏸️ Build paused by user.", "progress", build_id)
+    return {"success": True}
+
+@api_router.post("/builds/{build_id}/resume")
+async def resume_build(build_id: str):
+    """Resume a paused build"""
+    await db.builds.update_one({"id": build_id}, {"$set": {"status": "running"}})
+    build = await db.builds.find_one({"id": build_id}, {"_id": 0})
+    await broadcast_to_war_room(build["project_id"], "COMMANDER", "▶️ Build resumed!", "progress", build_id)
+    return {"success": True}
+
+@api_router.post("/builds/{build_id}/cancel")
+async def cancel_build(build_id: str):
+    """Cancel a build"""
+    await db.builds.update_one({"id": build_id}, {"$set": {"status": "cancelled"}})
+    build = await db.builds.find_one({"id": build_id}, {"_id": 0})
+    await broadcast_to_war_room(build["project_id"], "COMMANDER", "❌ Build cancelled.", "progress", build_id)
+    await db.projects.update_one({"id": build["project_id"]}, {"$set": {"status": "planning"}})
+    return {"success": True}
+
+@api_router.post("/builds/{build_id}/stage/{stage_index}/execute")
+async def execute_build_stage(build_id: str, stage_index: int):
+    """Execute a specific build stage using the agent team"""
+    build = await db.builds.find_one({"id": build_id})
+    if not build:
+        raise HTTPException(status_code=404, detail="Build not found")
+    
+    if stage_index >= len(build["stages"]):
+        raise HTTPException(status_code=400, detail="Invalid stage index")
+    
+    stage = build["stages"][stage_index]
+    project = await db.projects.find_one({"id": build["project_id"]}, {"_id": 0})
+    agents = await get_or_create_agents()
+    
+    # Determine which agent handles this stage
+    stage_agent_map = {
+        "Project Setup": "COMMANDER",
+        "Core Framework": "ATLAS",
+        "Game Systems": "FORGE",
+        "AI & NPCs": "FORGE",
+        "UI/UX": "PRISM",
+        "World Building": "PRISM",
+        "Audio Integration": "FORGE",
+        "Polish & Testing": "PROBE"
+    }
+    
+    agent_name = stage_agent_map.get(stage["name"], "FORGE")
+    agent = next((a for a in agents if a['name'] == agent_name), agents[0])
+    
+    # Broadcast stage start
+    await broadcast_to_war_room(
+        build["project_id"],
+        agent_name,
+        f"🔧 Taking over {stage['name']}. Tasks: {', '.join(stage['tasks'])}",
+        "handoff",
+        build_id
+    )
+    
+    # Build the prompt for this stage
+    tasks_str = "\n".join([f"- {t}" for t in stage["tasks"]])
+    prompt = f"""You are working on an autonomous build for a {build['target_engine']} {build['build_type']} game.
+
+PROJECT: {project['name']}
+DESCRIPTION: {project['description']}
+ENGINE: {build['target_engine'].upper()}
+
+CURRENT STAGE: {stage['name']} ({stage_index + 1}/{len(build['stages'])})
+
+YOUR TASKS FOR THIS STAGE:
+{tasks_str}
+
+IMPORTANT RULES:
+1. Generate COMPLETE, PRODUCTION-READY files - no placeholders or "TODO" comments
+2. Split large systems into logical modules (max 500 lines per file)
+3. Use proper {build['target_engine']} conventions and best practices
+4. Include all necessary includes/imports
+5. Add documentation comments
+6. Output each file with the format: ```language:filepath/filename.ext
+
+Generate all the necessary files for this stage now."""
+
+    context = await build_project_context(build["project_id"])
+    
+    # Execute with agent
+    try:
+        response = await call_agent(agent, [{"role": "user", "content": prompt}], context)
+        code_blocks = extract_code_blocks(response)
+        
+        # Save generated files
+        files_created = []
+        for block in code_blocks:
+            if block.get("filepath"):
+                file = ProjectFile(
+                    project_id=build["project_id"],
+                    filename=block.get("filename", ""),
+                    filepath=block.get("filepath"),
+                    content=block.get("content", ""),
+                    language=block.get("language", "text"),
+                    created_by_agent_name=agent_name
+                )
+                doc = file.model_dump()
+                doc['created_at'] = doc['created_at'].isoformat()
+                doc['updated_at'] = doc['updated_at'].isoformat()
+                
+                existing = await db.files.find_one({"project_id": build["project_id"], "filepath": block.get("filepath")})
+                if existing:
+                    await db.files.update_one(
+                        {"id": existing['id']},
+                        {"$set": {"content": block.get("content", ""), "version": existing.get('version', 1) + 1}}
+                    )
+                else:
+                    await db.files.insert_one(doc)
+                
+                files_created.append(block.get("filepath"))
+        
+        # Update stage with results
+        build["stages"][stage_index]["status"] = "completed"
+        build["stages"][stage_index]["completed_at"] = datetime.now(timezone.utc).isoformat()
+        build["stages"][stage_index]["files_created"] = files_created
+        build["stages"][stage_index]["agent_notes"].append({
+            "agent": agent_name,
+            "note": f"Generated {len(files_created)} files",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
+        await db.builds.update_one({"id": build_id}, {"$set": {"stages": build["stages"]}})
+        
+        # War room completion message
+        await broadcast_to_war_room(
+            build["project_id"],
+            agent_name,
+            f"✅ {stage['name']} complete! Generated {len(files_created)} files: {', '.join(files_created[:5])}{'...' if len(files_created) > 5 else ''}",
+            "progress",
+            build_id
+        )
+        
+        return {
+            "success": True,
+            "stage": stage["name"],
+            "files_created": files_created,
+            "agent": agent_name
+        }
+        
+    except Exception as e:
+        logger.error(f"Stage execution failed: {e}")
+        build["stages"][stage_index]["status"] = "failed"
+        build["stages"][stage_index]["agent_notes"].append({
+            "agent": agent_name,
+            "note": f"Error: {str(e)}",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        await db.builds.update_one({"id": build_id}, {"$set": {"stages": build["stages"], "status": "failed"}})
+        
+        await broadcast_to_war_room(
+            build["project_id"],
+            agent_name,
+            f"❌ {stage['name']} failed: {str(e)}",
+            "warning",
+            build_id
+        )
+        
+        raise HTTPException(status_code=500, detail=f"Stage execution failed: {str(e)}")
+
+@api_router.post("/builds/{build_id}/run-full")
+async def run_full_build(build_id: str, background_tasks: BackgroundTasks):
+    """Run all build stages sequentially (async background task)"""
+    build = await db.builds.find_one({"id": build_id})
+    if not build:
+        raise HTTPException(status_code=404, detail="Build not found")
+    
+    # Start the build
+    await db.builds.update_one(
+        {"id": build_id},
+        {"$set": {"status": "running", "started_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    # Queue background execution
+    async def execute_all_stages():
+        for i in range(len(build["stages"])):
+            current_build = await db.builds.find_one({"id": build_id})
+            if current_build["status"] in ["cancelled", "paused"]:
+                break
+            
+            try:
+                await execute_build_stage(build_id, i)
+                await asyncio.sleep(2)  # Brief pause between stages
+            except Exception as e:
+                logger.error(f"Build stage {i} failed: {e}")
+                break
+        
+        # Mark complete
+        final_build = await db.builds.find_one({"id": build_id})
+        if final_build["status"] == "running":
+            all_complete = all(s["status"] == "completed" for s in final_build["stages"])
+            await db.builds.update_one(
+                {"id": build_id},
+                {"$set": {
+                    "status": "completed" if all_complete else "partial",
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                    "progress_percent": 100 if all_complete else final_build.get("progress_percent", 0)
+                }}
+            )
+    
+    background_tasks.add_task(execute_all_stages)
+    
+    return {"success": True, "message": "Build started in background", "build_id": build_id}
 
 # Include router
 app.include_router(api_router)
