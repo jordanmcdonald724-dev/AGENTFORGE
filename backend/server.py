@@ -6832,6 +6832,79 @@ async def add_worker(name: str, capabilities: str = "web,api"):
     await db.build_workers.insert_one(doc)
     return serialize_doc(doc)
 
+
+# ========== CELERY DISTRIBUTED QUEUE ENDPOINTS ==========
+
+@api_router.post("/celery/jobs/submit")
+async def submit_celery_job(project_id: str, project_name: str, job_type: str = "prototype", priority: int = 5):
+    """Submit a job to the Celery distributed queue"""
+    try:
+        from core.celery_tasks import get_celery_manager, CELERY_AVAILABLE
+        manager = get_celery_manager(db)
+        
+        job_id = str(uuid.uuid4())
+        job = await manager.submit_build(job_id, project_id, job_type, priority, {"project_name": project_name})
+        
+        return {
+            "success": True,
+            "job_id": job['id'],
+            "celery_available": CELERY_AVAILABLE,
+            "status": job['status']
+        }
+    except ImportError:
+        # Fall back to regular build farm
+        return await add_build_job(project_id, project_name, job_type, priority)
+
+
+@api_router.get("/celery/jobs/{job_id}")
+async def get_celery_job(job_id: str):
+    """Get Celery job status"""
+    try:
+        from core.celery_tasks import get_celery_manager
+        manager = get_celery_manager(db)
+        job = await manager.get_job_status(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return job
+    except ImportError:
+        return await get_job_logs(job_id)
+
+
+@api_router.post("/celery/jobs/{job_id}/cancel")
+async def cancel_celery_job(job_id: str):
+    """Cancel a Celery job"""
+    try:
+        from core.celery_tasks import get_celery_manager
+        manager = get_celery_manager(db)
+        success = await manager.cancel_job(job_id)
+        return {"success": success}
+    except ImportError:
+        return await cancel_build_job(job_id)
+
+
+@api_router.get("/celery/stats")
+async def get_celery_stats():
+    """Get Celery queue statistics"""
+    try:
+        from core.celery_tasks import get_celery_manager, CeleryWorkerPool, CELERY_AVAILABLE
+        manager = get_celery_manager(db)
+        stats = await manager.get_queue_stats()
+        stats['workers'] = CeleryWorkerPool.get_workers()
+        return stats
+    except ImportError:
+        return {"celery_available": False, "message": "Celery not configured"}
+
+
+@api_router.get("/celery/workers")
+async def get_celery_workers():
+    """Get active Celery workers"""
+    try:
+        from core.celery_tasks import CeleryWorkerPool
+        return {"workers": CeleryWorkerPool.get_workers()}
+    except ImportError:
+        return {"workers": [], "celery_available": False}
+
+
 # ========== FEATURE 4: ONE-CLICK SAAS ENDPOINTS ==========
 
 @api_router.post("/saas/generate")

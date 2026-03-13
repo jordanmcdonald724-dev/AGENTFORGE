@@ -1,57 +1,14 @@
-import { useState, useEffect, useRef, useMemo, useCallback, Component } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { 
-  OrbitControls, Html, Environment,
-  Float, Sparkles
-} from "@react-three/drei";
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from "react";
 import * as THREE from "three";
 import axios from "axios";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Box, RefreshCw, Eye, EyeOff, Folder, AlertCircle
+  Box, RefreshCw, Eye, EyeOff, Folder, Layers, GitBranch,
+  Network, BarChart3, CircleDot
 } from "lucide-react";
 import { API } from "@/App";
-
-// Error Boundary for Canvas
-class CanvasErrorBoundary extends Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("3D Canvas error:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="absolute inset-0 flex items-center justify-center bg-[#050507]">
-          <div className="text-center p-4">
-            <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-2" />
-            <p className="text-zinc-400 mb-2">3D Visualization unavailable</p>
-            <p className="text-zinc-500 text-xs">WebGL context error - try refreshing</p>
-            <Button 
-              size="sm" 
-              variant="outline" 
-              className="mt-3"
-              onClick={() => this.setState({ hasError: false, error: null })}
-            >
-              Retry
-            </Button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 // File type colors
 const FILE_COLORS = {
@@ -67,212 +24,311 @@ const FILE_COLORS = {
   default: "#6b7280"
 };
 
-// 3D Node component for each file
-function FileNode({ node, position, isSelected, onClick, showLabels }) {
-  const meshRef = useRef();
-  const [hovered, setHovered] = useState(false);
-  
-  const color = FILE_COLORS[node.type] || FILE_COLORS.default;
-  const scale = Math.max(0.3, Math.min(1.2, 0.3 + (node.lines / 500)));
-  
-  useFrame((state) => {
-    if (meshRef.current) {
-      // Gentle floating animation
-      meshRef.current.position.y = position[1] + Math.sin(state.clock.elapsedTime + position[0]) * 0.1;
-      
-      // Pulse when selected
-      if (isSelected) {
-        meshRef.current.scale.setScalar(scale * (1 + Math.sin(state.clock.elapsedTime * 3) * 0.1));
-      }
-    }
-  });
+// Pure Three.js Visualization Component (no R3F to avoid reconciler issues)
+const ThreeJSCanvas = ({ nodes, edges, selectedNode, onSelectNode, showLabels, viewMode }) => {
+  const containerRef = useRef(null);
+  const sceneRef = useRef(null);
+  const cameraRef = useRef(null);
+  const rendererRef = useRef(null);
+  const controlsRef = useRef(null);
+  const nodesRef = useRef({});
+  const linesRef = useRef([]);
+  const animationRef = useRef(null);
+  const raycasterRef = useRef(new THREE.Raycaster());
+  const mouseRef = useRef(new THREE.Vector2());
 
-  return (
-    <group position={position}>
-      <Float speed={2} rotationIntensity={0.2} floatIntensity={0.3}>
-        <mesh
-          ref={meshRef}
-          onClick={(e) => { e.stopPropagation(); onClick(node); }}
-          onPointerOver={() => setHovered(true)}
-          onPointerOut={() => setHovered(false)}
-        >
-          <dodecahedronGeometry args={[scale * 0.5, 0]} />
-          <meshStandardMaterial
-            color={color}
-            emissive={color}
-            emissiveIntensity={isSelected ? 0.8 : hovered ? 0.5 : 0.2}
-            metalness={0.3}
-            roughness={0.4}
-          />
-        </mesh>
-      </Float>
-      
-      {/* File name label */}
-      {(showLabels || hovered || isSelected) && (
-        <Html
-          position={[0, scale * 0.7, 0]}
-          center
-          distanceFactor={8}
-          style={{ pointerEvents: 'none' }}
-        >
-          <div className={`px-2 py-1 rounded text-xs whitespace-nowrap transition-opacity ${
-            hovered || isSelected ? 'opacity-100' : 'opacity-70'
-          }`} style={{
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            border: `1px solid ${color}`,
-            color: 'white'
-          }}>
-            {node.name}
-            <span className="text-zinc-400 ml-1 text-[10px]">{node.lines}L</span>
-          </div>
-        </Html>
-      )}
-      
-      {/* Selection ring */}
-      {isSelected && (
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[scale * 0.6, scale * 0.7, 32]} />
-          <meshBasicMaterial color={color} transparent opacity={0.5} side={THREE.DoubleSide} />
-        </mesh>
-      )}
-    </group>
-  );
-}
-
-// Connection line between dependent files using native Three.js
-function DependencyLine({ start, end, color = "#374151" }) {
-  const lineRef = useRef();
-  
+  // Initialize Three.js scene
   useEffect(() => {
-    if (lineRef.current) {
-      const points = [
-        new THREE.Vector3(...start),
-        new THREE.Vector3(...end)
-      ];
-      lineRef.current.geometry.setFromPoints(points);
-    }
-  }, [start, end]);
+    if (!containerRef.current) return;
 
-  return (
-    <line ref={lineRef}>
-      <bufferGeometry />
-      <lineBasicMaterial color={color} transparent opacity={0.4} />
-    </line>
-  );
-}
+    // Scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050507);
+    scene.fog = new THREE.Fog(0x050507, 20, 50);
+    sceneRef.current = scene;
 
-// Camera controller
-function CameraController({ target }) {
-  const { camera } = useThree();
-  
-  useEffect(() => {
-    if (target) {
-      camera.position.lerp(new THREE.Vector3(target[0] + 5, target[1] + 3, target[2] + 5), 0.1);
-    }
-  }, [target, camera]);
-  
-  return null;
-}
+    // Camera
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      containerRef.current.clientWidth / containerRef.current.clientHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(15, 10, 15);
+    cameraRef.current = camera;
 
-// Main 3D Scene
-function Scene({ nodes, edges, selectedNode, onSelectNode, showLabels }) {
-  // Calculate positions using force-directed layout
-  const nodePositions = useMemo(() => {
-    const positions = {};
-    const angleStep = (2 * Math.PI) / Math.max(nodes.length, 1);
-    
-    nodes.forEach((node, i) => {
-      // Arrange in a spiral pattern
-      const radius = 3 + (i / nodes.length) * 5;
-      const angle = i * angleStep * 1.5;
-      const height = (i % 5) - 2;
-      
-      positions[node.id] = [
-        Math.cos(angle) * radius,
-        height,
-        Math.sin(angle) * radius
-      ];
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      alpha: true,
+      powerPreference: "high-performance"
     });
-    
-    return positions;
-  }, [nodes]);
+    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    containerRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
 
-  return (
-    <>
-      {/* Lighting */}
-      <ambientLight intensity={0.4} />
-      <pointLight position={[10, 10, 10]} intensity={1} />
-      <pointLight position={[-10, -10, -10]} intensity={0.5} color="#4f46e5" />
-      
-      {/* Environment */}
-      <Environment preset="night" />
-      <Sparkles count={100} scale={20} size={2} speed={0.4} opacity={0.3} />
-      
-      {/* Grid helper */}
-      <gridHelper args={[20, 20, '#1a1a1f', '#1a1a1f']} position={[0, -3, 0]} />
-      
-      {/* Dependency lines */}
-      {edges.map((edge, i) => {
-        const startPos = nodePositions[edge.from];
-        const endPos = nodePositions[edge.to];
-        if (!startPos || !endPos) return null;
-        
-        return (
-          <DependencyLine
-            key={i}
-            start={startPos}
-            end={endPos}
-            color={selectedNode?.id === edge.from || selectedNode?.id === edge.to ? "#60a5fa" : "#374151"}
-          />
-        );
-      })}
-      
-      {/* File nodes */}
-      {nodes.map((node) => (
-        <FileNode
-          key={node.id}
-          node={node}
-          position={nodePositions[node.id] || [0, 0, 0]}
-          isSelected={selectedNode?.id === node.id}
-          onClick={onSelectNode}
-          showLabels={showLabels}
-        />
-      ))}
-      
-      {/* Camera controls */}
-      <OrbitControls
-        makeDefault
-        enableDamping
-        dampingFactor={0.05}
-        minDistance={3}
-        maxDistance={30}
-        maxPolarAngle={Math.PI / 1.5}
-      />
-      
-      {selectedNode && (
-        <CameraController target={nodePositions[selectedNode.id]} />
-      )}
-    </>
-  );
-}
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    scene.add(ambientLight);
 
-// Main component
+    const pointLight1 = new THREE.PointLight(0x60a5fa, 1, 50);
+    pointLight1.position.set(10, 10, 10);
+    scene.add(pointLight1);
+
+    const pointLight2 = new THREE.PointLight(0xa855f7, 0.5, 50);
+    pointLight2.position.set(-10, -5, -10);
+    scene.add(pointLight2);
+
+    // Grid
+    const grid = new THREE.GridHelper(30, 30, 0x1a1a1f, 0x1a1a1f);
+    grid.position.y = -3;
+    scene.add(grid);
+
+    // Orbit controls (manual implementation)
+    let isDragging = false;
+    let previousMousePosition = { x: 0, y: 0 };
+    let spherical = new THREE.Spherical(20, Math.PI / 3, Math.PI / 4);
+
+    const updateCamera = () => {
+      camera.position.setFromSpherical(spherical);
+      camera.lookAt(0, 0, 0);
+    };
+    updateCamera();
+
+    const onMouseDown = (e) => {
+      isDragging = true;
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    };
+
+    const onMouseMove = (e) => {
+      if (!isDragging) return;
+      
+      const deltaX = e.clientX - previousMousePosition.x;
+      const deltaY = e.clientY - previousMousePosition.y;
+      
+      spherical.theta -= deltaX * 0.01;
+      spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi + deltaY * 0.01));
+      
+      updateCamera();
+      previousMousePosition = { x: e.clientX, y: e.clientY };
+    };
+
+    const onMouseUp = () => {
+      isDragging = false;
+    };
+
+    const onWheel = (e) => {
+      spherical.radius = Math.max(5, Math.min(40, spherical.radius + e.deltaY * 0.01));
+      updateCamera();
+    };
+
+    // Click handler
+    const onClick = (e) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouseRef.current.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouseRef.current.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycasterRef.current.setFromCamera(mouseRef.current, camera);
+      const intersects = raycasterRef.current.intersectObjects(Object.values(nodesRef.current));
+      
+      if (intersects.length > 0) {
+        const nodeId = intersects[0].object.userData.nodeId;
+        const node = nodes.find(n => n.id === nodeId);
+        if (node) onSelectNode(node);
+      }
+    };
+
+    renderer.domElement.addEventListener('mousedown', onMouseDown);
+    renderer.domElement.addEventListener('mousemove', onMouseMove);
+    renderer.domElement.addEventListener('mouseup', onMouseUp);
+    renderer.domElement.addEventListener('mouseleave', onMouseUp);
+    renderer.domElement.addEventListener('wheel', onWheel);
+    renderer.domElement.addEventListener('click', onClick);
+
+    // Animation loop
+    const animate = () => {
+      animationRef.current = requestAnimationFrame(animate);
+      
+      // Animate nodes
+      const time = Date.now() * 0.001;
+      Object.values(nodesRef.current).forEach((mesh, i) => {
+        if (mesh) {
+          mesh.position.y = mesh.userData.baseY + Math.sin(time + i) * 0.2;
+          mesh.rotation.y = time * 0.5;
+        }
+      });
+
+      renderer.render(scene, camera);
+    };
+    animate();
+
+    // Resize handler
+    const handleResize = () => {
+      if (!containerRef.current) return;
+      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => {
+      cancelAnimationFrame(animationRef.current);
+      renderer.domElement.removeEventListener('mousedown', onMouseDown);
+      renderer.domElement.removeEventListener('mousemove', onMouseMove);
+      renderer.domElement.removeEventListener('mouseup', onMouseUp);
+      renderer.domElement.removeEventListener('mouseleave', onMouseUp);
+      renderer.domElement.removeEventListener('wheel', onWheel);
+      renderer.domElement.removeEventListener('click', onClick);
+      window.removeEventListener('resize', handleResize);
+      
+      if (containerRef.current && renderer.domElement) {
+        containerRef.current.removeChild(renderer.domElement);
+      }
+      renderer.dispose();
+    };
+  }, []);
+
+  // Update nodes when data changes
+  useEffect(() => {
+    if (!sceneRef.current) return;
+
+    // Clear existing nodes
+    Object.values(nodesRef.current).forEach(mesh => {
+      if (mesh) sceneRef.current.remove(mesh);
+    });
+    nodesRef.current = {};
+
+    // Clear existing lines
+    linesRef.current.forEach(line => {
+      if (line) sceneRef.current.remove(line);
+    });
+    linesRef.current = [];
+
+    // Calculate positions based on view mode
+    const positions = {};
+    nodes.forEach((node, i) => {
+      let x, y, z;
+      
+      switch (viewMode) {
+        case 'spiral':
+          const angle = i * 0.5;
+          const radius = 2 + i * 0.3;
+          x = Math.cos(angle) * radius;
+          z = Math.sin(angle) * radius;
+          y = (i / nodes.length) * 4 - 2;
+          break;
+        case 'cluster':
+          // Group by file type
+          const typeIndex = Object.keys(FILE_COLORS).indexOf(node.type);
+          const groupAngle = (typeIndex / Object.keys(FILE_COLORS).length) * Math.PI * 2;
+          const groupRadius = 5;
+          const innerAngle = (i * 0.7) % (Math.PI * 2);
+          x = Math.cos(groupAngle) * groupRadius + Math.cos(innerAngle) * 2;
+          z = Math.sin(groupAngle) * groupRadius + Math.sin(innerAngle) * 2;
+          y = ((i % 5) - 2) * 0.5;
+          break;
+        case 'tree':
+          // Tree layout
+          const depth = Math.floor(Math.log2(i + 1));
+          const posInLevel = i - Math.pow(2, depth) + 1;
+          const levelWidth = Math.pow(2, depth);
+          x = (posInLevel / levelWidth - 0.5) * (10 / (depth + 1));
+          y = depth * -2;
+          z = 0;
+          break;
+        default: // radial
+          const radAngle = (i / nodes.length) * Math.PI * 2;
+          const radRadius = 4 + (i % 3) * 2;
+          x = Math.cos(radAngle) * radRadius;
+          z = Math.sin(radAngle) * radRadius;
+          y = ((i % 5) - 2) * 0.5;
+      }
+      
+      positions[node.id] = { x, y, z };
+    });
+
+    // Create node meshes
+    nodes.forEach((node) => {
+      const color = FILE_COLORS[node.type] || FILE_COLORS.default;
+      const scale = Math.max(0.3, Math.min(1, 0.3 + (node.lines / 500)));
+      const pos = positions[node.id];
+
+      // Create geometry based on file type
+      let geometry;
+      switch (node.type) {
+        case 'jsx':
+        case 'tsx':
+          geometry = new THREE.OctahedronGeometry(scale * 0.5, 0);
+          break;
+        case 'py':
+          geometry = new THREE.CylinderGeometry(scale * 0.4, scale * 0.4, scale * 0.6, 6);
+          break;
+        case 'json':
+          geometry = new THREE.BoxGeometry(scale * 0.6, scale * 0.6, scale * 0.6);
+          break;
+        default:
+          geometry = new THREE.DodecahedronGeometry(scale * 0.4, 0);
+      }
+
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(color),
+        emissive: new THREE.Color(color),
+        emissiveIntensity: selectedNode?.id === node.id ? 0.8 : 0.3,
+        metalness: 0.3,
+        roughness: 0.4
+      });
+
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(pos.x, pos.y, pos.z);
+      mesh.userData = { nodeId: node.id, baseY: pos.y };
+      mesh.castShadow = true;
+
+      sceneRef.current.add(mesh);
+      nodesRef.current[node.id] = mesh;
+    });
+
+    // Create edge lines
+    edges.forEach((edge) => {
+      const fromPos = positions[edge.from];
+      const toPos = positions[edge.to];
+      if (!fromPos || !toPos) return;
+
+      const points = [
+        new THREE.Vector3(fromPos.x, fromPos.y, fromPos.z),
+        new THREE.Vector3(toPos.x, toPos.y, toPos.z)
+      ];
+
+      const geometry = new THREE.BufferGeometry().setFromPoints(points);
+      const material = new THREE.LineBasicMaterial({
+        color: selectedNode?.id === edge.from || selectedNode?.id === edge.to ? 0x60a5fa : 0x374151,
+        transparent: true,
+        opacity: 0.5
+      });
+
+      const line = new THREE.Line(geometry, material);
+      sceneRef.current.add(line);
+      linesRef.current.push(line);
+    });
+
+  }, [nodes, edges, selectedNode, viewMode]);
+
+  return <div ref={containerRef} className="w-full h-full" />;
+};
+
+// Main Component
 const SystemVisualization3D = ({ projectId }) => {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedNode, setSelectedNode] = useState(null);
   const [showLabels, setShowLabels] = useState(false);
-  const [canvasReady, setCanvasReady] = useState(false);
+  const [viewMode, setViewMode] = useState('radial');
 
   useEffect(() => {
     fetchVisualization();
-    // Delay canvas mount to avoid race conditions
-    const timer = setTimeout(() => setCanvasReady(true), 100);
-    return () => {
-      setCanvasReady(false);
-      clearTimeout(timer);
-    };
   }, [projectId]);
 
   const fetchVisualization = async () => {
@@ -281,7 +337,6 @@ const SystemVisualization3D = ({ projectId }) => {
       const filesRes = await axios.get(`${API}/files?project_id=${projectId}`);
       const files = filesRes.data || [];
       
-      // Create nodes
       const fileNodes = files.map((file) => {
         const ext = file.filepath?.split('.').pop() || 'default';
         return {
@@ -294,7 +349,6 @@ const SystemVisualization3D = ({ projectId }) => {
         };
       });
       
-      // Create edges based on imports
       const fileEdges = [];
       files.forEach((file) => {
         const content = file.content || '';
@@ -321,13 +375,19 @@ const SystemVisualization3D = ({ projectId }) => {
     setSelectedNode(prev => prev?.id === node.id ? null : node);
   }, []);
 
-  // Stats
   const stats = useMemo(() => ({
     totalFiles: nodes.length,
     totalLines: nodes.reduce((sum, n) => sum + n.lines, 0),
     totalDeps: edges.length,
     fileTypes: [...new Set(nodes.map(n => n.type))]
   }), [nodes, edges]);
+
+  const VIEW_MODES = [
+    { id: 'radial', name: 'Radial', icon: CircleDot },
+    { id: 'spiral', name: 'Spiral', icon: GitBranch },
+    { id: 'cluster', name: 'Cluster', icon: Network },
+    { id: 'tree', name: 'Tree', icon: Layers }
+  ];
 
   return (
     <div className="h-full flex flex-col bg-[#050507]" data-testid="system-visualization-3d">
@@ -348,6 +408,26 @@ const SystemVisualization3D = ({ projectId }) => {
             </Badge>
           </div>
           <div className="flex items-center gap-2">
+            {/* View Mode Selector */}
+            <div className="flex items-center gap-1 bg-zinc-900 rounded-lg p-1">
+              {VIEW_MODES.map(mode => {
+                const Icon = mode.icon;
+                return (
+                  <button
+                    key={mode.id}
+                    onClick={() => setViewMode(mode.id)}
+                    className={`p-1.5 rounded transition-colors ${
+                      viewMode === mode.id 
+                        ? 'bg-cyan-500/20 text-cyan-400' 
+                        : 'text-zinc-500 hover:text-zinc-300'
+                    }`}
+                    title={mode.name}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                  </button>
+                );
+              })}
+            </div>
             <Button
               size="sm"
               variant="ghost"
@@ -384,36 +464,21 @@ const SystemVisualization3D = ({ projectId }) => {
             <div className="text-center">
               <Folder className="w-12 h-12 text-zinc-600 mx-auto mb-2" />
               <p className="text-zinc-500">No files in this project yet</p>
-            </div>
-          </div>
-        ) : !canvasReady ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#050507]">
-            <div className="text-center">
-              <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin mx-auto mb-2" />
-              <p className="text-zinc-500 text-sm">Initializing 3D view...</p>
+              <p className="text-zinc-600 text-xs mt-1">Add files to see the 3D visualization</p>
             </div>
           </div>
         ) : (
-          <CanvasErrorBoundary>
-            <Canvas
-              camera={{ position: [8, 5, 8], fov: 50 }}
-              style={{ background: '#050507' }}
-              onCreated={({ gl }) => {
-                gl.setClearColor('#050507');
-              }}
-            >
-              <Scene
-                nodes={nodes}
-                edges={edges}
-                selectedNode={selectedNode}
-                onSelectNode={handleSelectNode}
-                showLabels={showLabels}
-              />
-            </Canvas>
-          </CanvasErrorBoundary>
+          <ThreeJSCanvas
+            nodes={nodes}
+            edges={edges}
+            selectedNode={selectedNode}
+            onSelectNode={handleSelectNode}
+            showLabels={showLabels}
+            viewMode={viewMode}
+          />
         )}
 
-        {/* Selected node info panel */}
+        {/* Selected Node Info */}
         {selectedNode && (
           <div className="absolute right-4 top-4 w-64 bg-zinc-900/95 border border-zinc-700 rounded-lg p-4 backdrop-blur-sm">
             <div className="flex items-center gap-2 mb-3">
@@ -484,8 +549,8 @@ const SystemVisualization3D = ({ projectId }) => {
         {/* Legend */}
         <div className="absolute left-4 top-4 bg-zinc-900/80 border border-zinc-800 rounded-lg p-3 backdrop-blur-sm">
           <p className="text-[10px] text-zinc-500 mb-2">File Types</p>
-          <div className="flex flex-wrap gap-2">
-            {stats.fileTypes.slice(0, 6).map(type => (
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+            {stats.fileTypes.slice(0, 8).map(type => (
               <div key={type} className="flex items-center gap-1">
                 <div 
                   className="w-2 h-2 rounded-full"
