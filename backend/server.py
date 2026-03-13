@@ -79,6 +79,8 @@ try:
     from routes.agent_network import router as agent_network_router
     from routes.global_intelligence import router as global_intelligence_router
     from routes.voice import router as voice_router
+    from routes.god_mode_v2 import router as god_mode_v2_router
+    from routes.intelligence.core import router as intelligence_router
     
     # Register all routers with /api prefix
     # Core routes
@@ -134,6 +136,8 @@ try:
     app.include_router(agent_network_router, prefix="/api", tags=["agent-network"])
     app.include_router(global_intelligence_router, prefix="/api", tags=["global-intelligence"])
     app.include_router(voice_router, prefix="/api", tags=["voice"])
+    app.include_router(god_mode_v2_router, prefix="/api", tags=["god-mode-v2"])
+    app.include_router(intelligence_router, prefix="/api", tags=["intelligence"])
     
     logger.info("Successfully loaded all modular routers")
     
