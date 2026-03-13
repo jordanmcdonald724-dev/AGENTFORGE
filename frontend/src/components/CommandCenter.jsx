@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Scan, Bug, History, Lightbulb, Zap, Server, Users, Target, Brain, Radio, Rocket
+  Scan, Bug, History, Lightbulb, Zap, Server, Users, Target, Brain, Radio, Rocket, Box
 } from "lucide-react";
 import AutopsyPanel from "./AutopsyPanel";
 import DebugLoopPanel from "./DebugLoopPanel";
@@ -14,6 +14,7 @@ import GoalLoopPanel from "./GoalLoopPanel";
 import KnowledgeGraphPanel from "./KnowledgeGraphPanel";
 import MissionControlPanel from "./MissionControlPanel";
 import RealityPipelinePanel from "./RealityPipelinePanel";
+import SystemVisualization from "./SystemVisualization";
 
 const CommandCenter = ({ projectId, projectName, onNavigate }) => {
   const [activeTab, setActiveTab] = useState("mission");
@@ -54,6 +55,9 @@ const CommandCenter = ({ projectId, projectName, onNavigate }) => {
           </TabsTrigger>
           <TabsTrigger value="agents" className="text-xs data-[state=active]:bg-zinc-800" data-testid="cmd-agents-tab">
             <Users className="w-3 h-3 mr-1" />Agents+
+          </TabsTrigger>
+          <TabsTrigger value="visualize" className="text-xs data-[state=active]:bg-zinc-800" data-testid="cmd-viz-tab">
+            <Box className="w-3 h-3 mr-1" />3D Map
           </TabsTrigger>
         </TabsList>
 
@@ -99,6 +103,10 @@ const CommandCenter = ({ projectId, projectName, onNavigate }) => {
 
         <TabsContent value="agents" className="flex-1 m-0 overflow-hidden">
           <DynamicAgentsPanel projectId={projectId} />
+        </TabsContent>
+
+        <TabsContent value="visualize" className="flex-1 m-0 overflow-hidden">
+          <SystemVisualization projectId={projectId} />
         </TabsContent>
       </Tabs>
     </div>

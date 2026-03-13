@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { 
   Rocket, Triangle, Train, Gamepad2, ExternalLink, 
-  Loader2, CheckCircle, XCircle, Clock, Trash2
+  Loader2, CheckCircle, XCircle, Clock, Trash2, Zap, Key
 } from "lucide-react";
 import { API } from "@/App";
 
@@ -30,6 +30,8 @@ const DeploymentPanel = ({ projectId, projectName }) => {
   const [deploying, setDeploying] = useState(null);
   const [deployDialogOpen, setDeployDialogOpen] = useState(false);
   const [selectedPlatform, setSelectedPlatform] = useState(null);
+  const [serverConfig, setServerConfig] = useState({});
+  const [useServerKeys, setUseServerKeys] = useState(true);
   
   const [credentials, setCredentials] = useState({
     vercel_token: "",
@@ -43,6 +45,7 @@ const DeploymentPanel = ({ projectId, projectName }) => {
   useEffect(() => {
     fetchPlatforms();
     fetchDeployments();
+    fetchServerConfig();
   }, [projectId]);
 
   const fetchPlatforms = async () => {
@@ -57,6 +60,47 @@ const DeploymentPanel = ({ projectId, projectName }) => {
       const res = await axios.get(`${API}/deploy/${projectId}`);
       setDeployments(res.data);
     } catch (e) {}
+  };
+
+  const fetchServerConfig = async () => {
+    try {
+      const res = await axios.get(`${API}/deploy/config`);
+      setServerConfig(res.data);
+    } catch (e) {}
+  };
+
+  const quickDeploy = async (platform) => {
+    if (!newProjectName) {
+      toast.error("Please enter a project name");
+      return;
+    }
+    
+    setDeploying(platform);
+    try {
+      const res = await axios.post(`${API}/deploy/${projectId}/quick/${platform}`, null, {
+        params: { project_name: newProjectName }
+      });
+      
+      if (res.data.status === "live") {
+        toast.success(`Deployed to ${platform}!`, {
+          description: res.data.deploy_url,
+          action: {
+            label: "Open",
+            onClick: () => window.open(res.data.deploy_url, '_blank')
+          }
+        });
+      } else {
+        toast.error("Deployment failed", {
+          description: res.data.logs?.[res.data.logs.length - 1] || "Check logs for details"
+        });
+      }
+      
+      fetchDeployments();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Deployment failed");
+    } finally {
+      setDeploying(null);
+    }
   };
 
   const deploy = async () => {
@@ -124,6 +168,7 @@ const DeploymentPanel = ({ projectId, projectName }) => {
 
   const openDeployDialog = (platformId) => {
     setSelectedPlatform(platformId);
+    setUseServerKeys(false);
     setDeployDialogOpen(true);
   };
 
@@ -138,12 +183,72 @@ const DeploymentPanel = ({ projectId, projectName }) => {
 
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-6">
+          {/* Quick Deploy Section */}
+          {(serverConfig.vercel || serverConfig.railway) && (
+            <div className="p-4 rounded-lg bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 border border-emerald-500/20">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-medium text-emerald-400">Quick Deploy (No API Key Needed)</span>
+              </div>
+              
+              <div className="mb-3">
+                <Input
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value.toLowerCase().replace(/\s+/g, '-'))}
+                  className="bg-zinc-900/50 border-zinc-700 text-white"
+                  placeholder="project-name"
+                  data-testid="quick-deploy-name"
+                />
+              </div>
+              
+              <div className="flex gap-2">
+                {serverConfig.vercel && (
+                  <Button
+                    size="sm"
+                    className="bg-zinc-700 hover:bg-zinc-600 flex-1"
+                    onClick={() => quickDeploy('vercel')}
+                    disabled={deploying === 'vercel' || !newProjectName}
+                    data-testid="quick-deploy-vercel"
+                  >
+                    {deploying === 'vercel' ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                    ) : (
+                      <Triangle className="w-4 h-4 mr-1" />
+                    )}
+                    Vercel
+                  </Button>
+                )}
+                {serverConfig.railway && (
+                  <Button
+                    size="sm"
+                    className="bg-purple-600 hover:bg-purple-700 flex-1"
+                    onClick={() => quickDeploy('railway')}
+                    disabled={deploying === 'railway' || !newProjectName}
+                    data-testid="quick-deploy-railway"
+                  >
+                    {deploying === 'railway' ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                    ) : (
+                      <Train className="w-4 h-4 mr-1" />
+                    )}
+                    Railway
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Platform Cards */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium text-zinc-400">Deploy to:</h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-medium text-zinc-400">All Platforms:</h4>
+              <div className="flex items-center gap-1 text-xs text-zinc-500">
+                <Key className="w-3 h-3" />
+                <span>Requires your own API key</span>
+              </div>
+            </div>
             {platforms.map((platform) => {
               const Icon = PLATFORM_ICONS[platform.id] || Rocket;
-              const color = PLATFORM_COLORS[platform.id] || "zinc";
               const existingDeploy = deployments.find(d => d.platform === platform.id && d.status === "live");
               
               return (
@@ -151,14 +256,14 @@ const DeploymentPanel = ({ projectId, projectName }) => {
                   key={platform.id}
                   className={`p-4 rounded-lg border transition-all ${
                     existingDeploy 
-                      ? `bg-${color}-500/10 border-${color}-500/30` 
+                      ? 'bg-emerald-500/10 border-emerald-500/30' 
                       : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg bg-${color}-500/20`}>
-                        <Icon className={`w-6 h-6 text-${color}-400`} />
+                      <div className="p-2 rounded-lg bg-zinc-800">
+                        <Icon className="w-6 h-6 text-zinc-400" />
                       </div>
                       <div>
                         <h5 className="font-medium text-white">{platform.name}</h5>
@@ -181,10 +286,12 @@ const DeploymentPanel = ({ projectId, projectName }) => {
                     ) : (
                       <Button
                         size="sm"
-                        className={`bg-${color}-500 hover:bg-${color}-600`}
+                        variant="outline"
+                        className="border-zinc-700"
                         onClick={() => openDeployDialog(platform.id)}
+                        data-testid={`deploy-${platform.id}`}
                       >
-                        <Rocket className="w-4 h-4 mr-1" />Deploy
+                        <Key className="w-3 h-3 mr-1" />Deploy
                       </Button>
                     )}
                   </div>
@@ -246,7 +353,7 @@ const DeploymentPanel = ({ projectId, projectName }) => {
         </div>
       </ScrollArea>
 
-      {/* Deploy Dialog */}
+      {/* Deploy Dialog - Custom Keys */}
       <Dialog open={deployDialogOpen} onOpenChange={setDeployDialogOpen}>
         <DialogContent className="bg-[#18181b] border-zinc-700">
           <DialogHeader>
