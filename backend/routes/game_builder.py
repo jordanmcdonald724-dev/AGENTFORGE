@@ -169,10 +169,39 @@ async def detect_installed_engines():
 async def set_engine_paths(paths: Dict[str, str]):
     """Manually set engine installation paths"""
     
+    validation_results = {}
+    
+    # Validate Unreal path
+    if paths.get("unreal_path"):
+        ue_path = paths["unreal_path"]
+        uat_script = ENGINE_CONFIG["unreal"]["build_tool"].get(CURRENT_OS, "")
+        uat_path = os.path.join(ue_path, uat_script)
+        editor_path = os.path.join(ue_path, ENGINE_CONFIG["unreal"]["editor"].get(CURRENT_OS, ""))
+        
+        validation_results["unreal"] = {
+            "path": ue_path,
+            "exists": os.path.exists(ue_path),
+            "build_tools": os.path.exists(uat_path),
+            "editor": os.path.exists(editor_path),
+            "ready": os.path.exists(uat_path)
+        }
+    
+    # Validate Unity path
+    if paths.get("unity_path"):
+        unity_path = paths["unity_path"]
+        unity_exists = os.path.exists(unity_path)
+        
+        validation_results["unity"] = {
+            "path": unity_path,
+            "exists": unity_exists,
+            "ready": unity_exists
+        }
+    
     config = {
         "id": "engine_config",
         "unreal_path": paths.get("unreal_path"),
         "unity_path": paths.get("unity_path"),
+        "validation": validation_results,
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -522,9 +551,12 @@ async def execute_unreal_build(build_id: str, project: dict, request: BuildReque
     await add_build_log(build_id, f"Build command: {' '.join(build_cmd)}")
     await update_build_status(build_id, "building", 30, "Compiling shaders...")
     
-    # Execute build (this would run the actual build in production)
-    # For now, we'll simulate since we can't run actual UE builds in this environment
-    await simulate_build_progress(build_id, "unreal", output_dir)
+    # Execute REAL build if engine exists, otherwise simulate
+    if os.path.exists(uat_path):
+        await execute_real_build(build_id, build_cmd, "unreal", output_dir)
+    else:
+        await add_build_log(build_id, "Engine not found on server. Using simulation mode.")
+        await simulate_build_progress(build_id, "unreal", output_dir)
 
 
 async def execute_unity_build(build_id: str, project: dict, request: BuildRequest):
@@ -589,8 +621,100 @@ async def execute_unity_build(build_id: str, project: dict, request: BuildReques
     await add_build_log(build_id, f"Build command: {' '.join(build_cmd)}")
     await update_build_status(build_id, "building", 30, "Compiling scripts...")
     
-    # Execute build
-    await simulate_build_progress(build_id, "unity", output_dir)
+    # Execute REAL build if Unity exists, otherwise simulate
+    if os.path.exists(unity_path):
+        await execute_real_build(build_id, build_cmd, "unity", output_dir)
+    else:
+        await add_build_log(build_id, "Unity not found on server. Using simulation mode.")
+        await simulate_build_progress(build_id, "unity", output_dir)
+
+
+async def execute_real_build(build_id: str, build_cmd: list, engine: str, output_dir: str):
+    """Execute actual build using subprocess"""
+    
+    await add_build_log(build_id, f"Starting REAL {engine.upper()} build process...")
+    
+    try:
+        # Start the build process
+        process = subprocess.Popen(
+            build_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        # Read output line by line
+        stage_patterns = {
+            "unreal": [
+                ("Compiling shaders", 35),
+                ("Cooking", 45),
+                ("Building", 60),
+                ("Packaging", 75),
+                ("Archive", 85),
+                ("SUCCESS", 100)
+            ],
+            "unity": [
+                ("Compiling scripts", 35),
+                ("Building asset", 45),
+                ("Processing scene", 60),
+                ("Compressing", 75),
+                ("Build completed", 100)
+            ]
+        }
+        
+        patterns = stage_patterns.get(engine, [])
+        current_progress = 30
+        
+        for line in iter(process.stdout.readline, ''):
+            if not line:
+                break
+            
+            line = line.strip()
+            if line:
+                # Log significant lines
+                await add_build_log(build_id, line[:200])  # Truncate long lines
+                
+                # Check for progress patterns
+                for pattern, progress in patterns:
+                    if pattern.lower() in line.lower():
+                        if progress > current_progress:
+                            current_progress = progress
+                            await update_build_status(build_id, "building", progress, line[:100])
+                            break
+        
+        # Wait for process to complete
+        return_code = process.wait()
+        
+        if return_code == 0:
+            await db.game_builder_builds.update_one(
+                {"id": build_id},
+                {
+                    "$set": {
+                        "status": "completed",
+                        "progress": 100,
+                        "completed_at": datetime.now(timezone.utc).isoformat(),
+                        "output_path": output_dir,
+                        "real_build": True
+                    },
+                    "$push": {"logs": f"REAL BUILD completed successfully! Output: {output_dir}"}
+                }
+            )
+        else:
+            raise Exception(f"Build failed with exit code: {return_code}")
+            
+    except Exception as e:
+        await db.game_builder_builds.update_one(
+            {"id": build_id},
+            {
+                "$set": {
+                    "status": "failed",
+                    "error": str(e),
+                    "completed_at": datetime.now(timezone.utc).isoformat()
+                },
+                "$push": {"logs": f"Build error: {str(e)}"}
+            }
+        )
 
 
 async def simulate_build_progress(build_id: str, engine: str, output_dir: str):

@@ -377,69 +377,100 @@ const AutoDeployPanel = () => {
           <TabsContent value="config" className="m-0 space-y-6">
             <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
               <h3 className="text-sm font-medium text-white mb-4">Platform API Keys</h3>
+              <p className="text-xs text-zinc-500 mb-6">
+                Configure your API keys for real deployments. Without keys, deployments run in simulation mode.
+              </p>
               
               <div className="space-y-6">
                 {/* Vercel */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+                <div className="p-4 bg-zinc-800/30 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
                     {getPlatformIcon('vercel')}
-                    <label className="text-sm text-white">Vercel API Token</label>
+                    <label className="text-sm text-white font-medium">Vercel</label>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mb-2">
                     <Input
                       type="password"
                       value={vercelKey}
                       onChange={(e) => setVercelKey(e.target.value)}
                       placeholder="Enter Vercel API token"
-                      className="bg-zinc-800/50 border-zinc-700"
+                      className="bg-zinc-900/50 border-zinc-700"
                     />
-                    <Button onClick={() => saveConfig('vercel')} variant="outline">Save</Button>
+                    <Button onClick={() => saveConfig('vercel')} className="bg-emerald-600 hover:bg-emerald-700">
+                      Save
+                    </Button>
                   </div>
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Get from: vercel.com/account/tokens
+                  <p className="text-xs text-zinc-500">
+                    Get your token at <a href="https://vercel.com/account/tokens" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">vercel.com/account/tokens</a>
                   </p>
                 </div>
 
                 {/* Railway */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+                <div className="p-4 bg-zinc-800/30 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
                     {getPlatformIcon('railway')}
-                    <label className="text-sm text-white">Railway API Token</label>
+                    <label className="text-sm text-white font-medium">Railway</label>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mb-2">
                     <Input
                       type="password"
                       value={railwayKey}
                       onChange={(e) => setRailwayKey(e.target.value)}
                       placeholder="Enter Railway API token"
-                      className="bg-zinc-800/50 border-zinc-700"
+                      className="bg-zinc-900/50 border-zinc-700"
                     />
-                    <Button onClick={() => saveConfig('railway')} variant="outline">Save</Button>
+                    <Button onClick={() => saveConfig('railway')} className="bg-emerald-600 hover:bg-emerald-700">
+                      Save
+                    </Button>
                   </div>
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Get from: railway.app/account/tokens
+                  <p className="text-xs text-zinc-500">
+                    Get your token at <a href="https://railway.app/account/tokens" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">railway.app/account/tokens</a>
                   </p>
                 </div>
 
                 {/* Netlify */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+                <div className="p-4 bg-zinc-800/30 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
                     {getPlatformIcon('netlify')}
-                    <label className="text-sm text-white">Netlify Personal Access Token</label>
+                    <label className="text-sm text-white font-medium">Netlify</label>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 mb-2">
                     <Input
                       type="password"
                       value={netlifyKey}
                       onChange={(e) => setNetlifyKey(e.target.value)}
-                      placeholder="Enter Netlify token"
-                      className="bg-zinc-800/50 border-zinc-700"
+                      placeholder="Enter Netlify personal access token"
+                      className="bg-zinc-900/50 border-zinc-700"
                     />
-                    <Button onClick={() => saveConfig('netlify')} variant="outline">Save</Button>
+                    <Button onClick={() => saveConfig('netlify')} className="bg-emerald-600 hover:bg-emerald-700">
+                      Save
+                    </Button>
                   </div>
-                  <p className="text-xs text-zinc-500 mt-1">
-                    Get from: app.netlify.com/user/applications
+                  <p className="text-xs text-zinc-500">
+                    Get your token at <a href="https://app.netlify.com/user/applications" target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:underline">app.netlify.com/user/applications</a>
                   </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* How to get keys guide */}
+            <div className="bg-zinc-900/50 rounded-xl p-6 border border-zinc-800">
+              <h3 className="text-sm font-medium text-white mb-4">How to Get API Keys</h3>
+              <div className="space-y-4 text-xs text-zinc-400">
+                <div>
+                  <p className="font-medium text-white mb-1">Vercel:</p>
+                  <p>1. Go to vercel.com → Account Settings → Tokens</p>
+                  <p>2. Create a new token with full access scope</p>
+                </div>
+                <div>
+                  <p className="font-medium text-white mb-1">Railway:</p>
+                  <p>1. Go to railway.app → Account → Tokens</p>
+                  <p>2. Create a new API token</p>
+                </div>
+                <div>
+                  <p className="font-medium text-white mb-1">Netlify:</p>
+                  <p>1. Go to app.netlify.com → User Settings → Applications</p>
+                  <p>2. Create a new personal access token</p>
                 </div>
               </div>
             </div>
