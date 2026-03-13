@@ -1,0 +1,122 @@
+{
+  "design_strategy": {
+    "theme": "Ubisoft Dark / Game Studio Professional",
+    "core_concept": "The Command Center. A high-density, high-performance workspace for AI orchestration. It should feel like a game engine editor (Unreal/Unity) mixed with a sci-fi tactical dashboard.",
+    "emotional_tone": "Powerful, Precise, collaborative, Futuristic, 'In Control'",
+    "visual_style": "Dark Mode Only. High Contrast. Neon Accents. Glassmorphism where appropriate.",
+    "layout_philosophy": "Bento Grid for dashboards. Tetris Grid for landing pages. Density is a feature, not a bug."
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Rajdhani, sans-serif",
+      "body": "Outfit, sans-serif",
+      "code": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-4xl md:text-6xl font-bold tracking-tight uppercase",
+      "h2": "text-3xl md:text-4xl font-semibold tracking-tight uppercase",
+      "h3": "text-2xl font-medium tracking-normal",
+      "body": "text-base leading-relaxed text-zinc-400",
+      "small": "text-sm text-zinc-500 uppercase tracking-wider"
+    },
+    "imports": [
+      "@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');"
+    ]
+  },
+  "colors": {
+    "palette": {
+      "background": "#09090b", 
+      "surface": "#18181b",
+      "surface_highlight": "#27272a",
+      "border": "#27272a",
+      "primary": "#3b82f6",
+      "primary_glow": "0 0 20px rgba(59, 130, 246, 0.5)",
+      "accent": "#06b6d4",
+      "text_primary": "#f4f4f5",
+      "text_secondary": "#a1a1aa",
+      "success": "#10b981",
+      "error": "#ef4444",
+      "warning": "#f59e0b"
+    },
+    "usage_rules": {
+      "gradients": "Avoid full screen gradients. Use subtle radial gradients for spotlights.",
+      "glass": "bg-black/40 backdrop-blur-xl border border-white/10",
+      "glow": "text-shadow: 0 0 10px rgba(59, 130, 246, 0.5)"
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-white hover:bg-primary/90 rounded-sm font-medium tracking-wide transition-all duration-200 shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:shadow-[0_0_25px_rgba(59,130,246,0.5)]",
+      "secondary": "bg-surface border border-border text-white hover:bg-surface_highlight rounded-sm transition-all duration-200",
+      "ghost": "hover:bg-white/5 text-zinc-400 hover:text-white transition-colors"
+    },
+    "cards": {
+      "default": "bg-surface border border-border/50 rounded-md p-6 hover:border-primary/50 transition-colors duration-300 relative overflow-hidden group",
+      "interactive": "cursor-pointer hover:-translate-y-1 transition-transform duration-300"
+    },
+    "inputs": {
+      "default": "bg-black/50 border-border focus:border-primary focus:ring-1 focus:ring-primary rounded-sm placeholder:text-zinc-600 text-zinc-200"
+    }
+  },
+  "layout_grid": {
+    "dashboard": "grid grid-cols-1 md:grid-cols-12 gap-4 auto-rows-[minmax(100px,auto)]",
+    "landing": "grid grid-cols-1 md:grid-cols-12 gap-8"
+  },
+  "motion": {
+    "transition": "transition-all duration-300 ease-out",
+    "hover": "scale-[1.02]",
+    "libraries": ["framer-motion"]
+  },
+  "images": {
+    "avatars": [
+      {
+        "url": "https://images.unsplash.com/photo-1598062548020-c5e8d8132a4b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHwzfHxmdXR1cmlzdGljJTIwY3liZXJwdW5rJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzczMzk3NjEzfDA&ixlib=rb-4.1.0&q=85",
+        "alt": "Agent Zero",
+        "category": "agent_avatar"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1587930708915-55a36837263b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHwxfHxmdXR1cmlzdGljJTIwY3liZXJwdW5rJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzczMzk3NjEzfDA&ixlib=rb-4.1.0&q=85",
+        "alt": "Agent One",
+        "category": "agent_avatar"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1633766306936-56bebb8823e5?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjY2NzV8MHwxfHNlYXJjaHw0fHxmdXR1cmlzdGljJTIwY3liZXJwdW5rJTIwcG9ydHJhaXR8ZW58MHx8fHwxNzczMzk3NjEzfDA&ixlib=rb-4.1.0&q=85",
+        "alt": "Agent Two",
+        "category": "agent_avatar"
+      }
+    ],
+    "projects": [
+      {
+        "url": "https://images.unsplash.com/photo-1735405659018-b63cdfc215de?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHw0fHxzY2ktZmklMjBnYW1lJTIwY29uY2VwdCUyMGFydCUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3NzMzOTc2MTR8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Project Titan",
+        "category": "project_thumbnail"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1724945947370-3a9956c434fb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1ODR8MHwxfHNlYXJjaHwyfHxzY2ktZmklMjBnYW1lJTIwY29uY2VwdCUyMGFydCUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3NzMzOTc2MTR8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Project Horizon",
+        "category": "project_thumbnail"
+      }
+    ],
+    "backgrounds": [
+      {
+        "url": "https://images.unsplash.com/photo-1568716353609-12ddc5c67f04?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njl8MHwxfHNlYXJjaHwxfHxwcm9ncmFtbWluZyUyMGNvZGUlMjBzY3JlZW4lMjBtYXRyaXglMjBzdHlsZXxlbnwwfHx8fDE3NzMzOTc2Mzd8MA&ixlib=rb-4.1.0&q=85",
+        "alt": "Code Matrix",
+        "category": "hero_bg"
+      }
+    ]
+  },
+  "universal_guidelines": [
+    "Dark Mode is mandatory. Do not create a light mode toggle.",
+    "Use 'data-testid' on all interactive elements.",
+    "Do not use gradients for background, use solid colors or subtle noise textures.",
+    "Use 'Rajdhani' font for all headings to maintain the Sci-Fi/Tech aesthetic.",
+    "Use 'Outfit' for body text for readability.",
+    "Use 'JetBrains Mono' for all code snippets and data values.",
+    "All cards must have a slight border (border-white/5) to separate them from the background.",
+    "Use 'lucide-react' for icons.",
+    "Do not use 'Inter' font.",
+    "Do not use generic 'SaaS Blue' - use vibrant Electric Blue or Cyan.",
+    "Ensure all text has sufficient contrast against dark backgrounds."
+  ],
+  "instructions_to_main_agent": "You are building a high-fidelity Game Studio Dashboard. The user expects a 'Ubisoft' level of polish. This means sharp edges, high contrast, technical fonts, and a 'command center' feel. Use the provided image URLs for avatars and project thumbnails to make the UI look populated and real. Do not use placeholders. Use 'sonner' for notifications."
+}
