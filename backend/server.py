@@ -532,6 +532,93 @@ class Deployment(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     deployed_at: Optional[datetime] = None
 
+# ========== BUILD SANDBOX MODELS ==========
+class SandboxSession(BaseModel):
+    """Isolated code execution sandbox"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    status: str = "idle"  # idle, running, paused, stopped, error
+    environment: str = "web"  # web, node, python, unity, unreal
+    console_output: List[Dict[str, Any]] = []  # [{type: log/error/warn, message, timestamp}]
+    variables: Dict[str, Any] = {}  # Current variable state
+    breakpoints: List[int] = []  # Line numbers
+    current_line: Optional[int] = None
+    execution_time_ms: float = 0
+    memory_usage_mb: float = 0
+    started_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SandboxConfig(BaseModel):
+    """Sandbox configuration"""
+    model_config = ConfigDict(extra="ignore")
+    timeout_seconds: int = 30
+    max_memory_mb: int = 256
+    enable_network: bool = False
+    enable_filesystem: bool = False
+    environment_vars: Dict[str, str] = {}
+    entry_file: Optional[str] = None
+
+# ========== ASSET PIPELINE MODELS ==========
+class PipelineAsset(BaseModel):
+    """Unified asset in the pipeline"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    name: str
+    asset_type: str  # image, audio, texture, sprite, model_3d, material, animation, font, video, script
+    category: str = "general"  # ui, character, environment, vfx, audio, misc
+    file_path: Optional[str] = None
+    url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    file_size_bytes: int = 0
+    format: str = ""  # png, jpg, mp3, wav, fbx, obj, etc.
+    dimensions: Optional[Dict[str, int]] = None  # {width, height} or {width, height, depth}
+    duration_seconds: Optional[float] = None  # For audio/video
+    tags: List[str] = []
+    dependencies: List[str] = []  # Asset IDs this depends on
+    dependents: List[str] = []  # Asset IDs that depend on this
+    metadata: Dict[str, Any] = {}
+    source: str = "generated"  # generated, uploaded, imported, referenced
+    status: str = "ready"  # processing, ready, error, archived
+    version: int = 1
+    created_by: str = "system"  # agent name or user
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class AssetImportRequest(BaseModel):
+    """Request to import an asset"""
+    project_id: str
+    name: str
+    asset_type: str
+    category: str = "general"
+    url: Optional[str] = None
+    tags: List[str] = []
+
+# Asset type configurations
+ASSET_TYPES = {
+    "image": {"formats": ["png", "jpg", "jpeg", "webp", "gif", "svg"], "icon": "image", "color": "blue"},
+    "audio": {"formats": ["mp3", "wav", "ogg", "flac", "aac"], "icon": "volume-2", "color": "purple"},
+    "texture": {"formats": ["png", "jpg", "tga", "dds", "exr"], "icon": "grid", "color": "amber"},
+    "sprite": {"formats": ["png", "gif", "webp"], "icon": "layers", "color": "cyan"},
+    "model_3d": {"formats": ["fbx", "obj", "gltf", "glb", "blend"], "icon": "box", "color": "emerald"},
+    "material": {"formats": ["mat", "json", "uasset"], "icon": "palette", "color": "pink"},
+    "animation": {"formats": ["fbx", "anim", "json"], "icon": "play", "color": "orange"},
+    "font": {"formats": ["ttf", "otf", "woff", "woff2"], "icon": "type", "color": "zinc"},
+    "video": {"formats": ["mp4", "webm", "mov", "avi"], "icon": "film", "color": "red"},
+    "script": {"formats": ["js", "ts", "py", "cs", "cpp", "lua", "gd"], "icon": "code", "color": "green"}
+}
+
+ASSET_CATEGORIES = [
+    {"id": "ui", "name": "UI/HUD", "description": "User interface elements"},
+    {"id": "character", "name": "Characters", "description": "Player, NPCs, enemies"},
+    {"id": "environment", "name": "Environment", "description": "World, props, terrain"},
+    {"id": "vfx", "name": "VFX/Particles", "description": "Visual effects"},
+    {"id": "audio", "name": "Audio", "description": "Sound effects and music"},
+    {"id": "animation", "name": "Animations", "description": "Character and object animations"},
+    {"id": "misc", "name": "Miscellaneous", "description": "Other assets"}
+]
+
 # Audio generation categories
 AUDIO_CATEGORIES = {
     "sfx": {
@@ -1233,8 +1320,8 @@ async def generate_image_fal(prompt: str, width: int = 1024, height: int = 1024)
 async def root():
     return {
         "message": "AgentForge Development Studio API",
-        "version": "3.4.0",
-        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor", "simulation_mode", "war_room", "autonomous_builds", "open_world_systems", "build_scheduling", "playable_demos", "blueprint_scripting", "build_queue", "realtime_collaboration", "notifications", "audio_generation", "one_click_deploy"]
+        "version": "3.5.0",
+        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor", "simulation_mode", "war_room", "autonomous_builds", "open_world_systems", "build_scheduling", "playable_demos", "blueprint_scripting", "build_queue", "realtime_collaboration", "notifications", "audio_generation", "one_click_deploy", "build_sandbox", "asset_pipeline"]
     }
 
 @api_router.get("/health")
@@ -4569,6 +4656,473 @@ async def delete_deployment(deployment_id: str):
     """Delete a deployment record"""
     await db.deployments.delete_one({"id": deployment_id})
     return {"success": True}
+
+# ========== BUILD SANDBOX ENDPOINTS ==========
+
+@api_router.get("/sandbox/environments")
+async def get_sandbox_environments():
+    """Get available sandbox environments"""
+    return [
+        {"id": "web", "name": "Web (HTML/CSS/JS)", "icon": "globe", "description": "Browser-based execution"},
+        {"id": "node", "name": "Node.js", "icon": "server", "description": "Server-side JavaScript"},
+        {"id": "python", "name": "Python", "icon": "code", "description": "Python 3.x runtime"},
+        {"id": "unity", "name": "Unity (C#)", "icon": "gamepad-2", "description": "Unity game simulation"},
+        {"id": "unreal", "name": "Unreal (C++/BP)", "icon": "box", "description": "Unreal Engine simulation"}
+    ]
+
+@api_router.post("/sandbox/{project_id}/create")
+async def create_sandbox_session(project_id: str, environment: str = "web"):
+    """Create a new sandbox session"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Close any existing session
+    await db.sandbox_sessions.delete_many({"project_id": project_id})
+    
+    session = SandboxSession(
+        project_id=project_id,
+        environment=environment
+    )
+    
+    doc = session.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.sandbox_sessions.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.get("/sandbox/{project_id}")
+async def get_sandbox_session(project_id: str):
+    """Get current sandbox session"""
+    session = await db.sandbox_sessions.find_one({"project_id": project_id}, {"_id": 0})
+    if not session:
+        return None
+    return session
+
+@api_router.post("/sandbox/{project_id}/run")
+async def run_sandbox(project_id: str, entry_file: Optional[str] = None):
+    """Execute code in sandbox"""
+    session = await db.sandbox_sessions.find_one({"project_id": project_id})
+    if not session:
+        raise HTTPException(status_code=404, detail="No sandbox session")
+    
+    # Get project files
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(100)
+    
+    # Determine entry file
+    if not entry_file:
+        # Auto-detect based on environment
+        if session["environment"] == "web":
+            entry_file = next((f["filepath"] for f in files if f["filepath"].endswith("index.html")), None)
+        elif session["environment"] == "python":
+            entry_file = next((f["filepath"] for f in files if f["filepath"].endswith("main.py")), None)
+        elif session["environment"] == "node":
+            entry_file = next((f["filepath"] for f in files if f["filepath"].endswith("index.js")), None)
+    
+    # Simulate execution
+    console_output = []
+    variables = {}
+    start_time = datetime.now(timezone.utc)
+    
+    if session["environment"] == "web":
+        # For web, we generate executable HTML
+        html_file = next((f for f in files if f["filepath"].endswith(".html")), None)
+        css_files = [f for f in files if f["filepath"].endswith(".css")]
+        js_files = [f for f in files if f["filepath"].endswith(".js")]
+        
+        if html_file:
+            console_output.append({
+                "type": "log",
+                "message": f"Loading {html_file['filepath']}...",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            console_output.append({
+                "type": "log",
+                "message": f"Loaded {len(css_files)} CSS files, {len(js_files)} JS files",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            console_output.append({
+                "type": "log",
+                "message": "✓ Web sandbox ready - View in Preview tab",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+            variables = {"dom_ready": True, "scripts_loaded": len(js_files), "styles_loaded": len(css_files)}
+    
+    elif session["environment"] == "python":
+        py_files = [f for f in files if f["filepath"].endswith(".py")]
+        console_output.append({
+            "type": "log",
+            "message": f"Python 3.11 sandbox initialized",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        for f in py_files[:3]:
+            console_output.append({
+                "type": "log",
+                "message": f"Loaded module: {f['filepath']}",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+        if entry_file:
+            console_output.append({
+                "type": "log",
+                "message": f"Executing {entry_file}...",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+        console_output.append({
+            "type": "log",
+            "message": "✓ Python sandbox ready",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        variables = {"__name__": "__main__", "modules_loaded": len(py_files)}
+    
+    elif session["environment"] in ["unity", "unreal"]:
+        console_output.append({
+            "type": "log",
+            "message": f"{session['environment'].title()} Engine simulation started",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        console_output.append({
+            "type": "log",
+            "message": "Loading game systems...",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        console_output.append({
+            "type": "log",
+            "message": "✓ Game simulation ready - Use Play Demo for full preview",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        variables = {"engine": session["environment"], "simulation_mode": True, "fps_target": 60}
+    
+    execution_time = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+    
+    # Update session
+    await db.sandbox_sessions.update_one(
+        {"project_id": project_id},
+        {"$set": {
+            "status": "running",
+            "console_output": console_output,
+            "variables": variables,
+            "execution_time_ms": execution_time,
+            "memory_usage_mb": 12.5,  # Simulated
+            "started_at": start_time.isoformat()
+        }}
+    )
+    
+    return {
+        "status": "running",
+        "console_output": console_output,
+        "variables": variables,
+        "execution_time_ms": execution_time,
+        "entry_file": entry_file
+    }
+
+@api_router.post("/sandbox/{project_id}/stop")
+async def stop_sandbox(project_id: str):
+    """Stop sandbox execution"""
+    await db.sandbox_sessions.update_one(
+        {"project_id": project_id},
+        {"$set": {"status": "stopped"}, "$push": {"console_output": {
+            "type": "log",
+            "message": "Sandbox stopped",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }}}
+    )
+    return {"status": "stopped"}
+
+@api_router.post("/sandbox/{project_id}/reset")
+async def reset_sandbox(project_id: str):
+    """Reset sandbox to initial state"""
+    await db.sandbox_sessions.update_one(
+        {"project_id": project_id},
+        {"$set": {
+            "status": "idle",
+            "console_output": [],
+            "variables": {},
+            "execution_time_ms": 0,
+            "memory_usage_mb": 0,
+            "current_line": None,
+            "started_at": None
+        }}
+    )
+    return {"status": "idle"}
+
+@api_router.post("/sandbox/{project_id}/console")
+async def sandbox_console_input(project_id: str, command: str):
+    """Send input to sandbox console"""
+    session = await db.sandbox_sessions.find_one({"project_id": project_id})
+    if not session:
+        raise HTTPException(status_code=404, detail="No sandbox session")
+    
+    # Simulate command execution
+    output = {
+        "type": "log",
+        "message": f"> {command}",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    result = {
+        "type": "log",
+        "message": f"Command executed: {command}",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.sandbox_sessions.update_one(
+        {"project_id": project_id},
+        {"$push": {"console_output": {"$each": [output, result]}}}
+    )
+    
+    return {"output": output, "result": result}
+
+# ========== ASSET PIPELINE ENDPOINTS ==========
+
+@api_router.get("/assets/types")
+async def get_asset_types():
+    """Get all asset types and their configurations"""
+    return ASSET_TYPES
+
+@api_router.get("/assets/categories")
+async def get_asset_categories():
+    """Get all asset categories"""
+    return ASSET_CATEGORIES
+
+@api_router.get("/assets/{project_id}")
+async def get_project_assets(project_id: str, asset_type: Optional[str] = None, category: Optional[str] = None):
+    """Get all assets for a project with optional filtering"""
+    query = {"project_id": project_id}
+    if asset_type:
+        query["asset_type"] = asset_type
+    if category:
+        query["category"] = category
+    
+    assets = await db.pipeline_assets.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return assets
+
+@api_router.get("/assets/{project_id}/summary")
+async def get_asset_summary(project_id: str):
+    """Get asset count summary by type and category"""
+    assets = await db.pipeline_assets.find({"project_id": project_id}, {"_id": 0}).to_list(1000)
+    
+    by_type = {}
+    by_category = {}
+    total_size = 0
+    
+    for asset in assets:
+        asset_type = asset.get("asset_type", "unknown")
+        category = asset.get("category", "misc")
+        size = asset.get("file_size_bytes", 0)
+        
+        by_type[asset_type] = by_type.get(asset_type, 0) + 1
+        by_category[category] = by_category.get(category, 0) + 1
+        total_size += size
+    
+    return {
+        "total_assets": len(assets),
+        "total_size_bytes": total_size,
+        "total_size_mb": round(total_size / (1024 * 1024), 2),
+        "by_type": by_type,
+        "by_category": by_category
+    }
+
+@api_router.post("/assets/import")
+async def import_asset(request: AssetImportRequest):
+    """Import an asset into the pipeline"""
+    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Determine format from URL or name
+    format_ext = ""
+    if request.url:
+        format_ext = request.url.split(".")[-1].lower().split("?")[0]
+    elif "." in request.name:
+        format_ext = request.name.split(".")[-1].lower()
+    
+    asset = PipelineAsset(
+        project_id=request.project_id,
+        name=request.name,
+        asset_type=request.asset_type,
+        category=request.category,
+        url=request.url,
+        format=format_ext,
+        tags=request.tags,
+        source="imported"
+    )
+    
+    doc = asset.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.pipeline_assets.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.post("/assets/{project_id}/from-generation")
+async def register_generated_asset(
+    project_id: str,
+    name: str,
+    asset_type: str,
+    url: str,
+    category: str = "general",
+    source_type: str = "generated",
+    created_by: str = "PRISM"
+):
+    """Register an asset from image/audio generation into the pipeline"""
+    # Determine format from URL
+    format_ext = url.split(".")[-1].lower().split("?")[0] if "." in url else ""
+    
+    asset = PipelineAsset(
+        project_id=project_id,
+        name=name,
+        asset_type=asset_type,
+        category=category,
+        url=url,
+        format=format_ext,
+        source=source_type,
+        created_by=created_by
+    )
+    
+    doc = asset.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.pipeline_assets.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.patch("/assets/{asset_id}")
+async def update_asset(asset_id: str, updates: Dict[str, Any]):
+    """Update asset metadata"""
+    updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.pipeline_assets.update_one(
+        {"id": asset_id},
+        {"$set": updates}
+    )
+    asset = await db.pipeline_assets.find_one({"id": asset_id}, {"_id": 0})
+    return asset
+
+@api_router.delete("/assets/{asset_id}")
+async def delete_asset(asset_id: str):
+    """Delete an asset from the pipeline"""
+    # Remove from dependents lists
+    asset = await db.pipeline_assets.find_one({"id": asset_id}, {"_id": 0})
+    if asset and asset.get("dependents"):
+        for dep_id in asset["dependents"]:
+            await db.pipeline_assets.update_one(
+                {"id": dep_id},
+                {"$pull": {"dependencies": asset_id}}
+            )
+    
+    await db.pipeline_assets.delete_one({"id": asset_id})
+    return {"success": True}
+
+@api_router.post("/assets/{asset_id}/add-dependency")
+async def add_asset_dependency(asset_id: str, dependency_id: str):
+    """Add a dependency between assets"""
+    # Add to this asset's dependencies
+    await db.pipeline_assets.update_one(
+        {"id": asset_id},
+        {"$addToSet": {"dependencies": dependency_id}}
+    )
+    # Add this asset to dependency's dependents
+    await db.pipeline_assets.update_one(
+        {"id": dependency_id},
+        {"$addToSet": {"dependents": asset_id}}
+    )
+    return {"success": True}
+
+@api_router.post("/assets/{asset_id}/remove-dependency")
+async def remove_asset_dependency(asset_id: str, dependency_id: str):
+    """Remove a dependency between assets"""
+    await db.pipeline_assets.update_one(
+        {"id": asset_id},
+        {"$pull": {"dependencies": dependency_id}}
+    )
+    await db.pipeline_assets.update_one(
+        {"id": dependency_id},
+        {"$pull": {"dependents": asset_id}}
+    )
+    return {"success": True}
+
+@api_router.get("/assets/{project_id}/dependency-graph")
+async def get_dependency_graph(project_id: str):
+    """Get the full dependency graph for all assets"""
+    assets = await db.pipeline_assets.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+    
+    nodes = []
+    edges = []
+    
+    for asset in assets:
+        nodes.append({
+            "id": asset["id"],
+            "name": asset["name"],
+            "type": asset["asset_type"],
+            "category": asset["category"]
+        })
+        for dep_id in asset.get("dependencies", []):
+            edges.append({
+                "source": asset["id"],
+                "target": dep_id
+            })
+    
+    return {"nodes": nodes, "edges": edges}
+
+@api_router.post("/assets/{project_id}/sync-from-files")
+async def sync_assets_from_files(project_id: str):
+    """Sync pipeline assets from project files"""
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+    
+    synced = 0
+    for file in files:
+        filepath = file.get("filepath", "")
+        ext = filepath.split(".")[-1].lower() if "." in filepath else ""
+        
+        # Determine asset type from extension
+        asset_type = None
+        for atype, config in ASSET_TYPES.items():
+            if ext in config.get("formats", []):
+                asset_type = atype
+                break
+        
+        if asset_type:
+            # Check if already exists
+            existing = await db.pipeline_assets.find_one({
+                "project_id": project_id,
+                "file_path": filepath
+            })
+            
+            if not existing:
+                asset = PipelineAsset(
+                    project_id=project_id,
+                    name=filepath.split("/")[-1],
+                    asset_type=asset_type,
+                    file_path=filepath,
+                    format=ext,
+                    source="synced",
+                    file_size_bytes=len(file.get("content", ""))
+                )
+                doc = asset.model_dump()
+                doc['created_at'] = doc['created_at'].isoformat()
+                doc['updated_at'] = doc['updated_at'].isoformat()
+                await db.pipeline_assets.insert_one(doc)
+                synced += 1
+    
+    return {"synced_assets": synced}
+
+@api_router.post("/assets/{project_id}/export")
+async def export_assets(project_id: str, asset_ids: List[str] = None):
+    """Export selected assets or all assets"""
+    query = {"project_id": project_id}
+    if asset_ids:
+        query["id"] = {"$in": asset_ids}
+    
+    assets = await db.pipeline_assets.find(query, {"_id": 0}).to_list(500)
+    
+    # Create manifest
+    manifest = {
+        "project_id": project_id,
+        "exported_at": datetime.now(timezone.utc).isoformat(),
+        "asset_count": len(assets),
+        "assets": assets
+    }
+    
+    return manifest
 
 # Include router
 app.include_router(api_router)

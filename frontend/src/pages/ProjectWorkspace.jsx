@@ -25,7 +25,7 @@ import {
   Sparkles, ArrowRightCircle, Github, Play, Eye, Gamepad2, Package, Heart, Volume2, Layout, MessageCircle,
   Rocket, ChevronUp, RefreshCw, Brain, Wand2, CopyPlus, Search, Replace, Radio, AlertTriangle, Clock,
   Pause, Square, SkipForward, Swords, Mountain, Car, Sun, Map, Hammer, Coins, Ghost, Timer, Camera, Wifi,
-  Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music
+  Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music, Terminal
 } from "lucide-react";
 import { API } from "@/App";
 import BlueprintEditor from "@/components/BlueprintEditor";
@@ -34,6 +34,8 @@ import BuildQueuePanel from "@/components/BuildQueuePanel";
 import NotificationsPanel from "@/components/NotificationsPanel";
 import AudioGeneratorPanel from "@/components/AudioGeneratorPanel";
 import DeploymentPanel from "@/components/DeploymentPanel";
+import SandboxPanel from "@/components/SandboxPanel";
+import AssetPipelinePanel from "@/components/AssetPipelinePanel";
 
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
@@ -1037,6 +1039,8 @@ const ProjectWorkspace = () => {
                   <TabsTrigger value="tasks" className="data-[state=active]:bg-zinc-800"><ListTodo className="w-4 h-4 mr-2" />Tasks{tasks.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{tasks.length}</Badge>}</TabsTrigger>
                   <TabsTrigger value="images" className="data-[state=active]:bg-zinc-800"><Image className="w-4 h-4 mr-2" />Images</TabsTrigger>
                   <TabsTrigger value="audio" className="data-[state=active]:bg-zinc-800" data-testid="audio-tab"><Music className="w-4 h-4 mr-2" />Audio</TabsTrigger>
+                  <TabsTrigger value="assets" className="data-[state=active]:bg-zinc-800" data-testid="assets-tab"><Package className="w-4 h-4 mr-2" />Assets</TabsTrigger>
+                  <TabsTrigger value="sandbox" className="data-[state=active]:bg-zinc-800" data-testid="sandbox-tab"><Terminal className="w-4 h-4 mr-2" />Sandbox</TabsTrigger>
                   <TabsTrigger value="deploy" className="data-[state=active]:bg-zinc-800" data-testid="deploy-tab"><Rocket className="w-4 h-4 mr-2" />Deploy</TabsTrigger>
                   <TabsTrigger value="notifications" className="data-[state=active]:bg-zinc-800" data-testid="notifications-tab"><Bell className="w-4 h-4 mr-2" />Alerts</TabsTrigger>
                 </TabsList>
@@ -1214,6 +1218,16 @@ const ProjectWorkspace = () => {
                 {/* Audio Tab */}
                 <TabsContent value="audio" className="flex-1 m-0 overflow-hidden">
                   <AudioGeneratorPanel projectId={projectId} />
+                </TabsContent>
+
+                {/* Assets Tab */}
+                <TabsContent value="assets" className="flex-1 m-0 overflow-hidden">
+                  <AssetPipelinePanel projectId={projectId} />
+                </TabsContent>
+
+                {/* Sandbox Tab */}
+                <TabsContent value="sandbox" className="flex-1 m-0 overflow-hidden">
+                  <SandboxPanel projectId={projectId} />
                 </TabsContent>
 
                 {/* Deploy Tab */}
