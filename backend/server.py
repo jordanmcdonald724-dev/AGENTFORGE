@@ -9,7 +9,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from openai import OpenAI
 import json
 import asyncio
@@ -333,6 +333,7 @@ class StartBuildRequest(BaseModel):
     systems_to_build: List[str] = []
     estimated_hours: int = 12
     scheduled_at: Optional[str] = None  # ISO datetime string for scheduled builds
+    category: str = "game"  # app, webpage, game, api, mobile
 
 class PlayableDemo(BaseModel):
     """Playable demo generated on build completion"""
@@ -361,6 +362,124 @@ class PlayableDemo(BaseModel):
     # Metadata
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     generated_at: Optional[datetime] = None
+
+# ============ v3.3 MODELS - BLUEPRINTS, BUILD QUEUE, COLLABORATION ============
+
+# Build Queue Categories
+BUILD_CATEGORIES = {
+    "app": {"id": "app", "name": "Application", "icon": "app-window", "color": "blue", "description": "Desktop/mobile applications"},
+    "webpage": {"id": "webpage", "name": "Webpage", "icon": "globe", "color": "cyan", "description": "Websites and web apps"},
+    "game": {"id": "game", "name": "Game", "icon": "gamepad-2", "color": "purple", "description": "Games for any platform"},
+    "api": {"id": "api", "name": "API", "icon": "server", "color": "emerald", "description": "Backend APIs and services"},
+    "mobile": {"id": "mobile", "name": "Mobile", "icon": "smartphone", "color": "amber", "description": "iOS and Android apps"}
+}
+
+class BlueprintNode(BaseModel):
+    """A node in the visual blueprint editor"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    type: str  # event, function, variable, flow, math, logic, custom
+    name: str
+    position: Dict[str, float] = {"x": 0, "y": 0}
+    inputs: List[Dict[str, Any]] = []  # [{name, type, value, connected_to}]
+    outputs: List[Dict[str, Any]] = []  # [{name, type, connected_to}]
+    properties: Dict[str, Any] = {}
+    color: str = "zinc"
+
+class Blueprint(BaseModel):
+    """Visual blueprint for code generation"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    name: str
+    description: str = ""
+    blueprint_type: str = "logic"  # logic, ui, animation, ai, event
+    target_engine: str = "unreal"
+    nodes: List[Dict[str, Any]] = []
+    connections: List[Dict[str, Any]] = []  # [{from_node, from_output, to_node, to_input}]
+    variables: List[Dict[str, Any]] = []  # [{name, type, default_value}]
+    generated_code: Optional[str] = None
+    synced_file_id: Optional[str] = None  # Link to code file for hybrid editing
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class BuildQueueItem(BaseModel):
+    """Item in the build queue"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    category: str  # app, webpage, game, api, mobile
+    build_config: Dict[str, Any] = {}
+    status: str = "queued"  # queued, building, completed, failed
+    position: int = 0
+    scheduled_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class Collaborator(BaseModel):
+    """User collaborating on a project"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    user_id: str
+    username: str
+    color: str = "blue"  # Cursor/highlight color
+    role: str = "editor"  # owner, editor, viewer
+    cursor_position: Dict[str, Any] = {}  # {file_id, line, column}
+    active_file_id: Optional[str] = None
+    is_online: bool = False
+    last_seen: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    joined_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class FileLock(BaseModel):
+    """Lock on a file being edited"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    file_id: str
+    locked_by_user_id: str
+    locked_by_username: str
+    locked_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CollaborationMessage(BaseModel):
+    """Real-time message in collaboration chat"""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    project_id: str
+    user_id: str
+    username: str
+    content: str
+    message_type: str = "chat"  # chat, system, cursor_update, file_lock
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Blueprint Node Templates
+BLUEPRINT_NODE_TEMPLATES = {
+    "event_begin_play": {"type": "event", "name": "Event Begin Play", "color": "red", "outputs": [{"name": "exec", "type": "exec"}]},
+    "event_tick": {"type": "event", "name": "Event Tick", "color": "red", "outputs": [{"name": "exec", "type": "exec"}, {"name": "delta_time", "type": "float"}]},
+    "event_input": {"type": "event", "name": "Input Event", "color": "red", "properties": {"key": "Space"}, "outputs": [{"name": "pressed", "type": "exec"}, {"name": "released", "type": "exec"}]},
+    "branch": {"type": "flow", "name": "Branch", "color": "zinc", "inputs": [{"name": "exec", "type": "exec"}, {"name": "condition", "type": "bool"}], "outputs": [{"name": "true", "type": "exec"}, {"name": "false", "type": "exec"}]},
+    "sequence": {"type": "flow", "name": "Sequence", "color": "zinc", "inputs": [{"name": "exec", "type": "exec"}], "outputs": [{"name": "then_0", "type": "exec"}, {"name": "then_1", "type": "exec"}, {"name": "then_2", "type": "exec"}]},
+    "for_loop": {"type": "flow", "name": "For Loop", "color": "zinc", "inputs": [{"name": "exec", "type": "exec"}, {"name": "start", "type": "int"}, {"name": "end", "type": "int"}], "outputs": [{"name": "loop_body", "type": "exec"}, {"name": "index", "type": "int"}, {"name": "completed", "type": "exec"}]},
+    "delay": {"type": "flow", "name": "Delay", "color": "cyan", "inputs": [{"name": "exec", "type": "exec"}, {"name": "duration", "type": "float"}], "outputs": [{"name": "completed", "type": "exec"}]},
+    "print_string": {"type": "function", "name": "Print String", "color": "blue", "inputs": [{"name": "exec", "type": "exec"}, {"name": "string", "type": "string"}], "outputs": [{"name": "exec", "type": "exec"}]},
+    "spawn_actor": {"type": "function", "name": "Spawn Actor", "color": "emerald", "inputs": [{"name": "exec", "type": "exec"}, {"name": "class", "type": "class"}, {"name": "location", "type": "vector"}, {"name": "rotation", "type": "rotator"}], "outputs": [{"name": "exec", "type": "exec"}, {"name": "actor", "type": "actor"}]},
+    "destroy_actor": {"type": "function", "name": "Destroy Actor", "color": "red", "inputs": [{"name": "exec", "type": "exec"}, {"name": "target", "type": "actor"}], "outputs": [{"name": "exec", "type": "exec"}]},
+    "get_player": {"type": "function", "name": "Get Player Character", "color": "emerald", "inputs": [], "outputs": [{"name": "character", "type": "character"}]},
+    "get_location": {"type": "function", "name": "Get Actor Location", "color": "amber", "inputs": [{"name": "target", "type": "actor"}], "outputs": [{"name": "location", "type": "vector"}]},
+    "set_location": {"type": "function", "name": "Set Actor Location", "color": "amber", "inputs": [{"name": "exec", "type": "exec"}, {"name": "target", "type": "actor"}, {"name": "location", "type": "vector"}], "outputs": [{"name": "exec", "type": "exec"}]},
+    "add_vectors": {"type": "math", "name": "Add (Vector)", "color": "emerald", "inputs": [{"name": "a", "type": "vector"}, {"name": "b", "type": "vector"}], "outputs": [{"name": "result", "type": "vector"}]},
+    "multiply_float": {"type": "math", "name": "Multiply (Float)", "color": "emerald", "inputs": [{"name": "a", "type": "float"}, {"name": "b", "type": "float"}], "outputs": [{"name": "result", "type": "float"}]},
+    "greater_than": {"type": "logic", "name": "Greater Than", "color": "emerald", "inputs": [{"name": "a", "type": "float"}, {"name": "b", "type": "float"}], "outputs": [{"name": "result", "type": "bool"}]},
+    "and_bool": {"type": "logic", "name": "AND (Boolean)", "color": "emerald", "inputs": [{"name": "a", "type": "bool"}, {"name": "b", "type": "bool"}], "outputs": [{"name": "result", "type": "bool"}]},
+    "make_vector": {"type": "math", "name": "Make Vector", "color": "amber", "inputs": [{"name": "x", "type": "float"}, {"name": "y", "type": "float"}, {"name": "z", "type": "float"}], "outputs": [{"name": "vector", "type": "vector"}]},
+    "break_vector": {"type": "math", "name": "Break Vector", "color": "amber", "inputs": [{"name": "vector", "type": "vector"}], "outputs": [{"name": "x", "type": "float"}, {"name": "y", "type": "float"}, {"name": "z", "type": "float"}]},
+    "play_sound": {"type": "function", "name": "Play Sound", "color": "purple", "inputs": [{"name": "exec", "type": "exec"}, {"name": "sound", "type": "sound"}, {"name": "location", "type": "vector"}], "outputs": [{"name": "exec", "type": "exec"}]},
+    "apply_damage": {"type": "function", "name": "Apply Damage", "color": "red", "inputs": [{"name": "exec", "type": "exec"}, {"name": "target", "type": "actor"}, {"name": "damage", "type": "float"}, {"name": "damage_type", "type": "class"}], "outputs": [{"name": "exec", "type": "exec"}]},
+    "get_variable": {"type": "variable", "name": "Get Variable", "color": "purple", "properties": {"var_name": "MyVar"}, "outputs": [{"name": "value", "type": "any"}]},
+    "set_variable": {"type": "variable", "name": "Set Variable", "color": "purple", "properties": {"var_name": "MyVar"}, "inputs": [{"name": "exec", "type": "exec"}, {"name": "value", "type": "any"}], "outputs": [{"name": "exec", "type": "exec"}]},
+    "custom_event": {"type": "event", "name": "Custom Event", "color": "cyan", "properties": {"event_name": "MyEvent"}, "outputs": [{"name": "exec", "type": "exec"}]},
+    "call_function": {"type": "function", "name": "Call Function", "color": "blue", "properties": {"function_name": "MyFunction"}, "inputs": [{"name": "exec", "type": "exec"}], "outputs": [{"name": "exec", "type": "exec"}, {"name": "return", "type": "any"}]}
+}
 
 # Quick Actions Configuration
 QUICK_ACTIONS = {
@@ -991,8 +1110,8 @@ async def generate_image_fal(prompt: str, width: int = 1024, height: int = 1024)
 async def root():
     return {
         "message": "AgentForge Development Studio API",
-        "version": "3.2.0",
-        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor", "simulation_mode", "war_room", "autonomous_builds", "open_world_systems", "build_scheduling", "playable_demos"]
+        "version": "3.3.0",
+        "features": ["streaming", "delegation", "image_generation", "github_push", "agent_chains", "quick_actions", "live_preview", "agent_memory", "custom_actions", "project_duplicate", "multi_file_refactor", "simulation_mode", "war_room", "autonomous_builds", "open_world_systems", "build_scheduling", "playable_demos", "blueprint_scripting", "build_queue", "realtime_collaboration"]
     }
 
 @api_router.get("/health")
@@ -3330,6 +3449,508 @@ async def regenerate_demo(project_id: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(generate_playable_demo, build["id"])
     
     return {"success": True, "message": "Demo regeneration started", "build_id": build["id"]}
+
+# ============ BLUEPRINT VISUAL SCRIPTING ============
+
+@api_router.get("/blueprints/templates")
+async def get_blueprint_templates():
+    """Get available blueprint node templates"""
+    return BLUEPRINT_NODE_TEMPLATES
+
+@api_router.post("/blueprints")
+async def create_blueprint(project_id: str, name: str, blueprint_type: str = "logic", target_engine: str = "unreal"):
+    """Create a new blueprint"""
+    blueprint = Blueprint(
+        project_id=project_id,
+        name=name,
+        blueprint_type=blueprint_type,
+        target_engine=target_engine,
+        nodes=[],
+        connections=[]
+    )
+    doc = blueprint.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.blueprints.insert_one(doc)
+    return serialize_doc(doc)
+
+@api_router.get("/blueprints")
+async def get_blueprints(project_id: str):
+    """Get all blueprints for a project"""
+    blueprints = await db.blueprints.find({"project_id": project_id}, {"_id": 0}).to_list(100)
+    return blueprints
+
+@api_router.get("/blueprints/{blueprint_id}")
+async def get_blueprint(blueprint_id: str):
+    """Get a specific blueprint"""
+    blueprint = await db.blueprints.find_one({"id": blueprint_id}, {"_id": 0})
+    if not blueprint:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    return blueprint
+
+@api_router.patch("/blueprints/{blueprint_id}")
+async def update_blueprint(blueprint_id: str, nodes: List[Dict] = None, connections: List[Dict] = None, variables: List[Dict] = None):
+    """Update blueprint nodes, connections, or variables"""
+    update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if nodes is not None:
+        update_data["nodes"] = nodes
+    if connections is not None:
+        update_data["connections"] = connections
+    if variables is not None:
+        update_data["variables"] = variables
+    
+    await db.blueprints.update_one({"id": blueprint_id}, {"$set": update_data})
+    return await db.blueprints.find_one({"id": blueprint_id}, {"_id": 0})
+
+@api_router.delete("/blueprints/{blueprint_id}")
+async def delete_blueprint(blueprint_id: str):
+    """Delete a blueprint"""
+    await db.blueprints.delete_one({"id": blueprint_id})
+    return {"success": True}
+
+@api_router.post("/blueprints/{blueprint_id}/generate-code")
+async def generate_code_from_blueprint(blueprint_id: str):
+    """Generate code from blueprint nodes (hybrid editing)"""
+    blueprint = await db.blueprints.find_one({"id": blueprint_id}, {"_id": 0})
+    if not blueprint:
+        raise HTTPException(status_code=404, detail="Blueprint not found")
+    
+    agents = await get_or_create_agents()
+    forge = next((a for a in agents if a['name'] == 'FORGE'), agents[0])
+    
+    # Build node description for AI
+    nodes_desc = []
+    for node in blueprint.get("nodes", []):
+        node_type = node.get("type", "unknown")
+        node_name = node.get("name", "")
+        props = node.get("properties", {})
+        nodes_desc.append(f"- {node_name} ({node_type}): {props}")
+    
+    connections_desc = []
+    for conn in blueprint.get("connections", []):
+        connections_desc.append(f"- {conn.get('from_node')}:{conn.get('from_output')} -> {conn.get('to_node')}:{conn.get('to_input')}")
+    
+    variables_desc = [f"- {v.get('name')}: {v.get('type')} = {v.get('default_value')}" for v in blueprint.get("variables", [])]
+    
+    prompt = f"""Convert this visual blueprint to {blueprint.get('target_engine', 'unreal').upper()} code.
+
+BLUEPRINT: {blueprint['name']}
+TYPE: {blueprint.get('blueprint_type', 'logic')}
+
+NODES:
+{chr(10).join(nodes_desc) if nodes_desc else 'No nodes'}
+
+CONNECTIONS:
+{chr(10).join(connections_desc) if connections_desc else 'No connections'}
+
+VARIABLES:
+{chr(10).join(variables_desc) if variables_desc else 'No variables'}
+
+Generate complete, production-ready code that implements this blueprint logic.
+Include proper headers, class structure, and all necessary functions.
+Output as a single code file:
+```{'cpp' if blueprint.get('target_engine') == 'unreal' else 'csharp'}:{blueprint['name'].replace(' ', '')}.{'cpp' if blueprint.get('target_engine') == 'unreal' else 'cs'}
+```"""
+
+    try:
+        response = await call_agent(forge, [{"role": "user", "content": prompt}], "")
+        code_blocks = extract_code_blocks(response)
+        
+        generated_code = ""
+        if code_blocks:
+            generated_code = code_blocks[0].get("content", "")
+        
+        # Update blueprint with generated code
+        await db.blueprints.update_one(
+            {"id": blueprint_id},
+            {"$set": {"generated_code": generated_code, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        # Create or update synced file
+        ext = "cpp" if blueprint.get('target_engine') == 'unreal' else 'cs'
+        filename = f"{blueprint['name'].replace(' ', '')}.{ext}"
+        filepath = f"Source/Blueprints/{filename}"
+        
+        existing_file = await db.files.find_one({"project_id": blueprint["project_id"], "filepath": filepath})
+        if existing_file:
+            await db.files.update_one(
+                {"id": existing_file["id"]},
+                {"$set": {"content": generated_code, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            synced_file_id = existing_file["id"]
+        else:
+            new_file = ProjectFile(
+                project_id=blueprint["project_id"],
+                filename=filename,
+                filepath=filepath,
+                content=generated_code,
+                language=ext,
+                created_by_agent_name="FORGE"
+            )
+            file_doc = new_file.model_dump()
+            file_doc['created_at'] = file_doc['created_at'].isoformat()
+            file_doc['updated_at'] = file_doc['updated_at'].isoformat()
+            await db.files.insert_one(file_doc)
+            synced_file_id = new_file.id
+        
+        await db.blueprints.update_one({"id": blueprint_id}, {"$set": {"synced_file_id": synced_file_id}})
+        
+        return {"success": True, "generated_code": generated_code, "file_id": synced_file_id, "filepath": filepath}
+    except Exception as e:
+        logger.error(f"Code generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Code generation failed: {str(e)}")
+
+@api_router.post("/blueprints/{blueprint_id}/sync-from-code")
+async def sync_blueprint_from_code(blueprint_id: str):
+    """Sync blueprint nodes from code changes (hybrid editing)"""
+    blueprint = await db.blueprints.find_one({"id": blueprint_id}, {"_id": 0})
+    if not blueprint or not blueprint.get("synced_file_id"):
+        raise HTTPException(status_code=404, detail="Blueprint or synced file not found")
+    
+    file = await db.files.find_one({"id": blueprint["synced_file_id"]}, {"_id": 0})
+    if not file:
+        raise HTTPException(status_code=404, detail="Synced file not found")
+    
+    agents = await get_or_create_agents()
+    atlas = next((a for a in agents if a['name'] == 'ATLAS'), agents[0])
+    
+    prompt = f"""Analyze this {blueprint.get('target_engine', 'unreal').upper()} code and extract blueprint nodes.
+
+CODE:
+```
+{file.get('content', '')}
+```
+
+Return a JSON object with:
+- nodes: array of node objects with {{id, type, name, position, inputs, outputs, properties}}
+- connections: array of {{from_node, from_output, to_node, to_input}}
+- variables: array of {{name, type, default_value}}
+
+Node types: event, function, variable, flow, math, logic, custom
+Position format: {{x: number, y: number}}
+
+Output only valid JSON:
+```json
+{{...}}
+```"""
+
+    try:
+        response = await call_agent(atlas, [{"role": "user", "content": prompt}], "")
+        
+        # Extract JSON from response
+        import json
+        json_match = re.search(r'```json\s*([\s\S]*?)\s*```', response)
+        if json_match:
+            blueprint_data = json.loads(json_match.group(1))
+            
+            await db.blueprints.update_one(
+                {"id": blueprint_id},
+                {"$set": {
+                    "nodes": blueprint_data.get("nodes", []),
+                    "connections": blueprint_data.get("connections", []),
+                    "variables": blueprint_data.get("variables", []),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            return {"success": True, "synced_nodes": len(blueprint_data.get("nodes", []))}
+        else:
+            raise HTTPException(status_code=500, detail="Could not parse blueprint from code")
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Invalid JSON in response: {str(e)}")
+    except Exception as e:
+        logger.error(f"Blueprint sync failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+
+# ============ BUILD QUEUE ============
+
+@api_router.get("/build-queue/categories")
+async def get_build_categories():
+    """Get available build queue categories"""
+    return list(BUILD_CATEGORIES.values())
+
+@api_router.get("/build-queue/{project_id}")
+async def get_build_queue(project_id: str):
+    """Get build queue for a project organized by category"""
+    # Get all queue items
+    items = await db.build_queue.find({"project_id": project_id}, {"_id": 0}).to_list(100)
+    
+    # Organize by category
+    queue = {}
+    for cat_id, cat in BUILD_CATEGORIES.items():
+        cat_items = [i for i in items if i.get("category") == cat_id]
+        queue[cat_id] = {
+            **cat,
+            "items": cat_items,
+            "has_build": len(cat_items) > 0
+        }
+    
+    return queue
+
+@api_router.post("/build-queue/add")
+async def add_to_build_queue(project_id: str, category: str, build_config: Dict[str, Any] = {}, scheduled_at: Optional[str] = None):
+    """Add a build to the queue (max 1 per category)"""
+    if category not in BUILD_CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"Invalid category. Must be one of: {list(BUILD_CATEGORIES.keys())}")
+    
+    # Check if category already has a build
+    existing = await db.build_queue.find_one({"project_id": project_id, "category": category})
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Category '{category}' already has a queued build. Remove it first or wait for completion.")
+    
+    scheduled = None
+    if scheduled_at:
+        try:
+            scheduled = datetime.fromisoformat(scheduled_at.replace('Z', '+00:00'))
+        except:
+            pass
+    
+    item = BuildQueueItem(
+        project_id=project_id,
+        category=category,
+        build_config=build_config,
+        scheduled_at=scheduled
+    )
+    
+    doc = item.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    if doc.get('scheduled_at'):
+        doc['scheduled_at'] = doc['scheduled_at'].isoformat()
+    await db.build_queue.insert_one(doc)
+    
+    return serialize_doc(doc)
+
+@api_router.delete("/build-queue/{item_id}")
+async def remove_from_build_queue(item_id: str):
+    """Remove a build from the queue"""
+    await db.build_queue.delete_one({"id": item_id})
+    return {"success": True}
+
+@api_router.post("/build-queue/{item_id}/start")
+async def start_queued_build(item_id: str, background_tasks: BackgroundTasks):
+    """Start a queued build"""
+    item = await db.build_queue.find_one({"id": item_id})
+    if not item:
+        raise HTTPException(status_code=404, detail="Queue item not found")
+    
+    # Create actual build from queue item
+    config = item.get("build_config", {})
+    build_request = StartBuildRequest(
+        project_id=item["project_id"],
+        build_type=config.get("build_type", "full"),
+        target_engine=config.get("target_engine", "unreal"),
+        systems_to_build=config.get("systems", []),
+        category=item["category"]
+    )
+    
+    # Start the build
+    result = await start_autonomous_build(build_request)
+    
+    # Update queue item status
+    await db.build_queue.update_one({"id": item_id}, {"$set": {"status": "building"}})
+    
+    # Run in background
+    if result.get("id"):
+        background_tasks.add_task(run_full_build, result["id"], background_tasks)
+    
+    return {"success": True, "build_id": result.get("id")}
+
+# ============ REAL-TIME COLLABORATION ============
+
+# Store active collaborators in memory (for quick access)
+active_sessions: Dict[str, Dict[str, Any]] = {}
+
+@api_router.post("/collab/{project_id}/join")
+async def join_collaboration(project_id: str, user_id: str, username: str):
+    """Join a project for collaboration (max 3 users)"""
+    # Count current collaborators
+    current = await db.collaborators.count_documents({"project_id": project_id, "is_online": True})
+    if current >= 3:
+        raise HTTPException(status_code=400, detail="Maximum 3 collaborators allowed. Someone must leave first.")
+    
+    # Check if user already in project
+    existing = await db.collaborators.find_one({"project_id": project_id, "user_id": user_id})
+    
+    colors = ["blue", "emerald", "purple", "amber", "pink", "cyan"]
+    assigned_colors = []
+    async for c in db.collaborators.find({"project_id": project_id}):
+        assigned_colors.append(c.get("color"))
+    available_colors = [c for c in colors if c not in assigned_colors]
+    
+    if existing:
+        # Update existing collaborator
+        await db.collaborators.update_one(
+            {"id": existing["id"]},
+            {"$set": {"is_online": True, "last_seen": datetime.now(timezone.utc).isoformat()}}
+        )
+        collab = await db.collaborators.find_one({"id": existing["id"]}, {"_id": 0})
+    else:
+        # Create new collaborator
+        collab = Collaborator(
+            project_id=project_id,
+            user_id=user_id,
+            username=username,
+            color=available_colors[0] if available_colors else "blue",
+            is_online=True
+        )
+        doc = collab.model_dump()
+        doc['last_seen'] = doc['last_seen'].isoformat()
+        doc['joined_at'] = doc['joined_at'].isoformat()
+        await db.collaborators.insert_one(doc)
+        collab = serialize_doc(doc)
+    
+    # Broadcast join message
+    await db.collab_messages.insert_one({
+        "id": str(uuid.uuid4()),
+        "project_id": project_id,
+        "user_id": "system",
+        "username": "System",
+        "content": f"{username} joined the project",
+        "message_type": "system",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return collab
+
+@api_router.post("/collab/{project_id}/leave")
+async def leave_collaboration(project_id: str, user_id: str):
+    """Leave project collaboration"""
+    collab = await db.collaborators.find_one({"project_id": project_id, "user_id": user_id})
+    if collab:
+        await db.collaborators.update_one(
+            {"id": collab["id"]},
+            {"$set": {"is_online": False, "last_seen": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        # Release any file locks
+        await db.file_locks.delete_many({"project_id": project_id, "locked_by_user_id": user_id})
+        
+        # Broadcast leave message
+        await db.collab_messages.insert_one({
+            "id": str(uuid.uuid4()),
+            "project_id": project_id,
+            "user_id": "system",
+            "username": "System",
+            "content": f"{collab.get('username', 'User')} left the project",
+            "message_type": "system",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+    
+    return {"success": True}
+
+@api_router.get("/collab/{project_id}/users")
+async def get_collaborators(project_id: str):
+    """Get all collaborators in a project"""
+    collabs = await db.collaborators.find({"project_id": project_id}, {"_id": 0}).to_list(10)
+    return collabs
+
+@api_router.get("/collab/{project_id}/online")
+async def get_online_collaborators(project_id: str):
+    """Get online collaborators"""
+    collabs = await db.collaborators.find({"project_id": project_id, "is_online": True}, {"_id": 0}).to_list(10)
+    return collabs
+
+@api_router.post("/collab/{project_id}/cursor")
+async def update_cursor_position(project_id: str, user_id: str, file_id: str, line: int, column: int):
+    """Update collaborator cursor position"""
+    await db.collaborators.update_one(
+        {"project_id": project_id, "user_id": user_id},
+        {"$set": {
+            "cursor_position": {"file_id": file_id, "line": line, "column": column},
+            "active_file_id": file_id,
+            "last_seen": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return {"success": True}
+
+@api_router.post("/collab/{project_id}/lock-file")
+async def lock_file(project_id: str, file_id: str, user_id: str, username: str):
+    """Lock a file for editing"""
+    # Check if file is already locked by someone else
+    existing = await db.file_locks.find_one({"project_id": project_id, "file_id": file_id})
+    if existing and existing.get("locked_by_user_id") != user_id:
+        # Check if lock expired (5 minutes)
+        expires = datetime.fromisoformat(existing.get("expires_at", datetime.now(timezone.utc).isoformat()))
+        if expires > datetime.now(timezone.utc):
+            raise HTTPException(status_code=423, detail=f"File is locked by {existing.get('locked_by_username')}")
+    
+    # Create or update lock
+    lock = FileLock(
+        project_id=project_id,
+        file_id=file_id,
+        locked_by_user_id=user_id,
+        locked_by_username=username,
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=5)
+    )
+    
+    doc = lock.model_dump()
+    doc['locked_at'] = doc['locked_at'].isoformat()
+    doc['expires_at'] = doc['expires_at'].isoformat()
+    
+    if existing:
+        await db.file_locks.update_one({"id": existing["id"]}, {"$set": doc})
+    else:
+        await db.file_locks.insert_one(doc)
+    
+    # Broadcast lock
+    await db.collab_messages.insert_one({
+        "id": str(uuid.uuid4()),
+        "project_id": project_id,
+        "user_id": user_id,
+        "username": username,
+        "content": f"locked file for editing",
+        "message_type": "file_lock",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"success": True, "lock_id": lock.id}
+
+@api_router.post("/collab/{project_id}/unlock-file")
+async def unlock_file(project_id: str, file_id: str, user_id: str):
+    """Unlock a file"""
+    lock = await db.file_locks.find_one({"project_id": project_id, "file_id": file_id})
+    if lock and lock.get("locked_by_user_id") == user_id:
+        await db.file_locks.delete_one({"id": lock["id"]})
+    return {"success": True}
+
+@api_router.get("/collab/{project_id}/locks")
+async def get_file_locks(project_id: str):
+    """Get all file locks for a project"""
+    locks = await db.file_locks.find({"project_id": project_id}, {"_id": 0}).to_list(100)
+    # Filter out expired locks
+    now = datetime.now(timezone.utc)
+    active_locks = []
+    for lock in locks:
+        expires = datetime.fromisoformat(lock.get("expires_at", now.isoformat()))
+        if expires > now:
+            active_locks.append(lock)
+        else:
+            await db.file_locks.delete_one({"id": lock["id"]})
+    return active_locks
+
+@api_router.post("/collab/{project_id}/chat")
+async def send_collab_chat(project_id: str, user_id: str, username: str, content: str):
+    """Send a chat message to collaborators"""
+    message = CollaborationMessage(
+        project_id=project_id,
+        user_id=user_id,
+        username=username,
+        content=content,
+        message_type="chat"
+    )
+    doc = message.model_dump()
+    doc['timestamp'] = doc['timestamp'].isoformat()
+    await db.collab_messages.insert_one(doc)
+    return serialize_doc(doc)
+
+@api_router.get("/collab/{project_id}/chat")
+async def get_collab_chat(project_id: str, limit: int = 50):
+    """Get collaboration chat history"""
+    messages = await db.collab_messages.find(
+        {"project_id": project_id},
+        {"_id": 0}
+    ).sort("timestamp", -1).limit(limit).to_list(limit)
+    return list(reversed(messages))
 
 # Include router
 app.include_router(api_router)

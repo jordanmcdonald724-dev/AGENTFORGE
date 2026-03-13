@@ -25,9 +25,12 @@ import {
   Sparkles, ArrowRightCircle, Github, Play, Eye, Gamepad2, Package, Heart, Volume2, Layout, MessageCircle,
   Rocket, ChevronUp, RefreshCw, Brain, Wand2, CopyPlus, Search, Replace, Radio, AlertTriangle, Clock,
   Pause, Square, SkipForward, Swords, Mountain, Car, Sun, Map, Hammer, Coins, Ghost, Timer, Camera, Wifi,
-  Joystick, Monitor, Globe
+  Joystick, Monitor, Globe, GitBranch, Calendar
 } from "lucide-react";
 import { API } from "@/App";
+import BlueprintEditor from "@/components/BlueprintEditor";
+import CollaborationPanel from "@/components/CollaborationPanel";
+import BuildQueuePanel from "@/components/BuildQueuePanel";
 
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
@@ -144,6 +147,12 @@ const ProjectWorkspace = () => {
   const [scheduleBuild, setScheduleBuild] = useState(false);
   const [scheduleTime, setScheduleTime] = useState("");
 
+  // v3.3 states - Blueprints, Queue, Collaboration
+  const [blueprints, setBlueprints] = useState([]);
+  const [selectedBlueprint, setSelectedBlueprint] = useState(null);
+  const [blueprintTemplates, setBlueprintTemplates] = useState({});
+  const [currentUser] = useState({ id: `user_${Date.now()}`, username: "Developer" }); // Mock user for collab
+
   useEffect(() => { fetchProjectData(); }, [projectId]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingContent]);
   useEffect(() => { warRoomEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [warRoomMessages]);
@@ -189,10 +198,12 @@ const ProjectWorkspace = () => {
       // Set default engine based on project type
       if (projectRes.data.type === "unity") setTargetEngine("unity");
       
-      // Fetch war room, build, and demo
+      // Fetch war room, build, demo, and blueprints
       await fetchWarRoom();
       await fetchCurrentBuild();
       await fetchLatestDemo();
+      await fetchBlueprints();
+      await fetchBlueprintTemplates();
     } catch (error) {
       toast.error("Failed to load project");
       navigate("/dashboard");
@@ -206,6 +217,57 @@ const ProjectWorkspace = () => {
       const res = await axios.get(`${API}/war-room/${projectId}`);
       setWarRoomMessages(res.data);
     } catch (e) {}
+  };
+
+  const fetchBlueprints = async () => {
+    try {
+      const res = await axios.get(`${API}/blueprints?project_id=${projectId}`);
+      setBlueprints(res.data);
+    } catch (e) {}
+  };
+
+  const fetchBlueprintTemplates = async () => {
+    try {
+      const res = await axios.get(`${API}/blueprints/templates`);
+      setBlueprintTemplates(res.data);
+    } catch (e) {}
+  };
+
+  const createBlueprint = async (name, type = "logic") => {
+    try {
+      const res = await axios.post(`${API}/blueprints`, null, {
+        params: { project_id: projectId, name, blueprint_type: type, target_engine: targetEngine }
+      });
+      setBlueprints([...blueprints, res.data]);
+      setSelectedBlueprint(res.data);
+      toast.success("Blueprint created!");
+    } catch (e) { toast.error("Failed to create blueprint"); }
+  };
+
+  const updateBlueprint = async (data) => {
+    if (!selectedBlueprint) return;
+    try {
+      await axios.patch(`${API}/blueprints/${selectedBlueprint.id}`, data);
+      setSelectedBlueprint({ ...selectedBlueprint, ...data });
+    } catch (e) {}
+  };
+
+  const generateCodeFromBlueprint = async () => {
+    if (!selectedBlueprint) return;
+    try {
+      const res = await axios.post(`${API}/blueprints/${selectedBlueprint.id}/generate-code`);
+      toast.success(`Generated code: ${res.data.filepath}`);
+      fetchProjectData(); // Refresh files
+    } catch (e) { toast.error("Code generation failed"); }
+  };
+
+  const syncBlueprintFromCode = async () => {
+    if (!selectedBlueprint) return;
+    try {
+      const res = await axios.post(`${API}/blueprints/${selectedBlueprint.id}/sync-from-code`);
+      toast.success(`Synced ${res.data.synced_nodes} nodes from code`);
+      fetchBlueprints();
+    } catch (e) { toast.error("Sync failed"); }
   };
 
   const fetchCurrentBuild = async () => {
@@ -963,9 +1025,12 @@ const ProjectWorkspace = () => {
               {chainProgress && <div className="px-4 py-2 bg-blue-500/10 border-b border-blue-500/30"><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 text-blue-400 animate-spin" /><span className="text-xs text-blue-400">Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
 
               <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                <TabsList className="flex-shrink-0 bg-transparent border-b border-zinc-800 rounded-none px-4 h-11">
+                <TabsList className="flex-shrink-0 bg-transparent border-b border-zinc-800 rounded-none px-4 h-11 overflow-x-auto">
                   <TabsTrigger value="chat" className="data-[state=active]:bg-zinc-800"><MessageSquare className="w-4 h-4 mr-2" />Chat</TabsTrigger>
                   <TabsTrigger value="warroom" className="data-[state=active]:bg-zinc-800" data-testid="warroom-tab"><Radio className="w-4 h-4 mr-2" />War Room{warRoomMessages.length > 0 && <Badge variant="secondary" className="ml-2 text-xs bg-cyan-500/20 text-cyan-400">{warRoomMessages.length}</Badge>}</TabsTrigger>
+                  <TabsTrigger value="blueprints" className="data-[state=active]:bg-zinc-800" data-testid="blueprints-tab"><GitBranch className="w-4 h-4 mr-2" />Blueprints{blueprints.length > 0 && <Badge variant="secondary" className="ml-2 text-xs bg-purple-500/20 text-purple-400">{blueprints.length}</Badge>}</TabsTrigger>
+                  <TabsTrigger value="queue" className="data-[state=active]:bg-zinc-800" data-testid="queue-tab"><Calendar className="w-4 h-4 mr-2" />Queue</TabsTrigger>
+                  <TabsTrigger value="collab" className="data-[state=active]:bg-zinc-800" data-testid="collab-tab"><Users className="w-4 h-4 mr-2" />Collab</TabsTrigger>
                   <TabsTrigger value="tasks" className="data-[state=active]:bg-zinc-800"><ListTodo className="w-4 h-4 mr-2" />Tasks{tasks.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{tasks.length}</Badge>}</TabsTrigger>
                   <TabsTrigger value="images" className="data-[state=active]:bg-zinc-800"><Image className="w-4 h-4 mr-2" />Images</TabsTrigger>
                 </TabsList>
@@ -1058,6 +1123,77 @@ const ProjectWorkspace = () => {
                       <div ref={warRoomEndRef} />
                     </div>
                   </ScrollArea>
+                </TabsContent>
+
+                {/* Blueprints Tab */}
+                <TabsContent value="blueprints" className="flex-1 m-0 overflow-hidden flex flex-col">
+                  <div className="flex-shrink-0 p-3 border-b border-zinc-800 flex items-center justify-between">
+                    <h3 className="font-rajdhani font-bold text-white text-sm flex items-center gap-2">
+                      <GitBranch className="w-4 h-4 text-purple-400" />Visual Blueprints
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <Select value={selectedBlueprint?.id || ""} onValueChange={(v) => setSelectedBlueprint(blueprints.find(b => b.id === v))}>
+                        <SelectTrigger className="w-40 h-8 bg-zinc-900 border-zinc-700 text-xs">
+                          <SelectValue placeholder="Select blueprint" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-zinc-900 border-zinc-700">
+                          {blueprints.map(bp => (
+                            <SelectItem key={bp.id} value={bp.id}>{bp.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button size="sm" className="h-8 bg-purple-500 hover:bg-purple-600" onClick={() => {
+                        const name = prompt("Blueprint name:");
+                        if (name) createBlueprint(name);
+                      }}>
+                        <Plus className="w-3 h-3 mr-1" />New
+                      </Button>
+                    </div>
+                  </div>
+                  {selectedBlueprint ? (
+                    <BlueprintEditor
+                      blueprint={selectedBlueprint}
+                      templates={blueprintTemplates}
+                      onUpdate={updateBlueprint}
+                      onGenerateCode={generateCodeFromBlueprint}
+                      onSyncFromCode={syncBlueprintFromCode}
+                    />
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center">
+                        <GitBranch className="w-16 h-16 mx-auto mb-4 text-zinc-700" />
+                        <h3 className="font-rajdhani text-lg text-white mb-2">No Blueprint Selected</h3>
+                        <p className="text-sm text-zinc-500 mb-4">Create or select a blueprint to start visual scripting</p>
+                        <Button className="bg-purple-500 hover:bg-purple-600" onClick={() => {
+                          const name = prompt("Blueprint name:");
+                          if (name) createBlueprint(name);
+                        }}>
+                          <Plus className="w-4 h-4 mr-2" />Create Blueprint
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* Build Queue Tab */}
+                <TabsContent value="queue" className="flex-1 m-0 overflow-hidden">
+                  <BuildQueuePanel 
+                    projectId={projectId} 
+                    onBuildStart={(buildId) => { fetchCurrentBuild(); setActiveTab("warroom"); }}
+                  />
+                </TabsContent>
+
+                {/* Collaboration Tab */}
+                <TabsContent value="collab" className="flex-1 m-0 overflow-hidden">
+                  <CollaborationPanel
+                    projectId={projectId}
+                    currentUser={currentUser}
+                    activeFileId={selectedFile?.id}
+                    onFileSelect={(fileId) => {
+                      const file = files.find(f => f.id === fileId);
+                      if (file) { setSelectedFile(file); setEditorContent(file.content); }
+                    }}
+                  />
                 </TabsContent>
 
                 {/* Tasks Tab */}
