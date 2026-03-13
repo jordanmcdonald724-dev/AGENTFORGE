@@ -55,9 +55,9 @@ async def submit_celery_job(project_id: str, job_type: str = "build", priority: 
     
     if _celery_available():
         try:
-            from core.celery_tasks import run_build_task
-            task = run_build_task.apply_async(
-                args=[project_id, job_type, config or {}],
+            from core.celery_tasks import build_project_task
+            task = build_project_task.apply_async(
+                args=[job_id, project_id, job_type, config or {}],
                 task_id=job_id,
                 priority=priority
             )

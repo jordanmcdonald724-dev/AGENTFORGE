@@ -80,6 +80,119 @@ SAAS_TEMPLATES = {
         "features": ["booking", "calendar", "payments", "reminders", "staff_management"],
         "pricing_tiers": ["basic", "professional", "business"],
         "tech_stack": ["react", "fastapi", "postgresql", "stripe"]
+    },
+    # NEW TEMPLATES
+    "crm": {
+        "name": "CRM System",
+        "description": "Customer relationship management platform",
+        "features": ["contacts", "deals", "pipeline", "tasks", "email_tracking", "reports", "team_collab"],
+        "pricing_tiers": ["starter", "professional", "enterprise"],
+        "tech_stack": ["react", "fastapi", "postgresql", "redis"]
+    },
+    "project_management": {
+        "name": "Project Management",
+        "description": "Team collaboration and project tracking",
+        "features": ["projects", "tasks", "boards", "timeline", "team_chat", "file_sharing", "time_tracking"],
+        "pricing_tiers": ["free", "team", "business"],
+        "tech_stack": ["react", "node", "mongodb", "websocket"]
+    },
+    "helpdesk": {
+        "name": "Helpdesk & Support",
+        "description": "Customer support ticketing system",
+        "features": ["tickets", "live_chat", "knowledge_base", "automation", "analytics", "sla_tracking"],
+        "pricing_tiers": ["starter", "growth", "enterprise"],
+        "tech_stack": ["react", "fastapi", "postgresql", "redis"]
+    },
+    "invoice_billing": {
+        "name": "Invoice & Billing",
+        "description": "Professional invoicing and payment collection",
+        "features": ["invoices", "quotes", "expenses", "clients", "recurring_billing", "reports", "tax_calc"],
+        "pricing_tiers": ["freelancer", "business", "agency"],
+        "tech_stack": ["react", "fastapi", "postgresql", "stripe"]
+    },
+    "email_marketing": {
+        "name": "Email Marketing",
+        "description": "Email campaigns and automation platform",
+        "features": ["campaigns", "automation", "templates", "analytics", "contacts", "segments", "a_b_testing"],
+        "pricing_tiers": ["starter", "professional", "enterprise"],
+        "tech_stack": ["react", "fastapi", "postgresql", "sendgrid"]
+    },
+    "survey_forms": {
+        "name": "Survey & Forms",
+        "description": "Create surveys, forms, and collect responses",
+        "features": ["form_builder", "surveys", "logic_branching", "analytics", "responses", "templates"],
+        "pricing_tiers": ["free", "plus", "business"],
+        "tech_stack": ["react", "node", "mongodb", "stripe"]
+    },
+    "hr_platform": {
+        "name": "HR Management",
+        "description": "Human resources and employee management",
+        "features": ["employees", "time_off", "onboarding", "documents", "performance", "payroll_integration"],
+        "pricing_tiers": ["startup", "growth", "enterprise"],
+        "tech_stack": ["react", "fastapi", "postgresql", "stripe"]
+    },
+    "social_scheduler": {
+        "name": "Social Media Scheduler",
+        "description": "Schedule and manage social media posts",
+        "features": ["scheduling", "multi_platform", "analytics", "content_calendar", "team_collab", "ai_captions"],
+        "pricing_tiers": ["creator", "professional", "agency"],
+        "tech_stack": ["react", "fastapi", "mongodb", "redis"]
+    },
+    "link_shortener": {
+        "name": "Link Shortener & Bio Links",
+        "description": "URL shortening and bio link pages",
+        "features": ["short_links", "bio_pages", "analytics", "qr_codes", "custom_domains", "retargeting"],
+        "pricing_tiers": ["free", "pro", "enterprise"],
+        "tech_stack": ["react", "fastapi", "postgresql", "redis"]
+    },
+    "newsletter": {
+        "name": "Newsletter Platform",
+        "description": "Paid newsletter and subscription content",
+        "features": ["editor", "subscriptions", "payments", "analytics", "embed", "referrals"],
+        "pricing_tiers": ["free", "creator", "professional"],
+        "tech_stack": ["react", "fastapi", "postgresql", "stripe"]
+    },
+    "job_board": {
+        "name": "Job Board",
+        "description": "Job listings and applicant tracking",
+        "features": ["job_posts", "applications", "company_profiles", "search", "payments", "alerts"],
+        "pricing_tiers": ["basic", "professional", "enterprise"],
+        "tech_stack": ["react", "node", "postgresql", "stripe"]
+    },
+    "document_signing": {
+        "name": "Document Signing",
+        "description": "E-signature and document management",
+        "features": ["templates", "signing", "audit_trail", "reminders", "team", "api"],
+        "pricing_tiers": ["starter", "business", "enterprise"],
+        "tech_stack": ["react", "fastapi", "postgresql", "stripe"]
+    },
+    "fitness_app": {
+        "name": "Fitness & Workout",
+        "description": "Fitness tracking and workout planning",
+        "features": ["workouts", "exercises", "progress", "nutrition", "challenges", "community"],
+        "pricing_tiers": ["free", "premium", "coach"],
+        "tech_stack": ["react", "fastapi", "mongodb", "stripe"]
+    },
+    "event_platform": {
+        "name": "Event Management",
+        "description": "Event ticketing and management",
+        "features": ["events", "ticketing", "registrations", "check_in", "analytics", "virtual_events"],
+        "pricing_tiers": ["starter", "professional", "enterprise"],
+        "tech_stack": ["react", "fastapi", "postgresql", "stripe"]
+    },
+    "real_estate": {
+        "name": "Real Estate Platform",
+        "description": "Property listings and management",
+        "features": ["listings", "search", "maps", "agents", "leads", "virtual_tours", "mortgage_calc"],
+        "pricing_tiers": ["agent", "broker", "enterprise"],
+        "tech_stack": ["react", "node", "postgresql", "stripe"]
+    },
+    "podcast_platform": {
+        "name": "Podcast Hosting",
+        "description": "Podcast hosting and distribution",
+        "features": ["hosting", "distribution", "analytics", "monetization", "website", "transcripts"],
+        "pricing_tiers": ["starter", "creator", "professional"],
+        "tech_stack": ["react", "fastapi", "mongodb", "stripe"]
     }
 }
 
