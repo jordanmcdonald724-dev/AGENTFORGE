@@ -37,6 +37,9 @@ import DeploymentPanel from "@/components/DeploymentPanel";
 import SandboxPanel from "@/components/SandboxPanel";
 import AssetPipelinePanel from "@/components/AssetPipelinePanel";
 import CommandCenter from "@/components/CommandCenter";
+import GameEnginePanel from "@/components/GameEnginePanel";
+import HardwarePanel from "@/components/HardwarePanel";
+import ResearchPanel from "@/components/ResearchPanel";
 
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
@@ -1045,6 +1048,9 @@ const ProjectWorkspace = () => {
                   <TabsTrigger value="command" className="data-[state=active]:bg-zinc-800" data-testid="command-tab"><Command className="w-4 h-4 mr-2" />Command</TabsTrigger>
                   <TabsTrigger value="deploy" className="data-[state=active]:bg-zinc-800" data-testid="deploy-tab"><Rocket className="w-4 h-4 mr-2" />Deploy</TabsTrigger>
                   <TabsTrigger value="notifications" className="data-[state=active]:bg-zinc-800" data-testid="notifications-tab"><Bell className="w-4 h-4 mr-2" />Alerts</TabsTrigger>
+                  <TabsTrigger value="game-engine" className="data-[state=active]:bg-zinc-800" data-testid="game-engine-tab"><Gamepad2 className="w-4 h-4 mr-2" />Game Engine</TabsTrigger>
+                  <TabsTrigger value="hardware" className="data-[state=active]:bg-zinc-800" data-testid="hardware-tab"><Joystick className="w-4 h-4 mr-2" />Hardware</TabsTrigger>
+                  <TabsTrigger value="research" className="data-[state=active]:bg-zinc-800" data-testid="research-tab"><Globe className="w-4 h-4 mr-2" />Research</TabsTrigger>
                 </TabsList>
 
                 {/* Chat Tab */}
@@ -1245,6 +1251,18 @@ const ProjectWorkspace = () => {
                 {/* Notifications Tab */}
                 <TabsContent value="notifications" className="flex-1 m-0 overflow-hidden">
                   <NotificationsPanel projectId={projectId} />
+                </TabsContent>
+
+                <TabsContent value="game-engine" className="flex-1 m-0 overflow-hidden">
+                  <GameEnginePanel />
+                </TabsContent>
+
+                <TabsContent value="hardware" className="flex-1 m-0 overflow-hidden">
+                  <HardwarePanel />
+                </TabsContent>
+
+                <TabsContent value="research" className="flex-1 m-0 overflow-hidden">
+                  <ResearchPanel />
                 </TabsContent>
               </Tabs>
             </div>

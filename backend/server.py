@@ -8010,6 +8010,19 @@ try:
 except Exception as e:
     logger.warning(f"Could not load modular routers: {e}")
 
+# NEW FEATURES: Game Engine, Hardware, Research
+try:
+    from routes.game_engine import router as game_engine_router
+    from routes.hardware import router as hardware_router
+    from routes.research import router as research_router
+    
+    app.include_router(game_engine_router, prefix="/api", tags=["game-engine"])
+    app.include_router(hardware_router, prefix="/api", tags=["hardware"])
+    app.include_router(research_router, prefix="/api", tags=["research"])
+    logger.info("Successfully loaded new feature routers (game-engine, hardware, research)")
+except Exception as e:
+    logger.warning(f"Could not load new feature routers: {e}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
