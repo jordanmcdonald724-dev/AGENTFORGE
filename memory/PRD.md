@@ -1,11 +1,11 @@
-# AgentForge v3.3 - COMPLETE FEATURE BREAKDOWN
+# AgentForge v3.4 - COMPLETE FEATURE BREAKDOWN
 
 ## Original Problem Statement
 Build a web application that functions as an "AI agent dev team" backed by fal.ai. A platform for building full web pages, applications, and AAA-quality games with a team of specialized AI agents under user control. Features include Git repository management, high-level code editor, and Ubisoft studio-style workflow.
 
 ---
 
-## 🎮 EVERYTHING IN AGENTFORGE v3.3
+## 🎮 EVERYTHING IN AGENTFORGE v3.4
 
 ### 👥 AI AGENT TEAM (6 Agents)
 | Agent | Role | Specialty |
@@ -53,6 +53,30 @@ Build a web application that functions as an "AI agent dev team" backed by fal.a
 - ✅ **File Locking** (5 min expiry)
 - ✅ **Online Status** tracking
 
+### 🔊 AUDIO GENERATION (v3.4 - NEW!)
+- ✅ **3 Audio Types**: SFX, Music, Voice/TTS
+- ✅ **OpenAI TTS** (via Emergent LLM Key) - 9 voices
+- ✅ **ElevenLabs** (via fal.ai) - alternative
+- ✅ **15+ Presets** per category (explosion, footsteps, menu music, etc.)
+- ✅ **5 Audio Packs**: Basic SFX, Combat SFX, Movement SFX, Ambient Music, Battle Music
+- ✅ **Asset Management**: Play, Download, Delete
+
+### 🚀 ONE-CLICK DEPLOYMENT (v3.4 - NEW!)
+- ✅ **Vercel**: Web apps and static sites
+- ✅ **Railway**: Full-stack apps with databases
+- ✅ **Itch.io**: Game distribution
+- ✅ **Deployment Dialog**: Project name + token inputs
+- ✅ **Deployment History**: Track all deployments
+- ⚠️ **MOCKED**: Real deployment requires valid platform tokens
+
+### 🔔 NOTIFICATIONS (v3.4 - NEW!)
+- ✅ **Email Settings**: Toggle + email address
+- ✅ **Discord Settings**: Toggle + webhook URL
+- ✅ **Notification Types**: Build complete, Stage milestones, Errors & warnings
+- ✅ **Settings Persistence**: Save/load per project
+- ✅ **Test Notification**: Send test message
+- ⚠️ **MOCKED**: Email/Discord sending not connected (per user request)
+
 ### 📋 PROJECT MANAGEMENT
 - ✅ Create/List/Delete projects
 - ✅ Project phases (clarification → planning → development → review)
@@ -96,11 +120,13 @@ Terrain, NPCs, Quests, Vehicles, Day/Night, Combat, Crafting, Economy, Stealth, 
 ### 🎨 ASSET GENERATION
 - ✅ fal.ai image generation
 - ✅ Image gallery
+- ✅ **Audio asset generation** (v3.4)
 
 ### 🔗 INTEGRATIONS
 - ✅ GitHub push
 - ✅ fal.ai LLM + images
 - ✅ Live preview
+- ✅ **OpenAI TTS** (v3.4 - via Emergent LLM Key)
 
 ### 🎯 ENGINE SUPPORT
 - ✅ Unreal Engine 5 (Primary)
@@ -108,7 +134,29 @@ Terrain, NPCs, Quests, Vehicles, Day/Night, Combat, Crafting, Economy, Stealth, 
 
 ---
 
-## 📊 API ENDPOINTS (80+ Total)
+## 📊 API ENDPOINTS (90+ Total)
+
+### Audio Generation (v3.4)
+- `GET /api/audio/categories` - 3 types, 15+ presets each
+- `POST /api/audio/generate` - Generate single audio
+- `GET /api/audio/{project_id}` - List audio assets
+- `DELETE /api/audio/{asset_id}` - Delete audio asset
+- `POST /api/audio/generate-pack` - Generate audio pack
+- `GET /api/audio/file/{audio_id}` - Serve audio file
+
+### One-Click Deploy (v3.4)
+- `GET /api/deploy/platforms` - List platforms
+- `GET /api/deploy/{project_id}` - List deployments
+- `POST /api/deploy/{project_id}/vercel` - Deploy to Vercel
+- `POST /api/deploy/{project_id}/railway` - Deploy to Railway
+- `POST /api/deploy/{project_id}/itch` - Deploy to Itch.io
+- `DELETE /api/deploy/{deployment_id}` - Delete deployment
+
+### Notifications (v3.4)
+- `GET /api/notifications/{project_id}/settings` - Get settings
+- `POST /api/notifications/{project_id}/settings` - Save settings
+- `POST /api/notifications/{project_id}/test` - Send test
+- `GET /api/notifications/{project_id}/history` - Notification history
 
 ### Blueprint Scripting (v3.3)
 - `GET /api/blueprints/templates` - 25 node templates
@@ -140,8 +188,8 @@ Terrain, NPCs, Quests, Vehicles, Day/Night, Combat, Crafting, Economy, Stealth, 
 
 ---
 
-## 💾 DATABASE COLLECTIONS (16 Total)
-projects, agents, files, messages, tasks, images, plans, memories, custom_actions, simulations, builds, war_room, demos, blueprints, build_queue, collaborators, file_locks, collab_messages
+## 💾 DATABASE COLLECTIONS (19 Total)
+projects, agents, files, messages, tasks, images, plans, memories, custom_actions, simulations, builds, war_room, demos, blueprints, build_queue, collaborators, file_locks, collab_messages, **audio_assets**, **notifications**, **deployments**
 
 ---
 
@@ -151,7 +199,8 @@ projects, agents, files, messages, tasks, images, plans, memories, custom_action
 - v3.1: 10/10 passed
 - v3.2: 14/14 passed
 - v3.3: 30/30 passed
-- **Total: 95+ tests passed**
+- v3.4: 26/26 passed (14 backend + 12 frontend)
+- **Total: 121+ tests passed**
 
 ---
 
@@ -167,12 +216,29 @@ projects, agents, files, messages, tasks, images, plans, memories, custom_action
 | v3.0 | Simulation mode, War Room, autonomous builds, 15 open world systems |
 | v3.1 | Build scheduling (overnight builds), 12+ hour builds |
 | v3.2 | Playable demo generation (web + executable) |
-| v3.3 | **Blueprint visual scripting, Build queue by category, Real-time collaboration** |
+| v3.3 | Blueprint visual scripting, Build queue by category, Real-time collaboration |
+| v3.4 | **Audio generation (OpenAI TTS), One-click deploy, Notifications settings** |
 
 ---
 
 ## 📋 FUTURE/BACKLOG
-- [ ] Email/Discord notifications for build completion
-- [ ] Audio asset generation
-- [ ] One-click deployment pipeline
+- [ ] Real Email/Discord notification sending (requires SendGrid/Resend API key)
+- [ ] Real Vercel/Railway/Itch.io deployment (requires platform API tokens)
 - [ ] Version history with diff viewer
+- [ ] Refactor server.py into modular structure (4500+ lines → routes/, models/)
+
+---
+
+## ⚠️ MOCKED FEATURES (v3.4)
+- **Email Notifications**: SendGrid/Resend not connected (user skipped)
+- **Discord Notifications**: Webhook sending not implemented (user skipped)
+- **Vercel Deployment**: Requires real `VERCEL_TOKEN`
+- **Railway Deployment**: Requires real `RAILWAY_TOKEN`
+- **Itch.io Deployment**: Requires real `ITCH_API_KEY` + `ITCH_USERNAME`
+
+---
+
+## 🔑 API KEYS CONFIGURED
+- `FAL_KEY` - fal.ai image generation + LLM
+- `GITHUB_TOKEN` - GitHub push
+- `EMERGENT_LLM_KEY` - OpenAI TTS audio generation
