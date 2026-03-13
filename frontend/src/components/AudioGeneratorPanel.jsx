@@ -126,7 +126,7 @@ const AudioGeneratorPanel = ({ projectId }) => {
     }
   };
 
-  const usePreset = (presetKey, type) => {
+  const applyPreset = (presetKey, type) => {
     const prompt = categories[type]?.[presetKey];
     if (prompt) {
       setForm({
@@ -233,7 +233,7 @@ const AudioGeneratorPanel = ({ projectId }) => {
                       {Object.keys(presets).map((key) => (
                         <button
                           key={key}
-                          onClick={() => usePreset(key, type)}
+                          onClick={() => applyPreset(key, type)}
                           className="p-2 text-left rounded bg-zinc-800/50 hover:bg-zinc-800 text-xs text-zinc-400 truncate"
                         >
                           {key.replace(/_/g, ' ')}

@@ -25,12 +25,15 @@ import {
   Sparkles, ArrowRightCircle, Github, Play, Eye, Gamepad2, Package, Heart, Volume2, Layout, MessageCircle,
   Rocket, ChevronUp, RefreshCw, Brain, Wand2, CopyPlus, Search, Replace, Radio, AlertTriangle, Clock,
   Pause, Square, SkipForward, Swords, Mountain, Car, Sun, Map, Hammer, Coins, Ghost, Timer, Camera, Wifi,
-  Joystick, Monitor, Globe, GitBranch, Calendar
+  Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music
 } from "lucide-react";
 import { API } from "@/App";
 import BlueprintEditor from "@/components/BlueprintEditor";
 import CollaborationPanel from "@/components/CollaborationPanel";
 import BuildQueuePanel from "@/components/BuildQueuePanel";
+import NotificationsPanel from "@/components/NotificationsPanel";
+import AudioGeneratorPanel from "@/components/AudioGeneratorPanel";
+import DeploymentPanel from "@/components/DeploymentPanel";
 
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
@@ -1033,6 +1036,9 @@ const ProjectWorkspace = () => {
                   <TabsTrigger value="collab" className="data-[state=active]:bg-zinc-800" data-testid="collab-tab"><Users className="w-4 h-4 mr-2" />Collab</TabsTrigger>
                   <TabsTrigger value="tasks" className="data-[state=active]:bg-zinc-800"><ListTodo className="w-4 h-4 mr-2" />Tasks{tasks.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{tasks.length}</Badge>}</TabsTrigger>
                   <TabsTrigger value="images" className="data-[state=active]:bg-zinc-800"><Image className="w-4 h-4 mr-2" />Images</TabsTrigger>
+                  <TabsTrigger value="audio" className="data-[state=active]:bg-zinc-800" data-testid="audio-tab"><Music className="w-4 h-4 mr-2" />Audio</TabsTrigger>
+                  <TabsTrigger value="deploy" className="data-[state=active]:bg-zinc-800" data-testid="deploy-tab"><Rocket className="w-4 h-4 mr-2" />Deploy</TabsTrigger>
+                  <TabsTrigger value="notifications" className="data-[state=active]:bg-zinc-800" data-testid="notifications-tab"><Bell className="w-4 h-4 mr-2" />Alerts</TabsTrigger>
                 </TabsList>
 
                 {/* Chat Tab */}
@@ -1204,6 +1210,21 @@ const ProjectWorkspace = () => {
 
                 {/* Images Tab */}
                 <TabsContent value="images" className="flex-1 m-0 p-4 overflow-auto">{images.length === 0 ? (<div className="text-center py-12"><Image className="w-12 h-12 mx-auto mb-4 text-zinc-700" /><h3 className="font-rajdhani text-lg text-white mb-2">No Images</h3><Button onClick={() => setImageDialogOpen(true)} className="bg-blue-500 hover:bg-blue-600"><Sparkles className="w-4 h-4 mr-2" />Generate</Button></div>) : (<div className="grid grid-cols-2 gap-4">{images.map((img) => (<div key={img.id} className="rounded-lg overflow-hidden border border-zinc-800"><img src={img.url} alt={img.prompt} className="w-full aspect-square object-cover" /><div className="p-3 bg-zinc-900"><Badge variant="outline" className="text-xs border-zinc-700 mb-2">{img.category}</Badge><p className="text-xs text-zinc-400 line-clamp-2">{img.prompt}</p></div></div>))}</div>)}</TabsContent>
+
+                {/* Audio Tab */}
+                <TabsContent value="audio" className="flex-1 m-0 overflow-hidden">
+                  <AudioGeneratorPanel projectId={projectId} />
+                </TabsContent>
+
+                {/* Deploy Tab */}
+                <TabsContent value="deploy" className="flex-1 m-0 overflow-hidden">
+                  <DeploymentPanel projectId={projectId} projectName={project?.name} />
+                </TabsContent>
+
+                {/* Notifications Tab */}
+                <TabsContent value="notifications" className="flex-1 m-0 overflow-hidden">
+                  <NotificationsPanel projectId={projectId} />
+                </TabsContent>
               </Tabs>
             </div>
           </ResizablePanel>

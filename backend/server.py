@@ -21,6 +21,7 @@ import fal_client
 import base64
 from github import Github, GithubException
 import httpx
+from emergentintegrations.llm.openai import OpenAITextToSpeech
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -41,6 +42,9 @@ llm_client = OpenAI(
         "Authorization": f"Key {os.environ.get('FAL_KEY', '')}",
     },
 )
+
+# OpenAI TTS client using Emergent LLM Key
+tts_client = OpenAITextToSpeech(api_key=os.environ.get('EMERGENT_LLM_KEY', ''))
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -4251,15 +4255,14 @@ async def generate_audio(
                 audio_asset.duration_seconds = result.get("duration", 5)
         
         elif provider == "openai":
-            # Use OpenAI TTS
+            # Use OpenAI TTS with emergentintegrations
             if audio_type == "voice":
-                response = llm_client.audio.speech.create(
+                audio_content = await tts_client.generate_speech(
+                    text=prompt,
                     model="tts-1-hd",
-                    voice=voice_id or "alloy",
-                    input=prompt
+                    voice=voice_id or "alloy"
                 )
                 # Save to temp and get URL (in production, upload to storage)
-                audio_content = response.content
                 audio_id = str(uuid.uuid4())
                 audio_path = f"/tmp/audio_{audio_id}.mp3"
                 with open(audio_path, "wb") as f:
@@ -4295,6 +4298,14 @@ async def get_audio_assets(project_id: str):
     """Get all audio assets for a project"""
     assets = await db.audio_assets.find({"project_id": project_id}, {"_id": 0}).to_list(100)
     return assets
+
+@api_router.get("/audio/file/{audio_id}")
+async def get_audio_file(audio_id: str):
+    """Serve a generated audio file"""
+    audio_path = f"/tmp/audio_{audio_id}.mp3"
+    if not os.path.exists(audio_path):
+        raise HTTPException(status_code=404, detail="Audio file not found")
+    return FileResponse(audio_path, media_type="audio/mpeg", filename=f"{audio_id}.mp3")
 
 @api_router.delete("/audio/{asset_id}")
 async def delete_audio_asset(asset_id: str):
