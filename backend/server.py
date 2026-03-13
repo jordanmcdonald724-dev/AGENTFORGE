@@ -78,6 +78,7 @@ try:
     from routes.hardware import router as hardware_router
     from routes.agent_network import router as agent_network_router
     from routes.global_intelligence import router as global_intelligence_router
+    from routes.voice import router as voice_router
     
     # Register all routers with /api prefix
     # Core routes
@@ -132,6 +133,7 @@ try:
     app.include_router(hardware_router, prefix="/api", tags=["hardware"])
     app.include_router(agent_network_router, prefix="/api", tags=["agent-network"])
     app.include_router(global_intelligence_router, prefix="/api", tags=["global-intelligence"])
+    app.include_router(voice_router, prefix="/api", tags=["voice"])
     
     logger.info("Successfully loaded all modular routers")
     

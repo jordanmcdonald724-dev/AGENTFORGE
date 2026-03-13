@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "AgentForge",
+    "slug": "agentforge-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0a0a0c",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.agentforge.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "AgentForge needs microphone access for voice commands"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a0c"
+      },
+      "package": "com.agentforge.mobile",
+      "permissions": ["RECORD_AUDIO"]
+    },
+    "web": {
+      "favicon": "./src/assets/favicon.png"
+    },
+    "extra": {
+      "apiUrl": "https://ai-agent-team.preview.emergentagent.com"
+    }
+  }
+}
