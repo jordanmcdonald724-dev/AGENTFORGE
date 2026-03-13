@@ -49,8 +49,14 @@ const GodModePanel = () => {
 
   const fetchBuilds = async () => {
     try {
-      const res = await axios.get(`${API}/god-mode/builds`);
-      setBuilds(res.data || []);
+      // Use sessions endpoint from god_mode.py
+      const res = await axios.get(`${API}/god-mode/sessions`);
+      // Map session_id to id for frontend compatibility
+      const buildData = (res.data || []).map(b => ({
+        ...b,
+        id: b.id || b.session_id
+      }));
+      setBuilds(buildData);
     } catch (e) {}
   };
 

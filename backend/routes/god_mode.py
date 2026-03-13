@@ -344,6 +344,12 @@ async def god_mode_stream(prompt: str):
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
+@router.get("/sessions")
+async def list_god_mode_sessions():
+    """List all god mode sessions"""
+    return await db.god_mode_sessions.find({}, {"_id": 0}).sort("created_at", -1).to_list(50)
+
+
 @router.get("/{session_id}")
 async def get_god_mode_session(session_id: str):
     """Get god mode session status"""
@@ -351,12 +357,6 @@ async def get_god_mode_session(session_id: str):
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
     return session
-
-
-@router.get("/sessions")
-async def list_god_mode_sessions():
-    """List all god mode sessions"""
-    return await db.god_mode_sessions.find({}, {"_id": 0}).sort("created_at", -1).to_list(50)
 
 
 # ========== FILE GENERATORS ==========

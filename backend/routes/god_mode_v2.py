@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-router = APIRouter(prefix="/god-mode", tags=["god-mode"])
+router = APIRouter(prefix="/god-mode-v2", tags=["god-mode-v2"])
 
 from core.database import db
 from core.utils import serialize_doc
