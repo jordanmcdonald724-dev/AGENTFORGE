@@ -1,53 +1,62 @@
-# AI Agent Dev Team Platform - PRD
+# AgentForge - Personal AI Development Studio
 
 ## Original Problem Statement
-Build an AI Agent Dev Team platform - a web application where multiple AI agents work together like a professional game studio (Ubisoft style). The platform should enable building full webpages, games, and apps with specialized agent roles. Backed by fal.ai for LLM capabilities.
+Build a personal AI development studio with 6 specialized agents that can create AAA games (Unreal Engine, Unity, Godot), web apps, mobile apps - everything a full development team can do. Agents do ALL the work. Emergent-style workflow: clarify → plan → build. User stays in complete control.
 
 ## Architecture
-- **Frontend**: React 19 with Tailwind CSS, Shadcn UI, Framer Motion
+- **Frontend**: React 19, Tailwind CSS, Shadcn UI, Framer Motion, Monaco Editor
 - **Backend**: FastAPI with Motor (async MongoDB)
-- **AI Integration**: fal.ai OpenRouter API (Google Gemini 2.5 Flash default)
+- **AI Integration**: fal.ai OpenRouter API (Google Gemini 2.5 Flash)
 - **Database**: MongoDB
 
-## User Personas
-1. **Game Developers** - Building Unreal Engine projects
-2. **Indie Devs** - Creating web apps, games, mobile apps
-3. **Professional Studios** - Enterprise-level project management
+## Agent Team (6 Agents)
+1. **COMMANDER** - Lead/Project Director - Clarifies, coordinates, delegates
+2. **ATLAS** - Architect - System design, patterns, UE5/Unity expertise
+3. **FORGE** - Developer - C++, C#, Blueprints, full-stack code
+4. **SENTINEL** - Reviewer - Code quality, security, best practices
+5. **PROBE** - Tester - QA, test automation, coverage
+6. **PRISM** - Artist - UI/UX, shaders, VFX specs
 
-## Core Requirements (Static)
-- 5 specialized AI agents (NEXUS, ATLAS, FORGE, SENTINEL, PROBE)
-- Project management with Kanban task board
-- Real-time chat with AI team
-- Code file generation and management
-- Dark theme UI (Ubisoft style)
-
-## What's Been Implemented (Jan 2026)
-- [x] Landing page with hero section and agent roster
-- [x] Dashboard with agent status and project grid
-- [x] Project workspace with Chat/Tasks/Files tabs
-- [x] fal.ai OpenRouter integration for AI responses
-- [x] Project CRUD operations
-- [x] Task management with Kanban board
-- [x] Real-time agent status indicators
+## Core Features (Implemented)
+- [x] 6-agent AI team with fal.ai integration
+- [x] Monaco code editor with file tree
+- [x] Syntax highlighting in chat (Prism.js)
+- [x] Auto-save code blocks from agent responses
+- [x] Project export to ZIP
+- [x] Kanban task board
+- [x] Project types: Unreal, Unity, Godot, Web, Mobile
+- [x] Engine version selection
+- [x] Phase workflow: Clarification → Planning → Development → Review
+- [x] Agent status indicators
 - [x] Message persistence
 
-## Prioritized Backlog
-### P0 (Critical)
-- All core features implemented ✅
+## Workflow
+1. User describes project to COMMANDER
+2. COMMANDER asks clarifying questions
+3. User approves plan before any coding
+4. Agents build, user stays in control
+5. Export project when ready
 
-### P1 (High)
-- Streaming responses for chat
-- Code generation with syntax highlighting
-- Git integration visualization
+## What's Been Implemented (Jan 2026)
+- Full 6-agent AI team
+- Monaco code editor with VS Code features
+- File tree with folder expansion
+- Code syntax highlighting in chat messages
+- Copy code button per block
+- Auto-save code to files
+- Project export as ZIP
+- Resizable panels
+- Dark theme throughout
 
-### P2 (Medium)
-- Multiple model selection per agent
-- File tree explorer
-- Agent collaboration visualization
-- Export project to git repo
+## P1 Features (Next)
+- Streaming responses (SSE)
+- Agent delegation (COMMANDER → FORGE)
+- Image generation with fal.ai
+- GitHub push integration
+- Project templates (FPS, RPG, Platformer)
 
-## Next Tasks
-1. Add code syntax highlighting in chat messages
-2. Implement streaming responses
-3. Add file creation from agent responses
-4. Build project export functionality
+## P2 Features
+- Live preview for web projects
+- Multi-file refactoring
+- Agent memory/learning
+- Team activity feed
