@@ -1,244 +1,224 @@
-# AgentForge v3.4 - COMPLETE FEATURE BREAKDOWN
+# AgentForge v4.0 - THE FINAL BOSS 🎮
 
 ## Original Problem Statement
-Build a web application that functions as an "AI agent dev team" backed by fal.ai. A platform for building full web pages, applications, and AAA-quality games with a team of specialized AI agents under user control. Features include Git repository management, high-level code editor, and Ubisoft studio-style workflow.
+Build a web application called "AgentForge" that functions as an "AI agent dev team" backed by fal.ai. A "Ubisoft studio style" platform for building full web pages, applications, and AAA-quality games with specialized AI agents.
 
 ---
 
-## 🎮 EVERYTHING IN AGENTFORGE v3.4
+## 🚀 VERSION 4.0 - 33 FEATURES | 165+ TESTS PASSED
 
-### 👥 AI AGENT TEAM (6 Agents)
+### 🤖 CORE AGENT TEAM (6 Base Agents)
 | Agent | Role | Specialty |
 |-------|------|-----------|
-| COMMANDER | Lead/Director | Coordinates team, delegates tasks, war room updates |
-| ATLAS | System Architect | Design patterns, architecture, technical planning |
-| FORGE | Senior Developer | Code generation, system implementation |
-| SENTINEL | Code Reviewer | Quality assurance, code review, best practices |
-| PROBE | QA/Tester | Testing, bug detection, validation |
-| PRISM | Technical Artist | UI, shaders, VFX, demo generation |
-
-### 💬 CHAT & COMMUNICATION
-- ✅ Streaming responses (real-time SSE)
-- ✅ Agent delegation (COMMANDER → specialists)
-- ✅ Agent chains (multi-agent workflows)
-- ✅ War Room (real-time agent communication panel)
-- ✅ Agent memory persistence
-- ✅ **Real-time Collaboration Chat** (v3.3)
-
-### 📁 CODE MANAGEMENT
-- ✅ Monaco Editor (VS Code-like)
-- ✅ File CRUD with syntax highlighting
-- ✅ Multi-file refactoring
-- ✅ Auto-save from chat
-- ✅ Project export as ZIP
-- ✅ **File Locking** (v3.3 - for collab)
-
-### 🔷 BLUEPRINT VISUAL SCRIPTING (v3.3)
-- ✅ **25 Node Templates** (event, function, flow, math, logic, variable)
-- ✅ **AgentForge-style UI** (dark theme, colored wires)
-- ✅ **Hybrid Editing** (nodes ↔ code sync)
-- ✅ **Code Generation** from blueprints
-- ✅ **Sync from Code** (reverse parse)
-
-### 📋 BUILD QUEUE BY CATEGORY (v3.3)
-- ✅ **5 Categories**: App, Webpage, Game, API, Mobile
-- ✅ **1 Build Per Category** max
-- ✅ **Scheduled Builds** support
-- ✅ **Start/Remove** queue items
-
-### 👥 REAL-TIME COLLABORATION (v3.3)
-- ✅ **3 Users Max** per project
-- ✅ **Live Cursors** (see where others are editing)
-- ✅ **Live Chat** in collaboration panel
-- ✅ **File Locking** (5 min expiry)
-- ✅ **Online Status** tracking
-
-### 🔊 AUDIO GENERATION (v3.4 - NEW!)
-- ✅ **3 Audio Types**: SFX, Music, Voice/TTS
-- ✅ **OpenAI TTS** (via Emergent LLM Key) - 9 voices
-- ✅ **ElevenLabs** (via fal.ai) - alternative
-- ✅ **15+ Presets** per category (explosion, footsteps, menu music, etc.)
-- ✅ **5 Audio Packs**: Basic SFX, Combat SFX, Movement SFX, Ambient Music, Battle Music
-- ✅ **Asset Management**: Play, Download, Delete
-
-### 🚀 ONE-CLICK DEPLOYMENT (v3.4 - NEW!)
-- ✅ **Vercel**: Web apps and static sites
-- ✅ **Railway**: Full-stack apps with databases
-- ✅ **Itch.io**: Game distribution
-- ✅ **Deployment Dialog**: Project name + token inputs
-- ✅ **Deployment History**: Track all deployments
-- ⚠️ **MOCKED**: Real deployment requires valid platform tokens
-
-### 🔔 NOTIFICATIONS (v3.4 - NEW!)
-- ✅ **Email Settings**: Toggle + email address
-- ✅ **Discord Settings**: Toggle + webhook URL
-- ✅ **Notification Types**: Build complete, Stage milestones, Errors & warnings
-- ✅ **Settings Persistence**: Save/load per project
-- ✅ **Test Notification**: Send test message
-- ⚠️ **MOCKED**: Email/Discord sending not connected (per user request)
-
-### 📋 PROJECT MANAGEMENT
-- ✅ Create/List/Delete projects
-- ✅ Project phases (clarification → planning → development → review)
-- ✅ Project duplication with files
-- ✅ Kanban task board
-
-### ⚡ QUICK ACTIONS (8 + Custom)
-1. Player Controller
-2. Inventory System
-3. Save/Load System
-4. Health & Damage
-5. AI Behavior Tree
-6. Dialogue System
-7. UI Framework
-8. Audio Manager
-- ✅ Custom Quick Actions
-
-### 🔮 SIMULATION MODE
-- ✅ Build time prediction
-- ✅ File/size estimation
-- ✅ Dependency checking
-- ✅ Warning detection
-- ✅ Feasibility score
-
-### 🌙 OVERNIGHT AUTONOMOUS BUILDS
-- ✅ 15h 30m build time (8 stages)
-- ✅ Build scheduling
-- ✅ Pause/Resume/Cancel
-- ✅ Stage progress tracking
-- ✅ Auto-generate playable demo
-
-### 🎮 PLAYABLE DEMO GENERATION
-- ✅ Web Demo (HTML5 - play in browser)
-- ✅ Executable (UE5/Unity build configs)
-- ✅ All systems showcase
-- ✅ Controls guide
-
-### 🌍 OPEN WORLD SYSTEMS (15)
-Terrain, NPCs, Quests, Vehicles, Day/Night, Combat, Crafting, Economy, Stealth, Mounts, Building, Skills, Fast Travel, Photo Mode, Multiplayer
-
-### 🎨 ASSET GENERATION
-- ✅ fal.ai image generation
-- ✅ Image gallery
-- ✅ **Audio asset generation** (v3.4)
-
-### 🔗 INTEGRATIONS
-- ✅ GitHub push
-- ✅ fal.ai LLM + images
-- ✅ Live preview
-- ✅ **OpenAI TTS** (v3.4 - via Emergent LLM Key)
-
-### 🎯 ENGINE SUPPORT
-- ✅ Unreal Engine 5 (Primary)
-- ✅ Unity (Full support)
+| COMMANDER | Lead | Coordinates, delegates, plans |
+| ATLAS | Architect | Design patterns, architecture |
+| FORGE | Developer | Code generation |
+| SENTINEL | Reviewer | Quality, best practices |
+| PROBE | Tester | Testing, bug detection |
+| PRISM | Artist | UI, VFX, demos |
 
 ---
 
-## 📊 API ENDPOINTS (90+ Total)
+## 🆕 v4.0 BOSS-LEVEL FEATURES
 
-### Audio Generation (v3.4)
-- `GET /api/audio/categories` - 3 types, 15+ presets each
-- `POST /api/audio/generate` - Generate single audio
-- `GET /api/audio/{project_id}` - List audio assets
-- `DELETE /api/audio/{asset_id}` - Delete audio asset
-- `POST /api/audio/generate-pack` - Generate audio pack
-- `GET /api/audio/file/{audio_id}` - Serve audio file
+### 1️⃣ PROJECT AUTOPSY (Reverse Engineering)
+- **Analyze any project** - Upload zip, connect GitHub, or analyze existing
+- **Tech Stack Detection** - Auto-detect React, FastAPI, Unity, etc.
+- **Design Patterns** - Identify Singleton, MVC, Factory, etc.
+- **Weak Points** - Large files, TODO markers, debug statements
+- **Upgrade Plan** - Prioritized recommendations
+- **Dependency Graph** - Visual import/require mapping
 
-### One-Click Deploy (v3.4)
-- `GET /api/deploy/platforms` - List platforms
-- `GET /api/deploy/{project_id}` - List deployments
-- `POST /api/deploy/{project_id}/vercel` - Deploy to Vercel
-- `POST /api/deploy/{project_id}/railway` - Deploy to Railway
-- `POST /api/deploy/{project_id}/itch` - Deploy to Itch.io
-- `DELETE /api/deploy/{deployment_id}` - Delete deployment
+### 2️⃣ BUILD FARM (Distributed Workers)
+- **3 Default Workers**: Alpha, Beta, Gamma
+- **Job Queue** - Prioritized build jobs
+- **Capabilities** - web, game, api, mobile
+- **Status Tracking** - idle, building, complete
+- **Concurrent Builds** - Multiple projects simultaneously
 
-### Notifications (v3.4)
-- `GET /api/notifications/{project_id}/settings` - Get settings
-- `POST /api/notifications/{project_id}/settings` - Save settings
-- `POST /api/notifications/{project_id}/test` - Send test
-- `GET /api/notifications/{project_id}/history` - Notification history
+### 3️⃣ IDEA ENGINE (AI Creativity)
+- **Generate Concepts** - "Create 10 unique game concepts"
+- **Categories** - game, saas, tool
+- **Complexity Levels** - simple, medium, complex, massive
+- **Auto Build** - Convert idea directly to project
+- **Tech Suggestions** - Recommended stack per idea
 
-### Blueprint Scripting (v3.3)
-- `GET /api/blueprints/templates` - 25 node templates
-- `POST /api/blueprints` - Create blueprint
-- `GET /api/blueprints?project_id=xxx` - List blueprints
-- `PATCH /api/blueprints/{id}` - Update nodes/connections
-- `DELETE /api/blueprints/{id}` - Delete blueprint
-- `POST /api/blueprints/{id}/generate-code` - Generate code
-- `POST /api/blueprints/{id}/sync-from-code` - Sync nodes from code
+### 4️⃣ ONE-CLICK SAAS BUILDER
+- **Full Blueprint Generation**:
+  - Backend API (FastAPI endpoints)
+  - Database Schema (MongoDB collections)
+  - Auth System (JWT + OAuth)
+  - Frontend UI (React pages/components)
+  - Payment Integration (Stripe plans)
+  - Deployment Config (Vercel + Railway)
+- **Build from Blueprint** - Auto-create project
 
-### Build Queue (v3.3)
-- `GET /api/build-queue/categories` - 5 categories
-- `GET /api/build-queue/{project_id}` - Queue by category
-- `POST /api/build-queue/add` - Add to queue (1 per category)
-- `DELETE /api/build-queue/{item_id}` - Remove from queue
-- `POST /api/build-queue/{item_id}/start` - Start build
+### 5️⃣ SYSTEM VISUALIZATION (3D Map)
+- **Module Nodes** - Files as 3D nodes
+- **Dependency Edges** - Import connections
+- **Clusters** - Folder groupings
+- **Agent Positions** - Where agents are working
+- **Real-time Activity** - Live updates
 
-### Collaboration (v3.3)
-- `POST /api/collab/{project_id}/join` - Join (max 3)
-- `POST /api/collab/{project_id}/leave` - Leave
-- `GET /api/collab/{project_id}/online` - Online users
-- `GET /api/collab/{project_id}/users` - All users
-- `POST /api/collab/{project_id}/cursor` - Update cursor
-- `POST /api/collab/{project_id}/lock-file` - Lock file
-- `POST /api/collab/{project_id}/unlock-file` - Unlock
-- `GET /api/collab/{project_id}/locks` - Active locks
-- `POST /api/collab/{project_id}/chat` - Send message
-- `GET /api/collab/{project_id}/chat` - Chat history
+### 6️⃣ AI SELF-DEBUGGING LOOP
+- **Auto Detect** - PROBE finds errors
+- **Auto Analyze** - SENTINEL diagnoses
+- **Auto Fix** - FORGE applies patches
+- **Auto Test** - PROBE verifies
+- **Loop Until Success** - Max iterations configurable
 
----
+### 7️⃣ TIME MACHINE (Checkpoints)
+- **Save Checkpoints** - Snapshot entire project state
+- **Restore Anytime** - Roll back to any checkpoint
+- **File Diffs** - Compare checkpoints
+- **Auto Checkpoints** - System-created milestones
+- **Timeline View** - Visual history
 
-## 💾 DATABASE COLLECTIONS (19 Total)
-projects, agents, files, messages, tasks, images, plans, memories, custom_actions, simulations, builds, war_room, demos, blueprints, build_queue, collaborators, file_locks, collab_messages, **audio_assets**, **notifications**, **deployments**
-
----
-
-## ✅ TESTING STATUS
-- v2.3: 24/24 passed
-- v3.0: 17/17 passed
-- v3.1: 10/10 passed
-- v3.2: 14/14 passed
-- v3.3: 30/30 passed
-- v3.4: 26/26 passed (14 backend + 12 frontend)
-- **Total: 121+ tests passed**
+### 8️⃣ SELF-EXPANDING AGENTS
+- **Spawn New Agents** - Create specialists on-demand
+- **Auto-Detect Needs** - Analyze project, spawn relevant agents
+- **Specialties** - api, database, ui, security, testing, devops
+- **Capabilities** - Auto-generated from specialty
+- **Deactivate** - Remove unused agents
 
 ---
 
-## 🚀 VERSION HISTORY
+## 📊 COMPLETE API ENDPOINT LIST (130+)
 
-| Version | Features |
-|---------|----------|
-| v1.0 | 6-Agent team, project management, fal.ai LLM |
-| v2.0 | Monaco Editor, file management, task board |
-| v2.1 | Streaming, delegation, image generation |
-| v2.2 | GitHub push, agent chains, quick actions, live preview |
-| v2.3 | Multi-file refactoring, agent memory, project duplicate, custom actions |
-| v3.0 | Simulation mode, War Room, autonomous builds, 15 open world systems |
-| v3.1 | Build scheduling (overnight builds), 12+ hour builds |
-| v3.2 | Playable demo generation (web + executable) |
-| v3.3 | Blueprint visual scripting, Build queue by category, Real-time collaboration |
-| v3.4 | **Audio generation (OpenAI TTS), One-click deploy, Notifications settings** |
+### Project Autopsy
+- `POST /api/autopsy/analyze` - Run analysis
+- `GET /api/autopsy/{project_id}` - Get results
+- `GET /api/autopsy/{project_id}/report` - Formatted report
+
+### Debug Loop
+- `POST /api/debug-loop/{project_id}/start` - Start loop
+- `GET /api/debug-loop/{project_id}` - List loops
+- `GET /api/debug-loop/{project_id}/latest` - Latest loop
+
+### Time Machine
+- `POST /api/checkpoints/{project_id}/create` - Create checkpoint
+- `GET /api/checkpoints/{project_id}` - List checkpoints
+- `POST /api/checkpoints/{id}/restore` - Restore
+- `DELETE /api/checkpoints/{id}` - Delete
+- `GET /api/checkpoints/{id}/diff/{other_id}` - Compare
+
+### Idea Engine
+- `POST /api/ideas/generate` - Generate ideas
+- `GET /api/ideas/batches` - List batches
+- `GET /api/ideas/batch/{id}` - Get batch
+- `POST /api/ideas/{id}/build` - Build idea
+
+### SaaS Builder
+- `POST /api/saas/generate` - Generate blueprint
+- `GET /api/saas/blueprints` - List blueprints
+- `GET /api/saas/blueprint/{id}` - Get blueprint
+- `POST /api/saas/blueprint/{id}/build` - Build SaaS
+
+### Build Farm
+- `GET /api/build-farm/workers` - List workers
+- `GET /api/build-farm/status` - Farm status
+- `POST /api/build-farm/jobs/add` - Add job
+- `GET /api/build-farm/jobs` - List jobs
+- `POST /api/build-farm/jobs/{id}/assign` - Assign job
+
+### Dynamic Agents
+- `GET /api/dynamic-agents` - List agents
+- `POST /api/dynamic-agents/spawn` - Spawn agent
+- `POST /api/dynamic-agents/auto-spawn` - Auto-spawn
+- `DELETE /api/dynamic-agents/{id}` - Deactivate
+
+### System Visualization
+- `GET /api/visualization/{project_id}/map` - Get map data
+- `GET /api/visualization/{project_id}/activity` - Live activity
+
+### + All previous endpoints (Projects, Files, Chat, Builds, Blueprints, Queue, Collab, Assets, Sandbox, Audio, Deploy, Notifications)
 
 ---
 
-## 📋 FUTURE/BACKLOG
-- [ ] Real Email/Discord notification sending (requires SendGrid/Resend API key)
-- [ ] Real Vercel/Railway/Itch.io deployment (requires platform API tokens)
-- [ ] Version history with diff viewer
-- [ ] Refactor server.py into modular structure (4500+ lines → routes/, models/)
+## 💾 DATABASE COLLECTIONS (25 Total)
+projects, agents, files, messages, tasks, images, plans, memories, custom_actions, simulations, builds, war_room, demos, blueprints, build_queue, collaborators, file_locks, collab_messages, audio_assets, notifications, deployments, pipeline_assets, sandbox_sessions, **autopsies**, **debug_loops**, **checkpoints**, **idea_batches**, **saas_blueprints**, **build_workers**, **build_farm_jobs**, **dynamic_agents**
 
 ---
 
-## ⚠️ MOCKED FEATURES (v3.4)
-- **Email Notifications**: SendGrid/Resend not connected (user skipped)
-- **Discord Notifications**: Webhook sending not implemented (user skipped)
-- **Vercel Deployment**: Requires real `VERCEL_TOKEN`
-- **Railway Deployment**: Requires real `RAILWAY_TOKEN`
-- **Itch.io Deployment**: Requires real `ITCH_API_KEY` + `ITCH_USERNAME`
+## 🎯 FEATURE MATRIX
+
+| Feature | Backend | Frontend | Status |
+|---------|---------|----------|--------|
+| 6 AI Agents | ✅ | ✅ | WORKING |
+| Streaming Chat | ✅ | ✅ | WORKING |
+| Monaco Editor | ✅ | ✅ | WORKING |
+| Blueprint Scripting | ✅ | ✅ | WORKING |
+| Build Queue | ✅ | ✅ | WORKING |
+| Real-time Collab | ✅ | ✅ | WORKING |
+| Audio Generation | ✅ | ✅ | WORKING |
+| Asset Pipeline | ✅ | ✅ | WORKING |
+| Build Sandbox | ✅ | ✅ | WORKING |
+| **Project Autopsy** | ✅ | ✅ | WORKING |
+| **Debug Loop** | ✅ | ✅ | WORKING |
+| **Time Machine** | ✅ | ✅ | WORKING |
+| **Idea Engine** | ✅ | ✅ | WORKING |
+| **SaaS Builder** | ✅ | ✅ | WORKING |
+| **Build Farm** | ✅ | ✅ | WORKING |
+| **Dynamic Agents** | ✅ | ✅ | WORKING |
+| System Visualization | ✅ | ⏳ | BACKEND READY |
 
 ---
 
-## 🔑 API KEYS CONFIGURED
-- `FAL_KEY` - fal.ai image generation + LLM
+## ⚠️ SIMULATED FEATURES
+- **Project Autopsy**: Pattern-based analysis (not full AST)
+- **Debug Loop**: Simulated error detection/fixing
+- **Build Farm**: Simulated distributed workers
+- **SaaS Builder**: Generates blueprints, not actual code files
+
+---
+
+## 🔑 CONFIGURED INTEGRATIONS
+- `FAL_KEY` - fal.ai (LLM + images)
 - `GITHUB_TOKEN` - GitHub push
-- `EMERGENT_LLM_KEY` - OpenAI TTS audio generation
+- `EMERGENT_LLM_KEY` - OpenAI TTS
+
+---
+
+## 📈 TEST RESULTS
+- v2.3: 24/24 ✅
+- v3.0: 17/17 ✅
+- v3.1: 10/10 ✅
+- v3.2: 14/14 ✅
+- v3.3: 30/30 ✅
+- v3.4: 26/26 ✅
+- v3.5: 18/18 ✅
+- **v4.0: 26/26 ✅**
+- **TOTAL: 165+ tests passed**
+
+---
+
+## 🎮 VERSION HISTORY
+
+| Version | Major Features |
+|---------|----------------|
+| v1.0 | 6-Agent team, fal.ai LLM |
+| v2.0 | Monaco Editor, tasks |
+| v2.1 | Streaming, delegation, images |
+| v2.2 | GitHub, chains, quick actions |
+| v2.3 | Refactoring, memory, custom actions |
+| v3.0 | Simulation, War Room, autonomous builds |
+| v3.1 | Build scheduling (12+ hours) |
+| v3.2 | Playable demo generation |
+| v3.3 | Blueprints, Queue, Collaboration |
+| v3.4 | Audio, Deploy, Notifications |
+| v3.5 | Sandbox, Asset Pipeline |
+| **v4.0** | **AUTOPSY, DEBUG LOOP, TIME MACHINE, IDEAS, SAAS, BUILD FARM, DYNAMIC AGENTS** |
+
+---
+
+## 🔮 FUTURE/BACKLOG
+- [ ] 3D System Visualization frontend (WebGL/Three.js)
+- [ ] Real distributed build workers
+- [ ] Full SaaS code generation (not just blueprints)
+- [ ] AST-based code analysis
+- [ ] Real Vercel/Railway deployment
+- [ ] Email/Discord notification sending
+
+---
+
+**AgentForge v4.0 - The AI Development Studio That Builds Itself** 🚀
