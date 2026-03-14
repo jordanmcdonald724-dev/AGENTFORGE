@@ -119,38 +119,25 @@ const GodMode = () => {
             
             if (data.type === 'god_mode_start') {
               addLog(`🎯 Target: ${data.project}`, 'info');
+              addLog(`📦 Building ${data.total_phases} systems...`, 'info');
               setBuildPhase('architecture');
-              setProgress(15);
+              setProgress(5);
+            } else if (data.type === 'phase_start') {
+              addLog(`\n🔨 Phase ${data.phase_num}/${data.total}: ${data.phase}`, 'phase');
+              setBuildPhase(data.phase_num <= 2 ? 'core' : data.phase_num <= 4 ? 'features' : 'polish');
+              setProgress(Math.floor((data.phase_num / data.total) * 80) + 10);
+            } else if (data.type === 'phase_complete') {
+              addLog(`✅ ${data.phase} complete (${data.files} files)`, 'success');
+            } else if (data.type === 'phase_error') {
+              addLog(`⚠️ ${data.phase} error: ${data.error}`, 'error');
             } else if (data.type === 'content') {
               fullContent += data.content;
               
-              // Throttle UI updates to prevent lag
+              // Throttle UI updates
               const now = Date.now();
               if (now - lastUpdateTime > UPDATE_INTERVAL) {
-                setStreamContent(fullContent.slice(-8000)); // Only show last 8000 chars
+                setStreamContent(fullContent.slice(-8000));
                 lastUpdateTime = now;
-              }
-              
-              // Update progress based on content markers
-              if (fullContent.includes('```') && currentPhaseIndex < 2) {
-                currentPhaseIndex = 2;
-                setBuildPhase('core');
-                setProgress(30);
-                addLog('⚙️ Building core systems...', 'phase');
-              }
-              
-              const codeBlockCount = (fullContent.match(/```/g) || []).length / 2;
-              if (codeBlockCount > 3 && currentPhaseIndex < 3) {
-                currentPhaseIndex = 3;
-                setBuildPhase('features');
-                setProgress(50);
-                addLog('✨ Implementing features...', 'phase');
-              }
-              if (codeBlockCount > 6 && currentPhaseIndex < 4) {
-                currentPhaseIndex = 4;
-                setBuildPhase('polish');
-                setProgress(75);
-                addLog('💎 Polishing...', 'phase');
               }
               
             } else if (data.type === 'file_saved') {

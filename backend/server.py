@@ -2690,7 +2690,7 @@ async def activate_god_mode(request: GodModeRequest):
 
 @api_router.post("/god-mode/build/stream")
 async def god_mode_build_stream(request: GodModeRequest):
-    """Stream God Mode build - AI builds everything autonomously"""
+    """Stream God Mode build - AI builds everything autonomously in phases"""
     project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
@@ -2701,321 +2701,218 @@ async def god_mode_build_stream(request: GodModeRequest):
     project_name = project.get('name', 'Project')
     project_type = project.get('type', 'web_app')
     project_desc = project.get('description', '')
+    engine = project.get('engine_version', 'Unreal Engine 5')
     
-    if project_type in ['web_app', 'landing_page', 'saas']:
-        god_mode_prompt = f"""🔥 GOD MODE: AAA WEB APPLICATION BUILD 🔥
+    # Define build phases based on project type
+    if project_type in ['game', 'unreal', 'unity']:
+        phases = [
+            {
+                "name": "Player Controller",
+                "prompt": f"""Build a COMPLETE AAA Player Controller for {project_name} ({engine}).
 
-Project: {project_name}
-Type: {project_type}
-Vision: {project_desc}
+Create these files with FULL implementations:
+1. Character base class with movement
+2. State machine component
+3. States: Idle, Walk, Run, Sprint, Jump, Dodge
+4. Camera component with collision
+5. Input component for gamepad + keyboard
 
-You are building a WORLD-CLASS web application. Think Stripe, Linear, Vercel quality.
-NO basic templates. NO placeholder content. PRODUCTION-READY from line one.
+Format: ```cpp:Source/{project_name.replace(' ', '')}/FileName.h```
 
-MANDATORY QUALITY STANDARDS:
-- Stunning visual design with depth, shadows, gradients
-- Smooth 60fps animations on everything
-- Perfect responsive design (mobile-first)
-- Accessibility compliant (WCAG 2.1)
-- Performance optimized (Core Web Vitals green)
+NO stubs. NO TODOs. COMPLETE production code."""
+            },
+            {
+                "name": "Combat System", 
+                "prompt": f"""Build a COMPLETE AAA Combat System for {project_name} ({engine}).
 
-CREATE THESE FILES (COMPLETE IMPLEMENTATIONS):
+Create these files with FULL implementations:
+1. Combat component
+2. Melee attack system with combos
+3. Damage types and calculations
+4. Hit reactions
+5. Lock-on targeting
 
-1. src/App.js - Full routing, state management, providers
-2. src/index.css - Advanced Tailwind config, custom animations, glass morphism
-3. src/components/Layout/Header.jsx - Sticky, animated, with mobile menu
-4. src/components/Layout/Footer.jsx - Full footer with links, newsletter
-5. src/components/Hero/Hero.jsx - Dramatic hero with animated background, particle effects
-6. src/components/Hero/HeroStats.jsx - Animated counters
-7. src/components/Features/Features.jsx - Bento grid layout, hover animations
-8. src/components/Features/FeatureCard.jsx - 3D transforms on hover
-9. src/components/Pricing/Pricing.jsx - Interactive pricing with toggle
-10. src/components/Pricing/PricingCard.jsx - Highlighted popular plan
-11. src/components/Testimonials/Testimonials.jsx - Carousel with avatars
-12. src/components/CTA/CTA.jsx - High-conversion CTA section
-13. src/components/ui/Button.jsx - Multiple variants, loading states
-14. src/components/ui/Card.jsx - Glass effect, hover states
-15. src/hooks/useScrollAnimation.js - Intersection observer animations
-16. src/utils/animations.js - Framer Motion variants
+Format: ```cpp:Source/{project_name.replace(' ', '')}/Combat/FileName.h```
 
-TECH STACK:
-- React 18 with hooks
-- Tailwind CSS with custom config
-- Framer Motion for animations
-- Lucide React for icons
+NO stubs. COMPLETE production code."""
+            },
+            {
+                "name": "Inventory System",
+                "prompt": f"""Build a COMPLETE AAA Inventory System for {project_name} ({engine}).
 
-DESIGN REQUIREMENTS:
-- Dark theme with subtle gradients
-- Accent color that pops
-- Depth through shadows and blur
-- Micro-interactions on every element
-- Smooth scroll animations
-- Professional typography hierarchy
+Create these files with FULL implementations:
+1. Inventory component
+2. Item base class
+3. Weapon, Armor, Consumable subclasses
+4. Equipment slots
+5. Stack management
 
-Format every file as: ```javascript:exact/path/to/file.jsx
+Format: ```cpp:Source/{project_name.replace(' ', '')}/Inventory/FileName.h```
 
-BUILD THE ENTIRE APPLICATION NOW. MAKE IT STUNNING."""
+NO stubs. COMPLETE production code."""
+            },
+            {
+                "name": "AI System",
+                "prompt": f"""Build a COMPLETE AAA AI System for {project_name} ({engine}).
 
-    elif project_type in ['game', 'unreal', 'unity']:
-        engine = project.get('engine_version', 'Unreal Engine 5')
-        god_mode_prompt = f"""🎮 GOD MODE: AAA GAME DEVELOPMENT BUILD 🎮
+Create these files with FULL implementations:
+1. AI Controller base
+2. Behavior tree tasks
+3. Perception component
+4. AI States: Patrol, Alert, Chase, Attack
+5. Group tactics manager
 
-Project: {project_name}
-Engine: {engine}
-Vision: {project_desc}
+Format: ```cpp:Source/{project_name.replace(' ', '')}/AI/FileName.h```
 
-You are building AAA-QUALITY game systems. Think Assassin's Creed, God of War, Elden Ring.
-NO basic tutorials. NO placeholder logic. PRODUCTION-READY from line one.
+NO stubs. COMPLETE production code."""
+            },
+            {
+                "name": "Save System",
+                "prompt": f"""Build a COMPLETE Save/Load System for {project_name} ({engine}).
 
-MANDATORY QUALITY STANDARDS:
-- Professional architecture (no spaghetti code)
-- Modular, extensible systems
-- Performance optimized
-- Network-ready where applicable
-- Full feature implementations
+Create these files with FULL implementations:
+1. Save game object
+2. Save manager subsystem
+3. Serialization helpers
+4. Auto-save component
+5. Save slot UI data
 
-CREATE THESE COMPLETE SYSTEMS:
+Format: ```cpp:Source/{project_name.replace(' ', '')}/Save/FileName.h```
 
-═══════════════════════════════════════
-CORE SYSTEMS (Must Have)
-═══════════════════════════════════════
+NO stubs. COMPLETE production code."""
+            }
+        ]
+    else:  # Web apps
+        phases = [
+            {
+                "name": "Core App",
+                "prompt": f"""Build the CORE app structure for {project_name}.
 
-1. PLAYER CONTROLLER SYSTEM
-   - Advanced character controller with state machine
-   - States: Idle, Walk, Run, Sprint, Jump, Fall, Land, Crouch, Slide, Climb
-   - Smooth transitions between states
-   - Input buffering for responsive controls
-   - Camera system with collision avoidance
-   - Gamepad + keyboard/mouse support
+Create with FULL implementations:
+1. src/App.js - Routing, providers
+2. src/index.css - Tailwind + animations
+3. src/components/Layout/Header.jsx
+4. src/components/Layout/Footer.jsx
 
-2. COMBAT SYSTEM  
-   - Combo system with input windows
-   - Light/Heavy attacks with cancels
-   - Dodge/Roll with i-frames
-   - Block/Parry mechanics
-   - Damage types (Physical, Fire, Ice, Lightning)
-   - Hit reactions and stagger system
-   - Lock-on targeting
+React 18 + Tailwind. Dark theme. Format: ```javascript:path/file.jsx```"""
+            },
+            {
+                "name": "Hero Section",
+                "prompt": f"""Build a STUNNING Hero section for {project_name}.
 
-3. INVENTORY SYSTEM
-   - Categories (Weapons, Armor, Consumables, Materials, Quest Items)
-   - Stack management
-   - Weight/Capacity system
-   - Quick slots
-   - Item comparison
-   - Sorting and filtering
-   - Persistence (save/load)
+Create with FULL implementations:
+1. src/components/Hero/Hero.jsx - Animated background
+2. src/components/Hero/HeroStats.jsx - Counters
+3. src/components/Hero/HeroCTA.jsx
 
-4. ABILITY SYSTEM
-   - Ability base class with cooldowns
-   - Mana/Resource management
-   - Ability upgrades/skill tree
-   - Active and passive abilities
-   - Combo abilities
-   - Buff/Debuff system
+Framer Motion animations. Format: ```javascript:path/file.jsx```"""
+            },
+            {
+                "name": "Features Section",
+                "prompt": f"""Build a PREMIUM Features section for {project_name}.
 
-5. AI SYSTEM
-   - Behavior Tree architecture
-   - Perception system (sight, sound, damage)
-   - States: Patrol, Alert, Chase, Attack, Search, Flee
-   - Group tactics
-   - Boss AI patterns
-   - Navmesh pathfinding
+Create with FULL implementations:
+1. src/components/Features/Features.jsx - Bento grid
+2. src/components/Features/FeatureCard.jsx - 3D hover
+3. 6 feature icons and descriptions
 
-6. SAVE/LOAD SYSTEM
-   - Complete game state serialization
-   - Multiple save slots
-   - Auto-save functionality
-   - Cloud save ready
-   - Save file validation
+Format: ```javascript:path/file.jsx```"""
+            },
+            {
+                "name": "Pricing & CTA",
+                "prompt": f"""Build Pricing and CTA sections for {project_name}.
 
-7. UI FRAMEWORK
-   - HUD (Health, Stamina, Mana, Minimap, Objectives)
-   - Menus (Main, Pause, Settings, Inventory)
-   - Dialogue system with choices
-   - Quest tracker
-   - Damage numbers
-   - Notification system
+Create with FULL implementations:
+1. src/components/Pricing/Pricing.jsx - Toggle monthly/yearly
+2. src/components/Pricing/PricingCard.jsx
+3. src/components/CTA/CTA.jsx
 
-8. AUDIO SYSTEM
-   - Sound manager with pooling
-   - Spatial audio
-   - Music system with transitions
-   - Ambient sound layers
-   - Footstep system
-   - Combat audio cues
-
-9. QUEST SYSTEM
-   - Quest structure (Main, Side, Daily)
-   - Objectives tracking
-   - Rewards system
-   - Quest chains
-   - Journal/Log
-
-10. PROGRESSION SYSTEM
-    - XP and leveling
-    - Stat allocation
-    - Skill trees
-    - Equipment scaling
-    - New Game+
-
-Format for {'C++' if 'Unreal' in engine else 'C#'}:
-```{'cpp' if 'Unreal' in engine else 'csharp'}:Source/ProjectName/SystemName.{'h' if 'Unreal' in engine else 'cs'}
-
-BUILD ALL SYSTEMS NOW. AAA QUALITY ONLY."""
-
-    else:
-        god_mode_prompt = f"""🚀 GOD MODE: PREMIUM {project_type.upper()} BUILD 🚀
-
-Project: {project_name}
-Type: {project_type}
-Vision: {project_desc}
-
-You are building a PREMIUM, PROFESSIONAL-GRADE {project_type}.
-NO basic implementations. NO shortcuts. PRODUCTION-READY from line one.
-
-MANDATORY QUALITY STANDARDS:
-- Clean architecture
-- Full feature implementation
-- Error handling everywhere
-- Performance optimized
-- Well documented
-- Extensible design
-
-BUILD THE COMPLETE {project_type.upper()} WITH ALL FEATURES.
-MAKE IT THE BEST VERSION POSSIBLE.
-
-Format: ```language:path/to/file.ext
-
-START BUILDING NOW."""
-
+Format: ```javascript:path/file.jsx```"""
+            }
+        ]
+    
     async def generate():
-        yield f"data: {json.dumps({'type': 'god_mode_start', 'project': project_name})}\n\n"
+        yield f"data: {json.dumps({'type': 'god_mode_start', 'project': project_name, 'total_phases': len(phases)})}\n\n"
         
-        full_content = ""
-        saved_files = []
-        last_save_check = 0
+        all_saved_files = []
         
-        try:
-            stream = llm_client.chat.completions.create(
-                model="google/gemini-2.5-flash",
-                messages=[
-                    {"role": "system", "content": forge_agent['system_prompt'] + "\n\n🔥 GOD MODE ACTIVE 🔥\nYou are building AAA quality. No basic code. No placeholders. Full implementations only. This is your masterpiece."},
-                    {"role": "user", "content": god_mode_prompt}
-                ],
-                max_tokens=32000,
-                stream=True
-            )
+        for phase_idx, phase in enumerate(phases):
+            yield f"data: {json.dumps({'type': 'phase_start', 'phase': phase['name'], 'phase_num': phase_idx + 1, 'total': len(phases)})}\n\n"
             
-            for chunk in stream:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    content = chunk.choices[0].delta.content
-                    full_content += content
-                    yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
-                    
-                    # Save files as we detect them (every 2000 chars check)
-                    if len(full_content) - last_save_check > 2000:
-                        last_save_check = len(full_content)
-                        code_blocks = extract_code_blocks(full_content)
-                        
-                        for block in code_blocks:
-                            filepath = block.get('filepath')
-                            if filepath and filepath not in saved_files:
-                                try:
-                                    existing = await db.files.find_one({
-                                        "project_id": request.project_id,
-                                        "filepath": filepath
-                                    })
-                                    
-                                    file_doc = {
-                                        "id": str(uuid.uuid4()),
-                                        "project_id": request.project_id,
-                                        "filepath": filepath,
-                                        "filename": block.get('filename', filepath.split('/')[-1]),
-                                        "language": block.get('language', 'cpp'),
-                                        "content": block['content'],
-                                        "version": (existing.get('version', 0) + 1) if existing else 1,
-                                        "created_at": datetime.now(timezone.utc).isoformat(),
-                                        "updated_at": datetime.now(timezone.utc).isoformat()
-                                    }
-                                    
-                                    if existing:
-                                        await db.files.update_one(
-                                            {"project_id": request.project_id, "filepath": filepath},
-                                            {"$set": file_doc}
-                                        )
-                                    else:
-                                        await db.files.insert_one(file_doc)
-                                    
-                                    saved_files.append(filepath)
-                                    yield f"data: {json.dumps({'type': 'file_saved', 'filepath': filepath})}\n\n"
-                                except Exception as e:
-                                    logger.error(f"Error saving file {filepath}: {e}")
+            full_content = ""
             
-            # Final save for any remaining files
-            code_blocks = extract_code_blocks(full_content)
-            for block in code_blocks:
-                filepath = block.get('filepath')
-                if filepath and filepath not in saved_files:
-                    try:
-                        existing = await db.files.find_one({
-                            "project_id": request.project_id,
-                            "filepath": filepath
-                        })
-                        
-                        file_doc = {
-                            "id": str(uuid.uuid4()),
-                            "project_id": request.project_id,
-                            "filepath": filepath,
-                            "filename": block.get('filename', filepath.split('/')[-1]),
-                            "language": block.get('language', 'cpp'),
-                            "content": block['content'],
-                            "version": (existing.get('version', 0) + 1) if existing else 1,
-                            "created_at": datetime.now(timezone.utc).isoformat(),
-                            "updated_at": datetime.now(timezone.utc).isoformat()
-                        }
-                        
-                        if existing:
-                            await db.files.update_one(
-                                {"project_id": request.project_id, "filepath": filepath},
-                                {"$set": file_doc}
-                            )
-                        else:
-                            await db.files.insert_one(file_doc)
-                        
-                        saved_files.append(filepath)
-                        yield f"data: {json.dumps({'type': 'file_saved', 'filepath': filepath})}\n\n"
-                    except Exception as e:
-                        logger.error(f"Error saving file {filepath}: {e}")
-            
-            await db.projects.update_one(
-                {"id": request.project_id},
-                {"$set": {"phase": "review", "updated_at": datetime.now(timezone.utc).isoformat()}}
-            )
-            
-            # Save message
-            msg = Message(
-                project_id=request.project_id,
-                agent_id=forge_agent['id'],
-                agent_name="GOD MODE",
-                agent_role="god",
-                content=full_content[:50000],  # Limit stored content
-                code_blocks=code_blocks[:20],  # Limit stored blocks
-                phase="building"
-            )
-            msg_doc = msg.model_dump()
-            msg_doc['timestamp'] = msg_doc['timestamp'].isoformat()
-            await db.messages.insert_one(msg_doc)
-            
-            yield f"data: {json.dumps({'type': 'god_mode_complete', 'files_created': len(saved_files), 'saved_files': saved_files})}\n\n"
-            
-        except Exception as e:
-            logger.error(f"God Mode error: {e}")
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+            try:
+                stream = llm_client.chat.completions.create(
+                    model="google/gemini-2.5-flash",
+                    messages=[
+                        {"role": "system", "content": forge_agent['system_prompt'] + "\n\n🔥 GOD MODE - Build AAA quality only. No placeholders."},
+                        {"role": "user", "content": phase['prompt']}
+                    ],
+                    max_tokens=12000,
+                    stream=True
+                )
+                
+                for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        content = chunk.choices[0].delta.content
+                        full_content += content
+                        yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
+                
+                # Save files from this phase
+                code_blocks = extract_code_blocks(full_content)
+                phase_files = []
+                
+                for block in code_blocks:
+                    filepath = block.get('filepath')
+                    if filepath and filepath not in all_saved_files:
+                        try:
+                            existing = await db.files.find_one({
+                                "project_id": request.project_id,
+                                "filepath": filepath
+                            })
+                            
+                            file_doc = {
+                                "id": str(uuid.uuid4()),
+                                "project_id": request.project_id,
+                                "filepath": filepath,
+                                "filename": block.get('filename', filepath.split('/')[-1]),
+                                "language": block.get('language', 'cpp'),
+                                "content": block['content'],
+                                "version": (existing.get('version', 0) + 1) if existing else 1,
+                                "created_at": datetime.now(timezone.utc).isoformat(),
+                                "updated_at": datetime.now(timezone.utc).isoformat()
+                            }
+                            
+                            if existing:
+                                await db.files.update_one(
+                                    {"project_id": request.project_id, "filepath": filepath},
+                                    {"$set": file_doc}
+                                )
+                            else:
+                                await db.files.insert_one(file_doc)
+                            
+                            all_saved_files.append(filepath)
+                            phase_files.append(filepath)
+                            yield f"data: {json.dumps({'type': 'file_saved', 'filepath': filepath})}\n\n"
+                        except Exception as e:
+                            logger.error(f"Error saving file {filepath}: {e}")
+                
+                yield f"data: {json.dumps({'type': 'phase_complete', 'phase': phase['name'], 'files': len(phase_files)})}\n\n"
+                
+            except Exception as e:
+                logger.error(f"Phase {phase['name']} error: {e}")
+                yield f"data: {json.dumps({'type': 'phase_error', 'phase': phase['name'], 'error': str(e)})}\n\n"
+        
+        # Final cleanup
+        await db.projects.update_one(
+            {"id": request.project_id},
+            {"$set": {"phase": "review", "god_mode_complete": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        
+        yield f"data: {json.dumps({'type': 'god_mode_complete', 'files_created': len(all_saved_files), 'saved_files': all_saved_files})}\n\n"
     
     return StreamingResponse(generate(), media_type="text/event-stream")
-
-
+    
 # ============ LIVE PREVIEW ============
 
 @api_router.get("/projects/{project_id}/preview")
