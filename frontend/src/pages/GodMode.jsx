@@ -61,6 +61,14 @@ const GodMode = () => {
     try {
       const res = await axios.get(`${API}/projects/${projectId}`);
       setProject(res.data);
+      
+      // Load existing files
+      const filesRes = await axios.get(`${API}/files?project_id=${projectId}`);
+      if (filesRes.data.length > 0) {
+        setFiles(filesRes.data.map(f => f.filepath));
+        setBuildPhase('complete');
+        setProgress(100);
+      }
     } catch (error) {
       toast.error('Failed to load project');
       navigate('/dashboard');
@@ -172,12 +180,33 @@ const GodMode = () => {
         }
       }
       
+      // Stream ended - check what we got
+      addLog('📊 Stream ended, checking results...', 'info');
+      
     } catch (error) {
-      addLog(`❌ Error: ${error.message}`, 'error');
-      toast.error('God Mode failed');
+      addLog(`⚠️ Connection issue: ${error.message}`, 'error');
+    }
+    
+    // Always refresh files at the end to show what was saved
+    try {
+      const filesRes = await axios.get(`${API}/files?project_id=${projectId}`);
+      const savedFiles = filesRes.data.map(f => f.filepath);
+      setFiles(savedFiles);
+      
+      if (savedFiles.length > 0) {
+        addLog(`\n✅ Total files saved: ${savedFiles.length}`, 'success');
+        setBuildPhase('complete');
+        setProgress(100);
+        toast.success(`Build saved ${savedFiles.length} files!`);
+      } else {
+        addLog('⚠️ No files were saved', 'error');
+      }
+    } catch (e) {
+      addLog('Could not refresh files', 'error');
     }
     
     setIsBuilding(false);
+    fetchProject();
   };
 
   const getPhaseStatus = (phaseId) => {
@@ -231,7 +260,7 @@ const GodMode = () => {
                 data-testid="start-god-mode"
               >
                 <Play className="w-5 h-5 mr-2" />
-                START BUILD
+                {files.length > 0 ? 'CONTINUE BUILD' : 'START BUILD'}
               </Button>
             )}
             {isBuilding && (
@@ -241,13 +270,23 @@ const GodMode = () => {
               </Button>
             )}
             {buildPhase === 'complete' && (
-              <Button 
-                onClick={() => navigate(`/project/${projectId}`)}
-                className="bg-green-500 hover:bg-green-600"
-              >
-                <Rocket className="w-5 h-5 mr-2" />
-                VIEW PROJECT
-              </Button>
+              <>
+                <Button 
+                  onClick={startGodMode}
+                  variant="outline"
+                  className="border-yellow-500/50 text-yellow-400"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  REBUILD
+                </Button>
+                <Button 
+                  onClick={() => navigate(`/project/${projectId}`)}
+                  className="bg-green-500 hover:bg-green-600"
+                >
+                  <Rocket className="w-5 h-5 mr-2" />
+                  VIEW PROJECT
+                </Button>
+              </>
             )}
           </div>
         </div>
