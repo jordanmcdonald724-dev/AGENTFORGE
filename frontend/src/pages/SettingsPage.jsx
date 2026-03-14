@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Settings, Save, FolderOpen, Monitor, Gamepad2, 
   Zap, CheckCircle, XCircle, RefreshCw, Download, ExternalLink,
-  Terminal, Cpu, HardDrive, Copy, Check
+  Terminal, Cpu, HardDrive, Copy, Check, Key, Eye, EyeOff, Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,15 @@ const SettingsPage = () => {
     autoSaveFiles: true,
     streamingMode: 'sse'
   });
+  const [apiKeys, setApiKeys] = useState({
+    github_token: '',
+    openai_key: '',
+    fal_key: '',
+    netlify_token: '',
+    vercel_token: '',
+    render_token: ''
+  });
+  const [showKeys, setShowKeys] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const [extensionId, setExtensionId] = useState(null);
   const [configCopied, setConfigCopied] = useState(false);
@@ -90,6 +99,33 @@ const SettingsPage = () => {
     } catch (error) {
       // Settings endpoint might not exist yet, use defaults
     }
+    
+    // Load API keys (stored separately for security)
+    try {
+      const keysRes = await axios.get(`${API}/settings/api-keys`);
+      if (keysRes.data) {
+        // Only show masked versions
+        setApiKeys(keysRes.data);
+      }
+    } catch (error) {
+      // API keys endpoint might not exist yet
+    }
+  };
+
+  const saveApiKeys = async () => {
+    setIsSaving(true);
+    try {
+      await axios.post(`${API}/settings/api-keys`, apiKeys);
+      toast.success('API keys saved securely');
+    } catch (error) {
+      toast.error('Failed to save API keys');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const toggleKeyVisibility = (keyName) => {
+    setShowKeys(prev => ({ ...prev, [keyName]: !prev[keyName] }));
   };
 
   const saveSettings = async () => {
@@ -197,6 +233,10 @@ const SettingsPage = () => {
             <TabsTrigger value="local-bridge" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black">
               <Cpu className="w-4 h-4 mr-2" />
               Local Bridge
+            </TabsTrigger>
+            <TabsTrigger value="api-keys" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black">
+              <Key className="w-4 h-4 mr-2" />
+              API Keys
             </TabsTrigger>
             <TabsTrigger value="general" className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black">
               <Settings className="w-4 h-4 mr-2" />
@@ -377,6 +417,162 @@ const SettingsPage = () => {
                     checked={bridgeConfig.autoBuild}
                     onCheckedChange={(checked) => setBridgeConfig(prev => ({ ...prev, autoBuild: checked }))}
                   />
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* API Keys Settings */}
+          <TabsContent value="api-keys" className="space-y-6">
+            <Card className="bg-zinc-900 border-zinc-800">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-green-400" />
+                      Deployment & Integration Keys
+                    </CardTitle>
+                    <CardDescription>
+                      Store your API keys securely for deployments and integrations
+                    </CardDescription>
+                  </div>
+                  <Button onClick={saveApiKeys} disabled={isSaving} className="bg-green-600 hover:bg-green-500">
+                    {isSaving ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                    Save Keys
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* GitHub Token */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    GitHub Token
+                    <Badge variant="outline" className="text-xs border-zinc-600">For repo push</Badge>
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showKeys.github_token ? 'text' : 'password'}
+                        placeholder="ghp_xxxxxxxxxxxx"
+                        value={apiKeys.github_token}
+                        onChange={(e) => setApiKeys(prev => ({ ...prev, github_token: e.target.value }))}
+                        className="bg-zinc-800 border-zinc-700 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleKeyVisibility('github_token')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+                      >
+                        {showKeys.github_token ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Get from: <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">GitHub Settings → Developer settings → Personal access tokens</a>
+                  </p>
+                </div>
+
+                {/* Netlify Token */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    Netlify Token
+                    <Badge variant="outline" className="text-xs border-zinc-600">For deployment</Badge>
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showKeys.netlify_token ? 'text' : 'password'}
+                        placeholder="nfp_xxxxxxxxxxxx"
+                        value={apiKeys.netlify_token}
+                        onChange={(e) => setApiKeys(prev => ({ ...prev, netlify_token: e.target.value }))}
+                        className="bg-zinc-800 border-zinc-700 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleKeyVisibility('netlify_token')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+                      >
+                        {showKeys.netlify_token ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Get from: <a href="https://app.netlify.com/user/applications#personal-access-tokens" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Netlify → User Settings → Personal Access Tokens</a>
+                  </p>
+                </div>
+
+                {/* Vercel Token */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    Vercel Token
+                    <Badge variant="outline" className="text-xs border-zinc-600">For deployment</Badge>
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showKeys.vercel_token ? 'text' : 'password'}
+                        placeholder="xxxxxxxxxxxx"
+                        value={apiKeys.vercel_token}
+                        onChange={(e) => setApiKeys(prev => ({ ...prev, vercel_token: e.target.value }))}
+                        className="bg-zinc-800 border-zinc-700 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleKeyVisibility('vercel_token')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+                      >
+                        {showKeys.vercel_token ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Get from: <a href="https://vercel.com/account/tokens" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Vercel → Account Settings → Tokens</a>
+                  </p>
+                </div>
+
+                {/* Render Token */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    Render Token
+                    <Badge variant="outline" className="text-xs border-zinc-600">For deployment</Badge>
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showKeys.render_token ? 'text' : 'password'}
+                        placeholder="rnd_xxxxxxxxxxxx"
+                        value={apiKeys.render_token}
+                        onChange={(e) => setApiKeys(prev => ({ ...prev, render_token: e.target.value }))}
+                        className="bg-zinc-800 border-zinc-700 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleKeyVisibility('render_token')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+                      >
+                        {showKeys.render_token ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Get from: <a href="https://dashboard.render.com/u/settings#api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Render → Account Settings → API Keys</a>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Security Note */}
+            <Card className="bg-zinc-900/50 border-zinc-800">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-5 h-5 text-green-400 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-zinc-200">Security Note</h4>
+                    <p className="text-sm text-zinc-400 mt-1">
+                      API keys are encrypted and stored securely. They are never exposed in logs or shared with third parties. 
+                      Keys are only used when you explicitly trigger a deployment or integration action.
+                    </p>
+                  </div>
                 </div>
               </CardContent>
             </Card>

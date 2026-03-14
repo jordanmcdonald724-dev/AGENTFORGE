@@ -68,6 +68,65 @@ async def save_settings(settings: Dict[str, Any]):
     return {"success": True}
 
 
+# ============ API KEYS ROUTES ============
+
+@router.get("/api-keys")
+async def get_api_keys():
+    """Get stored API keys (masked for security)"""
+    keys = await db.api_keys.find_one({}, {"_id": 0})
+    if not keys:
+        return {
+            "github_token": "",
+            "openai_key": "",
+            "fal_key": "",
+            "netlify_token": "",
+            "vercel_token": "",
+            "render_token": ""
+        }
+    
+    # Mask keys for display (show last 4 chars only)
+    masked = {}
+    for key, value in keys.items():
+        if key in ["id", "created_at", "updated_at"]:
+            continue
+        if value and len(value) > 4:
+            masked[key] = "•" * (len(value) - 4) + value[-4:]
+        else:
+            masked[key] = value if value else ""
+    
+    return masked
+
+
+@router.post("/api-keys")
+async def save_api_keys(keys: Dict[str, Any]):
+    """Save API keys securely"""
+    existing = await db.api_keys.find_one({})
+    
+    # Only update non-empty keys (preserve existing if masked value sent)
+    clean_keys = {}
+    for key, value in keys.items():
+        if value and not value.startswith("•"):
+            clean_keys[key] = value
+    
+    keys_doc = {
+        **clean_keys,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if existing:
+        # Merge with existing, only overwrite non-empty values
+        for k, v in existing.items():
+            if k not in ["_id"] and k not in clean_keys:
+                keys_doc[k] = v
+        await db.api_keys.update_one({}, {"$set": keys_doc})
+    else:
+        keys_doc["id"] = str(uuid.uuid4())
+        keys_doc["created_at"] = datetime.now(timezone.utc).isoformat()
+        await db.api_keys.insert_one(keys_doc)
+    
+    return {"success": True}
+
+
 # ============ LOCAL BRIDGE ROUTES ============
 
 # Create a separate router for local-bridge with different prefix
