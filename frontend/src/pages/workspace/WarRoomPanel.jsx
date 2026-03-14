@@ -3,6 +3,7 @@
  * ======================
  * Immersive view of AI agents collaborating in real-time.
  * Shows agents as avatars in a "war room" actively discussing and building.
+ * Supports resizable split-pane layout.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -11,12 +12,14 @@ import {
   Radio, Bot, Zap, Code, Shield, Palette, 
   Brain, Cpu, Music, Gamepad2, BookOpen, Layers,
   ArrowRight, MessageCircle, CheckCircle, AlertTriangle,
-  Loader2, Play, Pause, Square, Volume2, VolumeX
+  Loader2, Play, Pause, Square, Volume2, VolumeX,
+  Columns, Rows, Maximize2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 
 // Agent configurations with personalities
 const AGENT_CONFIG = {
@@ -240,6 +243,7 @@ const WarRoomPanel = ({
   const scrollRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [speakingAgent, setSpeakingAgent] = useState(null);
+  const [layout, setLayout] = useState('stacked'); // 'stacked', 'horizontal', 'agents-only', 'messages-only'
   
   // Determine which agents are currently active based on messages
   const getActiveAgents = () => {
@@ -272,6 +276,114 @@ const WarRoomPanel = ({
   }, [messages]);
   
   const currentActiveAgents = getActiveAgents();
+
+  // Agents Grid Component
+  const AgentsGrid = ({ compact = false }) => (
+    <div className={`${compact ? 'p-2' : 'p-4'} border-b border-zinc-800 bg-zinc-900/50`}>
+      <div className={`flex items-center justify-center gap-${compact ? '2' : '4'} flex-wrap`}>
+        {Object.keys(AGENT_CONFIG).slice(0, 8).map((agent) => (
+          <AgentAvatar
+            key={agent}
+            agent={agent}
+            isActive={currentActiveAgents.includes(agent)}
+            isSpeaking={speakingAgent === agent}
+            status={currentActiveAgents.includes(agent) ? 'working' : 'idle'}
+          />
+        ))}
+      </div>
+      {!compact && (
+        <div className="flex items-center justify-center gap-4 flex-wrap mt-3">
+          {Object.keys(AGENT_CONFIG).slice(8).map((agent) => (
+            <AgentAvatar
+              key={agent}
+              agent={agent}
+              isActive={currentActiveAgents.includes(agent)}
+              isSpeaking={speakingAgent === agent}
+              status={currentActiveAgents.includes(agent) ? 'working' : 'idle'}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // Messages Feed Component
+  const MessagesFeed = () => (
+    <div className="flex-1 overflow-y-auto p-4" ref={scrollRef}>
+      <div className="space-y-3">
+        {messages.length === 0 ? (
+          <div className="text-center py-16">
+            <motion.div
+              animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <Radio className="w-16 h-16 mx-auto mb-4 text-cyan-400/30" />
+            </motion.div>
+            <h3 className="font-rajdhani text-xl text-white mb-2">War Room Standing By</h3>
+            <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">
+              Start a build to watch your AI team collaborate in real-time. 
+              Each agent will discuss, delegate, and create together.
+            </p>
+            <Button onClick={onSimulate} className="bg-cyan-500 hover:bg-cyan-600">
+              <Radio className="w-4 h-4 mr-2" />
+              Start Simulation
+            </Button>
+          </div>
+        ) : (
+          <>
+            <AnimatePresence>
+              {messages.map((msg, i) => (
+                <ChatBubble 
+                  key={msg.id || i} 
+                  message={msg} 
+                  isLatest={i === messages.length - 1 && currentBuild?.status === 'running'}
+                />
+              ))}
+            </AnimatePresence>
+            
+            {currentBuild?.status === 'running' && speakingAgent && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800/30"
+              >
+                <SpeakingIndicator />
+                <span className="text-xs text-zinc-400">{speakingAgent} is thinking...</span>
+              </motion.div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  // Build Stages Component
+  const BuildStages = () => currentBuild && currentBuild.stages && currentBuild.stages.length > 0 ? (
+    <div className="flex-shrink-0 p-3 border-b border-zinc-800 bg-zinc-900/30">
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {currentBuild.stages.map((stage, i) => (
+          <div 
+            key={i} 
+            className={`flex-shrink-0 px-3 py-2 rounded-lg border text-xs transition-all ${
+              stage.status === 'completed' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 
+              stage.status === 'in_progress' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 animate-pulse' : 
+              stage.status === 'failed' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 
+              'bg-zinc-800/50 border-zinc-700 text-zinc-500'
+            }`}
+          >
+            <div className="font-medium flex items-center gap-1">
+              {stage.status === 'completed' && <CheckCircle className="w-3 h-3" />}
+              {stage.status === 'in_progress' && <Loader2 className="w-3 h-3 animate-spin" />}
+              {stage.name}
+            </div>
+            {stage.files_created?.length > 0 && (
+              <div className="text-[10px] mt-1 opacity-70">{stage.files_created.length} files</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  ) : null;
   
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-b from-zinc-900 to-zinc-950">
@@ -301,6 +413,37 @@ const WarRoomPanel = ({
           </div>
           
           <div className="flex items-center gap-2">
+            {/* Layout toggle buttons */}
+            <div className="flex items-center gap-1 bg-zinc-800/50 rounded-lg p-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`h-7 w-7 ${layout === 'stacked' ? 'bg-zinc-700' : ''}`}
+                onClick={() => setLayout('stacked')}
+                title="Stacked view"
+              >
+                <Rows className="w-3.5 h-3.5 text-zinc-400" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`h-7 w-7 ${layout === 'horizontal' ? 'bg-zinc-700' : ''}`}
+                onClick={() => setLayout('horizontal')}
+                title="Side-by-side view"
+              >
+                <Columns className="w-3.5 h-3.5 text-zinc-400" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={`h-7 w-7 ${layout === 'messages-only' ? 'bg-zinc-700' : ''}`}
+                onClick={() => setLayout('messages-only')}
+                title="Messages only"
+              >
+                <Maximize2 className="w-3.5 h-3.5 text-zinc-400" />
+              </Button>
+            </div>
+
             {/* Sound toggle */}
             <Button 
               variant="ghost" 
@@ -344,109 +487,36 @@ const WarRoomPanel = ({
         </div>
       </div>
       
-      {/* Agent Avatars Row - The "Room" */}
-      <div className="flex-shrink-0 p-4 border-b border-zinc-800 bg-zinc-900/50">
-        <div className="flex items-center justify-center gap-4 flex-wrap">
-          {Object.keys(AGENT_CONFIG).slice(0, 8).map((agent) => (
-            <AgentAvatar
-              key={agent}
-              agent={agent}
-              isActive={currentActiveAgents.includes(agent)}
-              isSpeaking={speakingAgent === agent}
-              status={currentActiveAgents.includes(agent) ? 'working' : 'idle'}
-            />
-          ))}
-        </div>
-        {/* Second row for remaining agents */}
-        <div className="flex items-center justify-center gap-4 flex-wrap mt-3">
-          {Object.keys(AGENT_CONFIG).slice(8).map((agent) => (
-            <AgentAvatar
-              key={agent}
-              agent={agent}
-              isActive={currentActiveAgents.includes(agent)}
-              isSpeaking={speakingAgent === agent}
-              status={currentActiveAgents.includes(agent) ? 'working' : 'idle'}
-            />
-          ))}
-        </div>
-      </div>
-      
-      {/* Build Stages Progress */}
-      {currentBuild && currentBuild.stages && currentBuild.stages.length > 0 && (
-        <div className="flex-shrink-0 p-3 border-b border-zinc-800 bg-zinc-900/30">
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {currentBuild.stages.map((stage, i) => (
-              <div 
-                key={i} 
-                className={`flex-shrink-0 px-3 py-2 rounded-lg border text-xs transition-all ${
-                  stage.status === 'completed' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 
-                  stage.status === 'in_progress' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 animate-pulse' : 
-                  stage.status === 'failed' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 
-                  'bg-zinc-800/50 border-zinc-700 text-zinc-500'
-                }`}
-              >
-                <div className="font-medium flex items-center gap-1">
-                  {stage.status === 'completed' && <CheckCircle className="w-3 h-3" />}
-                  {stage.status === 'in_progress' && <Loader2 className="w-3 h-3 animate-spin" />}
-                  {stage.name}
-                </div>
-                {stage.files_created?.length > 0 && (
-                  <div className="text-[10px] mt-1 opacity-70">{stage.files_created.length} files</div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Main Content - Layout dependent */}
+      {layout === 'stacked' && (
+        <>
+          <AgentsGrid />
+          <BuildStages />
+          <MessagesFeed />
+        </>
       )}
       
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4" ref={scrollRef}>
-        <div className="space-y-3">
-          {messages.length === 0 ? (
-            <div className="text-center py-16">
-              <motion.div
-                animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <Radio className="w-16 h-16 mx-auto mb-4 text-cyan-400/30" />
-              </motion.div>
-              <h3 className="font-rajdhani text-xl text-white mb-2">War Room Standing By</h3>
-              <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">
-                Start a build to watch your AI team collaborate in real-time. 
-                Each agent will discuss, delegate, and create together.
-              </p>
-              <Button onClick={onSimulate} className="bg-cyan-500 hover:bg-cyan-600">
-                <Radio className="w-4 h-4 mr-2" />
-                Start Simulation
-              </Button>
+      {layout === 'horizontal' && (
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          <ResizablePanel defaultSize={35} minSize={20} maxSize={50}>
+            <div className="h-full flex flex-col overflow-hidden">
+              <AgentsGrid compact />
+              <BuildStages />
             </div>
-          ) : (
-            <>
-              <AnimatePresence>
-                {messages.map((msg, i) => (
-                  <ChatBubble 
-                    key={msg.id || i} 
-                    message={msg} 
-                    isLatest={i === messages.length - 1 && currentBuild?.status === 'running'}
-                  />
-                ))}
-              </AnimatePresence>
-              
-              {/* Typing indicator when build is running */}
-              {currentBuild?.status === 'running' && speakingAgent && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-800/30"
-                >
-                  <SpeakingIndicator />
-                  <span className="text-xs text-zinc-400">{speakingAgent} is thinking...</span>
-                </motion.div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle className="bg-zinc-800 hover:bg-cyan-500/50 transition-colors" />
+          <ResizablePanel defaultSize={65} minSize={40}>
+            <MessagesFeed />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      )}
+      
+      {layout === 'messages-only' && (
+        <>
+          <BuildStages />
+          <MessagesFeed />
+        </>
+      )}
     </div>
   );
 };

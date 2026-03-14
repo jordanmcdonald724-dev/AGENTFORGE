@@ -1163,17 +1163,23 @@ const ProjectWorkspace = () => {
               </Dialog>
             )}
 
-      {/* Main */}
+      {/* Main - Fully Resizable Layout */}
       <div className="flex-1 overflow-hidden min-h-0">
         <ResizablePanelGroup direction="horizontal">
-          <ResizablePanel defaultSize={55} minSize={35} maxSize={80}>
-            <div className="h-full flex flex-col transition-colors duration-300 overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-              {/* Quick Actions Panel - Clean version */}
-              <AnimatePresence>
-                {showQuickActions && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
-                    <div className="p-4">
-                      {/* Quick Actions Grid */}
+          {/* Left Side - Quick Actions + Content */}
+          <ResizablePanel defaultSize={55} minSize={30} maxSize={80}>
+            <ResizablePanelGroup direction="vertical">
+              {/* Quick Actions Panel - Resizable */}
+              <ResizablePanel 
+                defaultSize={showQuickActions ? 25 : 5} 
+                minSize={5} 
+                maxSize={50}
+                collapsible={true}
+                collapsedSize={5}
+              >
+                <div className="h-full flex flex-col border-b overflow-hidden" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                  {showQuickActions ? (
+                    <div className="p-3 h-full overflow-auto">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
                           <Sparkles className="w-4 h-4 text-blue-400" />
@@ -1193,7 +1199,7 @@ const ProjectWorkspace = () => {
                             </DialogContent>
                           </Dialog>
                           <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowQuickActions(false)}>
-                            <X className="w-3 h-3" />
+                            <ChevronUp className="w-3 h-3" />
                           </Button>
                         </div>
                       </div>
@@ -1212,13 +1218,23 @@ const ProjectWorkspace = () => {
                         })}
                       </div>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              {!showQuickActions && <Button variant="ghost" size="sm" className="mx-3 mt-2 text-xs border border-zinc-700 text-zinc-400 hover:bg-zinc-800" onClick={() => setShowQuickActions(true)}><Sparkles className="w-4 h-4 mr-1" />Quick Actions</Button>}
-              {chainProgress && <div className="px-4 py-2 border-b" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /><span className="text-xs" style={{ color: 'var(--accent)' }}>Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
+                  ) : (
+                    <Button variant="ghost" size="sm" className="m-2 text-xs border border-zinc-700 text-zinc-400 hover:bg-zinc-800" onClick={() => setShowQuickActions(true)}>
+                      <Sparkles className="w-4 h-4 mr-1" />Quick Actions
+                      <ChevronDown className="w-3 h-3 ml-1" />
+                    </Button>
+                  )}
+                </div>
+              </ResizablePanel>
+              
+              <ResizableHandle withHandle className="bg-zinc-800 hover:bg-blue-500/50 transition-colors" />
+              
+              {/* Main Content Panel - Resizable */}
+              <ResizablePanel defaultSize={75} minSize={30}>
+                <div className="h-full flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                  {chainProgress && <div className="px-4 py-2 border-b flex-shrink-0" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /><span className="text-xs" style={{ color: 'var(--accent)' }}>Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
 
-              <div className="flex-1 flex flex-col overflow-hidden">
+                  <div className="flex-1 flex flex-col overflow-hidden">
 
                 {/* Chat Panel - When active */}
                 {activeTab === "chat" && (
@@ -1441,14 +1457,16 @@ const ProjectWorkspace = () => {
                 </TabsContent>
               </Tabs>
               )}
-              </div>
-            </div>
+                  </div>
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </ResizablePanel>
 
-          <ResizableHandle withHandle className="bg-zinc-800" />
+          <ResizableHandle withHandle className="bg-zinc-800 hover:bg-blue-500/50 transition-colors" />
 
-          {/* Right Panel */}
-          <ResizablePanel defaultSize={55} minSize={30}>
+          {/* Right Panel - Files/Code */}
+          <ResizablePanel defaultSize={45} minSize={25} maxSize={70}>
             <div className="h-full flex flex-col bg-[#0d0d0f]">
               <div className="flex-shrink-0 border-b border-zinc-800 bg-[#0a0a0c]"><div className="flex items-center justify-between px-4 py-2"><Tabs value={rightTab} onValueChange={setRightTab} className="w-full"><TabsList className="bg-transparent"><TabsTrigger value="code" className="data-[state=active]:bg-zinc-800"><Code2 className="w-4 h-4 mr-2" />Code{files.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{files.length}</Badge>}</TabsTrigger>{isWebProject && <TabsTrigger value="preview" className="data-[state=active]:bg-zinc-800" onClick={loadPreview}><Eye className="w-4 h-4 mr-2" />Preview</TabsTrigger>}</TabsList></Tabs>{selectedFile && rightTab === "code" && <div className="flex items-center gap-2">{unsavedChanges && <Badge className="bg-amber-500/20 text-amber-400 text-xs">Unsaved</Badge>}<Button size="sm" variant="outline" className="h-7 border-zinc-700" onClick={saveFile} disabled={!unsavedChanges}><Save className="w-3 h-3 mr-1" />Save</Button></div>}</div></div>
 
