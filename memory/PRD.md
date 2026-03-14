@@ -7,63 +7,39 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 14, 2026) - UI FIXES + SETTINGS PAGE
+### Latest Update (March 14, 2026) - WAR ROOM IMMERSIVE REDESIGN
 
-**Session Completed Tasks:**
+**War Room Overhaul - "See the Team Build":**
+- ✅ **New WarRoomPanel component** (`/pages/workspace/WarRoomPanel.jsx`)
+- ✅ **12 Agent Avatars** displayed in war room with icons, roles, and names
+- ✅ **Agent Row 1:** COMMANDER, ATLAS, FORGE, SENTINEL, PROBE, PRISM, TERRA, KINETIC
+- ✅ **Agent Row 2:** SONIC, NEXUS, CHRONICLE, VERTEX  
+- ✅ **Speaking indicators** - Agents pulse when actively communicating
+- ✅ **Build stages progress bar** - Visual tabs for each build phase
+- ✅ **Chat bubbles with agent colors** - Each agent has unique styling
+- ✅ **Live badges** - Shows "LIVE" on latest message during active builds
+- ✅ **Sound toggle** - Placeholder for audio feedback
+- ✅ **Status badges** - QUEUED, RUNNING, COMPLETED, PAUSED
 
-1. **Black Screen Fix (P0):**
-   - ✅ Fixed fatal JSX error in `ProjectWorkspace.jsx` - Duplicate `</header>` tag
-   - ✅ Fixed undefined state - `setMemoriesDialogOpen` → `setMemoryDialog`
-   - ✅ Removed duplicate code block containing duplicated dialogs
-
-2. **File Drop Integration (P1):**
-   - ✅ God Mode page - Added `buildPrompt` and `attachedFiles` states
-   - ✅ Normal Build chat - Integrated `FileDropZone` with attached files display
-   - ✅ Updated placeholders to indicate drag & drop support
-
-3. **Header Refactor - Tabbed Interface (P1):**
-   - ✅ Clean single-row header with tabs: Chat, Tasks, War Room, Blueprints
-   - ✅ "More" dropdown for additional panels
-   - ✅ Prominent "God Mode" button with amber styling
-   - ✅ Settings gear dropdown for actions
-
-4. **Settings Page - API Keys (P1):**
-   - ✅ Added "API Keys" tab to Settings page
-   - ✅ Fields for: GitHub Token, Netlify, Vercel, Render
-   - ✅ Show/hide password toggle for each key
-   - ✅ Links to where to get each token
-   - ✅ Backend endpoints: GET/POST `/api/settings/api-keys`
-   - ✅ Secure storage with masked display
-
-5. **Backend Cleanup (P2):**
-   - ✅ Removed duplicate `QUICK_ACTIONS` from `backend/routes/chains.py`
-   - ✅ Now imports from `server.py` (single source of truth)
-
-6. **12-Agent Pipeline Verification:**
-   - ✅ All 12 agents confirmed with "LUXURY-TIER" prompts
-   - ✅ Agents: COMMANDER, ATLAS, FORGE, SENTINEL, PROBE, PRISM, TERRA, KINETIC, SONIC, NEXUS, CHRONICLE, VERTEX
-
-7. **Code Organization Started:**
-   - ✅ Created `/pages/workspace/constants.js` for config extraction
-   - ✅ Created `/pages/workspace/QuickActionsPanel.jsx` component
+**Previous Session Fixes:**
+- ✅ Black screen bug fixed (duplicate header tag)
+- ✅ File drop integration for God Mode and Normal Build
+- ✅ Header refactored to tabbed interface
+- ✅ Settings page API Keys tab added
+- ✅ Backend QUICK_ACTIONS deduplication
 
 **Files Changed:**
-- `pages/ProjectWorkspace.jsx` - Fixed header, added FileDropZone, refactored tabs
-- `pages/GodModePage.jsx` - Added states, FileDropZone import
-- `pages/SettingsPage.jsx` - Added API Keys tab with secure input fields
-- `backend/routes/settings.py` - Added `/api-keys` GET/POST endpoints
-- `backend/routes/chains.py` - Imports QUICK_ACTIONS from server.py
-- `pages/workspace/constants.js` - New: Extracted config constants
-- `pages/workspace/QuickActionsPanel.jsx` - New: Reusable component
+- `pages/workspace/WarRoomPanel.jsx` - NEW: Immersive agent collaboration view
+- `pages/workspace/constants.js` - NEW: Extracted config constants
+- `pages/ProjectWorkspace.jsx` - Updated to use WarRoomPanel, fixed tab rendering
+- `pages/SettingsPage.jsx` - Added API Keys tab
+- `backend/routes/settings.py` - Added api-keys endpoints
 
 **Testing Status:**
-- ✅ Dashboard loads correctly
-- ✅ Project Workspace with clean tabbed header
-- ✅ God Mode page with text input and file drop
-- ✅ Settings page API Keys tab working
-- ✅ Backend `/api/quick-actions` working
-- ✅ Backend `/api/settings/api-keys` working
-- ✅ 12 agents verified with luxury prompts
+- ✅ War Room shows all 12 agents
+- ✅ Build stages display correctly
+- ✅ Agent messages render with proper styling
+- ✅ Dashboard, Project Workspace, Settings all working
 
 ---
 

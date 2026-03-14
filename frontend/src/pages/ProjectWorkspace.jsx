@@ -44,6 +44,7 @@ import GameEnginePanel from "@/components/GameEnginePanel";
 import HardwarePanel from "@/components/HardwarePanel";
 import ResearchPanel from "@/components/ResearchPanel";
 import FileDropZone from "@/components/FileDropZone";
+import WarRoomPanel from "@/pages/workspace/WarRoomPanel";
 
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
@@ -1297,104 +1298,47 @@ const ProjectWorkspace = () => {
                   </div>
                 )}
 
-                {/* Other tabs use Tabs component */}
-                {activeTab !== "chat" && (
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-                {/* War Room Tab */}
-                <TabsContent value="warroom" className="flex-1 flex flex-col m-0 overflow-hidden">
-                  <div className="flex-shrink-0 p-3 border-b border-zinc-800 flex items-center justify-between bg-gradient-to-r from-cyan-500/10 to-transparent">
-                    <h3 className="font-rajdhani font-bold text-white text-sm flex items-center gap-2"><Radio className="w-4 h-4 text-cyan-400" />Agent War Room</h3>
-                    {currentBuild && (
-                      <div className="flex items-center gap-2">
-                        <Badge className={`text-xs ${currentBuild.status === 'running' ? 'bg-blue-500/20 text-blue-400' : currentBuild.status === 'completed' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-800 text-zinc-400'}`}>
-                          {currentBuild.status}
-                        </Badge>
-                        {currentBuild.status === "running" && (
-                          <>
-                            <Progress value={currentBuild.progress_percent} className="w-24 h-2" />
-                            <span className="text-xs text-zinc-400">{currentBuild.progress_percent}%</span>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={pauseBuild}><Pause className="w-3 h-3" /></Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={cancelBuild}><Square className="w-3 h-3" /></Button>
-                          </>
-                        )}
-                        {currentBuild.status === "paused" && (
-                          <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={resumeBuild}><Play className="w-3 h-3 mr-1" />Resume</Button>
-                        )}
-                      </div>
-                    )}
+                {/* Other tabs - Using conditional rendering */}
+                {activeTab === "warroom" && (
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <WarRoomPanel
+                      messages={warRoomMessages}
+                      currentBuild={currentBuild}
+                      onSimulate={() => setSimulationDialog(true)}
+                      onPause={pauseBuild}
+                      onResume={resumeBuild}
+                      onCancel={cancelBuild}
+                    />
                   </div>
-                  
-                  {/* Build Stages */}
-                  {currentBuild && currentBuild.stages && (
-                    <div className="flex-shrink-0 p-3 border-b border-zinc-800 bg-zinc-900/50">
-                      <div className="flex gap-2 overflow-x-auto pb-2">
-                        {currentBuild.stages.map((stage, i) => (
-                          <div key={i} className={`flex-shrink-0 px-3 py-2 rounded border text-xs ${stage.status === 'completed' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : stage.status === 'in_progress' ? 'bg-blue-500/10 border-blue-500/30 text-blue-400 animate-pulse' : stage.status === 'failed' ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-zinc-800/50 border-zinc-700 text-zinc-500'}`}>
-                            <div className="font-medium">{stage.name}</div>
-                            {stage.files_created?.length > 0 && <div className="text-[10px] mt-1">{stage.files_created.length} files</div>}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  <ScrollArea className="flex-1 p-4">
-                    <div className="space-y-3">
-                      {warRoomMessages.length === 0 ? (
-                        <div className="text-center py-12">
-                          <Radio className="w-12 h-12 mx-auto mb-4 text-cyan-400/30" />
-                          <h3 className="font-rajdhani text-lg text-white mb-2">War Room Empty</h3>
-                          <p className="text-sm text-zinc-500 mb-4">Start a simulation to see agents communicate</p>
-                          <Button onClick={() => setSimulationDialog(true)} className="bg-cyan-500 hover:bg-cyan-600"><Radio className="w-4 h-4 mr-2" />Open Simulation</Button>
-                        </div>
-                      ) : (
-                        warRoomMessages.map((msg) => (
-                          <motion.div key={msg.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="flex gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.message_type === 'warning' ? 'bg-red-500/20' : msg.message_type === 'handoff' ? 'bg-cyan-500/20' : 'bg-zinc-800'}`}>
-                              <Bot className={`w-4 h-4 ${getWarRoomTypeColor(msg.message_type)}`} />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-rajdhani font-bold text-sm text-cyan-400">{msg.from_agent}</span>
-                                {msg.to_agent && <><ArrowRightCircle className="w-3 h-3 text-zinc-600" /><span className="text-xs text-zinc-500">{msg.to_agent}</span></>}
-                                <Badge variant="outline" className={`text-[10px] border-zinc-700 ${getWarRoomTypeColor(msg.message_type)}`}>{msg.message_type}</Badge>
-                              </div>
-                              <p className="text-sm text-zinc-300">{msg.content}</p>
-                            </div>
-                          </motion.div>
-                        ))
-                      )}
-                      <div ref={warRoomEndRef} />
-                    </div>
-                  </ScrollArea>
-                </TabsContent>
+                )}
 
                 {/* Blueprints Tab */}
-                <TabsContent value="blueprints" className="flex-1 m-0 overflow-hidden flex flex-col">
-                  <div className="flex-shrink-0 p-3 border-b border-zinc-800 flex items-center justify-between">
-                    <h3 className="font-rajdhani font-bold text-white text-sm flex items-center gap-2">
-                      <GitBranch className="w-4 h-4 text-purple-400" />Visual Blueprints
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <Select value={selectedBlueprint?.id || ""} onValueChange={(v) => setSelectedBlueprint(blueprints.find(b => b.id === v))}>
-                        <SelectTrigger className="w-40 h-8 bg-zinc-900 border-zinc-700 text-xs">
-                          <SelectValue placeholder="Select blueprint" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-zinc-900 border-zinc-700">
-                          {blueprints.map(bp => (
-                            <SelectItem key={bp.id} value={bp.id}>{bp.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button size="sm" className="h-8 bg-purple-500 hover:bg-purple-600" onClick={() => {
-                        const name = prompt("Blueprint name:");
-                        if (name) createBlueprint(name);
-                      }}>
-                        <Plus className="w-3 h-3 mr-1" />New
-                      </Button>
+                {activeTab === "blueprints" && (
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="flex-shrink-0 p-3 border-b border-zinc-800 flex items-center justify-between">
+                      <h3 className="font-rajdhani font-bold text-white text-sm flex items-center gap-2">
+                        <GitBranch className="w-4 h-4 text-purple-400" />Visual Blueprints
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        <Select value={selectedBlueprint?.id || ""} onValueChange={(v) => setSelectedBlueprint(blueprints.find(b => b.id === v))}>
+                          <SelectTrigger className="w-40 h-8 bg-zinc-900 border-zinc-700 text-xs">
+                            <SelectValue placeholder="Select blueprint" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-zinc-900 border-zinc-700">
+                            {blueprints.map(bp => (
+                              <SelectItem key={bp.id} value={bp.id}>{bp.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button size="sm" className="h-8 bg-purple-500 hover:bg-purple-600" onClick={() => {
+                          const name = prompt("Blueprint name:");
+                          if (name) createBlueprint(name);
+                        }}>
+                          <Plus className="w-3 h-3 mr-1" />New
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                  {selectedBlueprint ? (
+                    {selectedBlueprint ? (
                     <BlueprintEditor
                       blueprint={selectedBlueprint}
                       templates={blueprintTemplates}
@@ -1417,7 +1361,12 @@ const ProjectWorkspace = () => {
                       </div>
                     </div>
                   )}
-                </TabsContent>
+                  </div>
+                )}
+
+                {/* Other Tabs - Use Tabs wrapper */}
+                {!["chat", "warroom", "blueprints"].includes(activeTab) && (
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
 
                 {/* Build Queue Tab */}
                 <TabsContent value="queue" className="flex-1 m-0 overflow-hidden">
