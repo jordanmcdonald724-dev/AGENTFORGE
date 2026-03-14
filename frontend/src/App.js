@@ -7,6 +7,8 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
 import ProjectWorkspace from "@/pages/ProjectWorkspace";
+import GodModePage from "@/pages/GodModePage";
+import ResearchLab from "@/pages/ResearchLab";
 import SettingsPage from "@/pages/SettingsPage";
 import LiveLogs from "@/pages/LiveLogs";
 
@@ -20,8 +22,11 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<LandingPage />} />
+            <Route path="/studio" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/project/:projectId" element={<ProjectWorkspace />} />
+            <Route path="/project/:projectId/god-mode" element={<GodModePage />} />
+            <Route path="/research" element={<ResearchLab />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/logs" element={<LiveLogs />} />
           </Routes>

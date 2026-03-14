@@ -3,287 +3,271 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { 
-  Bot, 
-  Code2, 
-  GitBranch, 
-  Layers, 
-  Zap, 
   ArrowRight,
-  Cpu,
+  Sparkles,
   Users,
-  Rocket,
+  Layers,
+  Code2,
   Shield,
+  Zap,
+  Palette,
   Gamepad2,
   Globe,
   Smartphone,
-  Palette,
-  Sparkles,
-  CheckCircle
+  Rocket,
+  ChevronRight
 } from "lucide-react";
 
 const LandingPage = () => {
   const navigate = useNavigate();
 
   const agents = [
-    { name: "COMMANDER", role: "Lead", icon: Users, color: "text-blue-400", desc: "Project Director & Coordinator" },
-    { name: "ATLAS", role: "Architect", icon: Layers, color: "text-cyan-400", desc: "System Design & Architecture" },
-    { name: "FORGE", role: "Developer", icon: Code2, color: "text-emerald-400", desc: "C++, C#, Blueprints Expert" },
-    { name: "SENTINEL", role: "Reviewer", icon: Shield, color: "text-amber-400", desc: "Code Quality & Security" },
-    { name: "PROBE", role: "Tester", icon: Zap, color: "text-purple-400", desc: "QA & Test Automation" },
-    { name: "PRISM", role: "Artist", icon: Palette, color: "text-pink-400", desc: "UI/UX & Shader Expert" },
+    { name: "COMMANDER", role: "Lead", icon: Users, color: "#3b82f6" },
+    { name: "ATLAS", role: "Architect", icon: Layers, color: "#06b6d4" },
+    { name: "FORGE", role: "Developer", icon: Code2, color: "#10b981" },
+    { name: "SENTINEL", role: "Reviewer", icon: Shield, color: "#f97316" },
+    { name: "PROBE", role: "Tester", icon: Zap, color: "#8b5cf6" },
+    { name: "PRISM", role: "Artist", icon: Palette, color: "#ec4899" },
   ];
 
-  const features = [
-    {
-      icon: Gamepad2,
-      title: "AAA Game Development",
-      description: "Unreal Engine 5, Unity, Godot - build professional games"
-    },
-    {
-      icon: Globe,
-      title: "Web Applications",
-      description: "Full-stack apps with modern frameworks"
-    },
-    {
-      icon: Smartphone,
-      title: "Mobile Apps",
-      description: "iOS & Android development"
-    },
-    {
-      icon: GitBranch,
-      title: "Export & Deploy",
-      description: "Download as ZIP or push to GitHub"
-    }
-  ];
-
-  const workflow = [
-    { step: "01", title: "Describe", desc: "Tell COMMANDER your vision in detail" },
-    { step: "02", title: "Clarify", desc: "Answer questions to refine the scope" },
-    { step: "03", title: "Plan", desc: "Review and approve the architecture" },
-    { step: "04", title: "Build", desc: "Watch agents create your project" },
+  const capabilities = [
+    { icon: Gamepad2, label: "AAA Games", desc: "Unreal, Unity, Godot" },
+    { icon: Globe, label: "Web Apps", desc: "Full-stack development" },
+    { icon: Smartphone, label: "Mobile", desc: "iOS & Android" },
+    { icon: Rocket, label: "Deploy", desc: "One-click export" },
   ];
 
   return (
     <div className="min-h-screen bg-[#09090b] overflow-hidden">
-      {/* Hero */}
-      <div className="hero-bg relative">
-        <nav className="absolute top-0 left-0 right-0 z-50 px-6 py-4">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <Sparkles className="w-6 h-6 text-blue-400" />
-              </div>
-              <span className="font-rajdhani text-xl font-bold text-white">
-                AGENT<span className="text-blue-400">FORGE</span>
-              </span>
+      {/* Background Effects */}
+      <div className="fixed inset-0 gradient-mesh opacity-60" />
+      <div className="fixed inset-0 bg-gradient-to-b from-transparent via-transparent to-[#09090b]" />
+      
+      {/* Navigation */}
+      <nav className="relative z-50 px-6 py-5">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <Button 
-              data-testid="nav-start-btn"
-              onClick={() => navigate("/dashboard")}
-              className="bg-blue-500 hover:bg-blue-600"
-            >
-              Launch Studio
-            </Button>
+            <span className="text-lg font-semibold tracking-tight">
+              Agent<span className="text-blue-400">Forge</span>
+            </span>
           </div>
-        </nav>
+          <Button 
+            onClick={() => navigate("/studio")}
+            className="bg-white/10 hover:bg-white/15 text-white border-0 backdrop-blur-sm"
+            data-testid="nav-start-btn"
+          >
+            Launch Studio
+          </Button>
+        </div>
+      </nav>
 
-        <div className="max-w-7xl mx-auto px-6 pt-32 pb-24">
+      {/* Hero Section */}
+      <main className="relative z-10">
+        <div className="max-w-6xl mx-auto px-6 pt-20 pb-32">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 mb-8">
-              <Sparkles className="w-4 h-4 text-blue-400" />
-              <span className="text-sm text-blue-400">Personal AI Development Studio</span>
-            </div>
+            {/* Badge */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8"
+            >
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-sm text-zinc-400">AI Development Studio</span>
+            </motion.div>
             
-            <h1 className="font-rajdhani text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
-              YOUR <span className="text-blue-400">6-AGENT</span><br />
-              DEV TEAM
+            {/* Headline */}
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
+              <span className="text-white">Your </span>
+              <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+                6-Agent
+              </span>
+              <br />
+              <span className="text-white">Dev Team</span>
             </h1>
-            <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-10">
-              Build AAA games, full-stack apps, and everything in between. 
-              Six specialized AI agents. One unified workflow. Complete control.
+            
+            {/* Subheadline */}
+            <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-12 leading-relaxed">
+              Build AAA games, full-stack apps, and everything in between.
+              <br className="hidden md:block" />
+              Six specialized AI agents. One unified workflow.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            
+            {/* CTA */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
               <Button 
-                data-testid="hero-start-btn"
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate("/studio")}
                 size="lg"
-                className="bg-blue-500 hover:bg-blue-600 text-white px-10 py-6 text-lg font-medium glow-blue btn-glow"
+                className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-6 text-base font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-all hover:shadow-blue-500/40 hover:scale-[1.02]"
+                data-testid="hero-start-btn"
               >
-                Start Building <ArrowRight className="ml-2 w-5 h-5" />
+                Start Building
+                <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
-            </div>
+            </motion.div>
           </motion.div>
 
-          {/* Agent Grid */}
+          {/* Agent Cards */}
           <motion.div 
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="mt-20 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4"
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="mt-24 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3"
           >
             {agents.map((agent, index) => (
               <motion.div
                 key={agent.name}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.4 + index * 0.08 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 + index * 0.05 }}
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                className="group relative p-5 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/10 hover:bg-white/[0.04] transition-all cursor-pointer"
                 data-testid={`landing-agent-${agent.name.toLowerCase()}`}
-                className="glass rounded-lg p-4 text-center group hover:border-blue-500/50 transition-all"
               >
-                <div className={`w-12 h-12 mx-auto mb-3 rounded-lg bg-zinc-800 flex items-center justify-center ${agent.color} group-hover:scale-110 transition-transform`}>
-                  <agent.icon className="w-6 h-6" />
+                <div 
+                  className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110"
+                  style={{ backgroundColor: `${agent.color}15` }}
+                >
+                  <agent.icon className="w-5 h-5" style={{ color: agent.color }} />
                 </div>
-                <h3 className="font-rajdhani font-bold text-white text-sm">{agent.name}</h3>
+                <h3 className="font-semibold text-white text-sm tracking-wide">{agent.name}</h3>
                 <p className="text-xs text-zinc-500 mt-1">{agent.role}</p>
+                
+                {/* Glow effect on hover */}
+                <div 
+                  className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                  style={{ boxShadow: `0 0 40px -15px ${agent.color}` }}
+                />
               </motion.div>
             ))}
           </motion.div>
         </div>
-      </div>
 
-      {/* Workflow Section */}
-      <section className="py-20 px-6 bg-[#0d0d0f]">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="font-rajdhani text-3xl md:text-4xl font-bold text-white mb-4">
-              HOW IT <span className="text-cyan-400">WORKS</span>
-            </h2>
-            <p className="text-zinc-400">You stay in complete control at every step</p>
-          </motion.div>
+        {/* Capabilities Section */}
+        <section className="relative py-24 border-t border-white/5">
+          <div className="max-w-6xl mx-auto px-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-center mb-16"
+            >
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                Build Anything
+              </h2>
+              <p className="text-zinc-500 text-lg">From concept to deployment</p>
+            </motion.div>
 
-          <div className="grid md:grid-cols-4 gap-6">
-            {workflow.map((item, idx) => (
-              <motion.div
-                key={item.step}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                className="relative"
-              >
-                <div className="bg-[#18181b] border border-zinc-800 rounded-lg p-6 text-center hover:border-blue-500/30 transition-colors h-full">
-                  <div className="text-4xl font-rajdhani font-bold text-blue-500/30 mb-2">{item.step}</div>
-                  <h3 className="font-rajdhani font-bold text-white text-lg mb-2">{item.title}</h3>
-                  <p className="text-sm text-zinc-500">{item.desc}</p>
-                </div>
-                {idx < workflow.length - 1 && (
-                  <div className="hidden md:block absolute top-1/2 -right-3 transform -translate-y-1/2 text-zinc-700">
-                    <ArrowRight className="w-6 h-6" />
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section className="py-20 px-6">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="font-rajdhani text-3xl md:text-4xl font-bold text-white mb-4">
-              BUILD <span className="text-emerald-400">ANYTHING</span>
-            </h2>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature, idx) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.1 }}
-                className="bg-[#18181b] border border-zinc-800 rounded-lg p-6 hover:border-blue-500/30 transition-colors"
-              >
-                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center mb-4">
-                  <feature.icon className="w-6 h-6 text-blue-400" />
-                </div>
-                <h3 className="font-rajdhani font-bold text-white text-lg mb-2">{feature.title}</h3>
-                <p className="text-sm text-zinc-500">{feature.description}</p>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Key Benefits */}
-      <section className="py-20 px-6 bg-[#0d0d0f]">
-        <div className="max-w-4xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="glass rounded-2xl p-10"
-          >
-            <h2 className="font-rajdhani text-2xl md:text-3xl font-bold text-white mb-8 text-center">
-              WHY AGENTFORGE?
-            </h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {[
-                "Clarifies before coding - no guessing",
-                "You approve every major decision",
-                "Full code editor with Monaco",
-                "Export projects anytime",
-                "Six specialized agents working together",
-                "Supports AAA game engines"
-              ].map((benefit, idx) => (
-                <div key={idx} className="flex items-center gap-3 text-zinc-300">
-                  <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-                  <span>{benefit}</span>
-                </div>
+            <div className="grid md:grid-cols-4 gap-4">
+              {capabilities.map((cap, idx) => (
+                <motion.div
+                  key={cap.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/10 transition-all"
+                >
+                  <cap.icon className="w-8 h-8 text-zinc-400 mb-4" />
+                  <h3 className="text-white font-semibold mb-1">{cap.label}</h3>
+                  <p className="text-sm text-zinc-500">{cap.desc}</p>
+                </motion.div>
               ))}
             </div>
-          </motion.div>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* CTA */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="font-rajdhani text-3xl md:text-4xl font-bold text-white mb-4">
-              READY TO BUILD?
-            </h2>
-            <p className="text-zinc-400 mb-8">Your AI dev team is standing by.</p>
-            <Button 
-              data-testid="cta-btn"
-              onClick={() => navigate("/dashboard")}
-              size="lg"
-              className="bg-blue-500 hover:bg-blue-600 px-12 py-6 text-lg glow-blue btn-glow"
+        {/* Workflow Section */}
+        <section className="relative py-24 border-t border-white/5">
+          <div className="max-w-4xl mx-auto px-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              className="text-center mb-16"
             >
-              Launch Studio <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-          </motion.div>
-        </div>
-      </section>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                How It Works
+              </h2>
+              <p className="text-zinc-500 text-lg">Four simple steps to production</p>
+            </motion.div>
+
+            <div className="space-y-4">
+              {[
+                { step: "01", title: "Describe", desc: "Tell the agents your vision" },
+                { step: "02", title: "Plan", desc: "Review the architecture" },
+                { step: "03", title: "Build", desc: "Watch agents create your project" },
+                { step: "04", title: "Deploy", desc: "Export or push to GitHub" },
+              ].map((item, idx) => (
+                <motion.div
+                  key={item.step}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: idx * 0.1 }}
+                  className="flex items-center gap-6 p-5 rounded-xl bg-white/[0.02] border border-white/[0.05] hover:border-white/10 transition-all group"
+                >
+                  <span className="text-3xl font-bold text-zinc-700 group-hover:text-zinc-500 transition-colors">
+                    {item.step}
+                  </span>
+                  <div className="flex-1">
+                    <h3 className="text-white font-semibold">{item.title}</h3>
+                    <p className="text-sm text-zinc-500">{item.desc}</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-zinc-600 group-hover:text-zinc-400 group-hover:translate-x-1 transition-all" />
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="relative py-32">
+          <div className="max-w-4xl mx-auto px-6 text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+                Ready to build?
+              </h2>
+              <p className="text-xl text-zinc-400 mb-10">
+                Your AI development team is waiting.
+              </p>
+              <Button 
+                onClick={() => navigate("/studio")}
+                size="lg"
+                className="bg-white text-black hover:bg-zinc-200 px-10 py-6 text-base font-medium rounded-xl transition-all hover:scale-[1.02]"
+              >
+                Launch Studio
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </motion.div>
+          </div>
+        </section>
+      </main>
 
       {/* Footer */}
-      <footer className="py-8 px-6 border-t border-zinc-800">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-blue-400" />
-            <span className="font-rajdhani font-bold text-white">AGENTFORGE</span>
+      <footer className="relative z-10 border-t border-white/5 py-8">
+        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-zinc-500 text-sm">
+            <Sparkles className="w-4 h-4" />
+            <span>AgentForge</span>
           </div>
-          <p className="text-sm text-zinc-500">Powered by fal.ai • Your Personal Dev Studio</p>
+          <p className="text-zinc-600 text-sm">AI Development Studio</p>
         </div>
       </footer>
     </div>
