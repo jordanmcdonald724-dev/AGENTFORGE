@@ -7,19 +7,30 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 2026) - MODEL EXTRACTION COMPLETE
+### Latest Update (March 2026) - MODEL EXTRACTION COMPLETE + HELPER EXTRACTION
 
 **Pydantic Model Extraction:**
 - ✅ **All 61 Pydantic models** extracted from `server.py` to `/app/backend/models/`
 - ✅ **~965 lines removed** from server.py
 - ✅ Models organized into 8 files: `base.py`, `project.py`, `build.py`, `collaboration.py`, `sandbox.py`, `autopsy.py`, `agent.py`, `v45_features.py`
-- ✅ All API endpoints tested and working
+
+**Core Module Extraction:**
+- ✅ **Agent configs** extracted to `core/agents.py` (~152 lines)
+- ✅ **Helper functions** extracted to `core/helpers.py` (~188 lines)
+- ✅ Functions: serialize_doc, extract_code_blocks, call_agent, stream_agent_response, build_project_context, get_or_create_agents
 
 **Server.py Modularization Progress:**
-- ✅ **Original Size**: 8,578 lines → **Current Size**: 5,932 lines (31% reduction)
-- ✅ **14 sections extracted** to modular route files in `/app/backend/routes/`
+- ✅ **Original Size**: 8,578 lines → **Current Size**: 5,601 lines (34.7% reduction)
+- ✅ **16+ sections extracted** to modular route files in `/app/backend/routes/`
 - ✅ **61 models extracted** to `/app/backend/models/`
+- ✅ **Core utilities extracted** to `/app/backend/core/`
 - ✅ All backend API tests passing (100% success rate)
+
+**God Mode V2 Build Verified:**
+- ✅ SSE stream endpoint working (`/api/god-mode-v2/build/stream`)
+- ✅ Director phase generating build plans
+- ✅ Architecture phase with ATLAS agent
+- ✅ 4-iteration recursive loop configured (Functional Build → Improved UX → Optimized Performance → Production Polish)
 
 **New Modular Files Created:**
 - `routes/settings.py` - Settings + Local Bridge

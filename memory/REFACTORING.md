@@ -2,9 +2,10 @@
 
 ## Current State (Updated March 2026)
 - **File**: `/app/backend/server.py`
-- **Size**: 5,932 lines (was 8,574)
-- **Route handlers**: 220 using `@api_router`
+- **Size**: 5,601 lines (was 8,574)
+- **Route handlers**: 176 using `@api_router`
 - **All 61 Pydantic models extracted to `/app/backend/models/`**
+- **Agent configs and helpers extracted to `/app/backend/core/`**
 
 ## Refactoring Strategy
 
@@ -25,14 +26,17 @@
 | Blueprints | ~36 | `routes/build_operations.py` | ✅ DONE |
 | Autonomous Builds | ~485 | `routes/autonomous_builds.py` | ✅ DONE |
 | **Pydantic Models** | **~965** | `models/` directory | ✅ DONE |
+| **Agent Configs** | **~152** | `core/agents.py` | ✅ DONE |
+| **Helper Functions** | **~188** | `core/helpers.py` | ✅ DONE |
 
 ### Server.py Progress
 - **Original Size**: 8,578 lines
-- **Previous Size**: 6,897 lines
-- **Current Size**: 5,932 lines
-- **Total Lines Removed**: ~2,646 lines (30.8% reduction)
+- **Previous Size**: 5,932 lines  
+- **Current Size**: 5,601 lines
+- **Total Lines Removed**: ~2,977 lines (34.7% reduction)
 - **Routes Modularized**: 15 route files now in /routes/
 - **Models Extracted**: 61 models now in /models/
+- **Core Utilities**: Agent configs, helpers extracted to core/
 
 ### Phase 1: Extract Standalone Features (Low Risk)
 These sections have minimal dependencies and can be extracted first:
