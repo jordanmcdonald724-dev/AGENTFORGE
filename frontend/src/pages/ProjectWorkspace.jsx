@@ -1284,21 +1284,44 @@ const ProjectWorkspace = () => {
                       className="rounded-lg"
                     >
                       <div className="flex gap-3">
-                        <textarea 
-                          placeholder={project?.phase === "clarification" ? "Describe your project or drop files here..." : "What would you like to build? (drag files to attach)"} 
-                          value={chatInput} 
-                          onChange={(e) => setChatInput(e.target.value)} 
-                          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageStreaming(); }}} 
-                          className="flex-1 min-h-[120px] text-sm rounded-lg p-4 outline-none focus:ring-2"
-                          style={{ 
-                            backgroundColor: 'var(--bg-tertiary)', 
-                            border: '2px solid var(--border-color)',
-                            color: 'var(--text-primary)',
-                            resize: 'vertical',
-                            maxHeight: '400px'
-                          }}
-                          data-testid="chat-input" 
-                        />
+                        <div className="flex-1 relative">
+                          <textarea 
+                            placeholder={project?.phase === "clarification" ? "Describe your project..." : "What would you like to build?"} 
+                            value={chatInput} 
+                            onChange={(e) => setChatInput(e.target.value)} 
+                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageStreaming(); }}} 
+                            className="w-full min-h-[120px] text-sm rounded-lg p-4 pb-12 outline-none focus:ring-2"
+                            style={{ 
+                              backgroundColor: 'var(--bg-tertiary)', 
+                              border: '2px solid var(--border-color)',
+                              color: 'var(--text-primary)',
+                              resize: 'vertical',
+                              maxHeight: '400px'
+                            }}
+                            data-testid="chat-input" 
+                          />
+                          {/* Attach button - bottom left corner */}
+                          <button
+                            type="button"
+                            onClick={() => document.getElementById('file-input-chat')?.click()}
+                            className="absolute bottom-3 left-3 p-2 rounded-lg transition-colors hover:bg-zinc-700/50"
+                            style={{ color: 'var(--text-muted)' }}
+                            title="Attach files"
+                          >
+                            <Plus className="w-5 h-5" />
+                          </button>
+                          <input
+                            id="file-input-chat"
+                            type="file"
+                            multiple
+                            className="hidden"
+                            onChange={(e) => {
+                              if (e.target.files) {
+                                setAttachedFiles(prev => [...prev, ...Array.from(e.target.files)]);
+                              }
+                            }}
+                          />
+                        </div>
                         <Button 
                           onClick={sendMessageStreaming} 
                           disabled={sending || !chatInput.trim()} 
