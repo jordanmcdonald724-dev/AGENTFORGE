@@ -2610,148 +2610,13 @@ async def stream_agent_chain(request: AgentChainRequest):
     
     return StreamingResponse(generate(), media_type="text/event-stream")
 
-# ============ QUICK ACTIONS ============
-
-@api_router.get("/quick-actions")
-async def get_quick_actions():
-    """Get available quick actions"""
-    return list(QUICK_ACTIONS.values())
-
-@api_router.post("/quick-actions/execute")
-async def execute_quick_action(request: QuickActionRequest):
-    """Execute a quick action"""
-    action = QUICK_ACTIONS.get(request.action_id)
-    if not action:
-        raise HTTPException(status_code=404, detail="Quick action not found")
-    
-    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    # Fill in template variables
-    prompt = action['prompt'].format(
-        engine_type=project.get('type', 'game'),
-        engine_version=project.get('engine_version', ''),
-        **request.parameters
-    )
-    
-    # Execute as agent chain
-    chain_request = AgentChainRequest(
-        project_id=request.project_id,
-        message=prompt,
-        chain=action['chain']
-    )
-    
-    return await execute_agent_chain(chain_request)
-
-@api_router.post("/quick-actions/execute/stream")
-async def stream_quick_action(request: QuickActionRequest):
-    """Stream execute a quick action"""
-    action = QUICK_ACTIONS.get(request.action_id)
-    if not action:
-        raise HTTPException(status_code=404, detail="Quick action not found")
-    
-    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    prompt = action['prompt'].format(
-        engine_type=project.get('type', 'game'),
-        engine_version=project.get('engine_version', ''),
-        **request.parameters
-    )
-    
-    chain_request = AgentChainRequest(
-        project_id=request.project_id,
-        message=prompt,
-        chain=action['chain']
-    )
-    
-    return await stream_agent_chain(chain_request)
-
+# NOTE: Quick Actions, Live Preview, and Custom Actions have been extracted to /routes/quick_actions.py
+# Routes now handled by the modular router:
+# - GET/POST /api/quick-actions/*
+# - GET /api/projects/{id}/preview, /api/projects/{id}/preview-data
+# - GET/POST/DELETE /api/custom-actions/*
 
 # NOTE: God Mode V1 routes have been extracted to /routes/god_mode_v1.py
-# The following routes are now handled by the modular router:
-# - POST /api/god-mode/activate
-# - POST /api/god-mode/build/stream
-# - GET /api/god-mode/status/{project_id}
-# - POST /api/god-mode/resume
-# - GET /api/god-mode/download/{project_id}
-
-
-# ============ LIVE PREVIEW ============
-
-@api_router.get("/projects/{project_id}/preview")
-async def get_project_preview(project_id: str):
-    """Get live preview HTML for web projects"""
-    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    if project['type'] not in ['web_app', 'web_game']:
-        raise HTTPException(status_code=400, detail="Preview only available for web projects")
-    
-    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
-    
-    # Find HTML file
-    html_file = next((f for f in files if f['filepath'].endswith('.html') or f['filename'] == 'index.html'), None)
-    css_files = [f for f in files if f['filepath'].endswith('.css')]
-    js_files = [f for f in files if f['filepath'].endswith('.js')]
-    
-    if not html_file:
-        # Generate basic preview HTML
-        html_content = """<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Preview</title>
-    <style>{css}</style>
-</head>
-<body>
-    <div id="app">
-        <h1>Project Preview</h1>
-        <p>No index.html found. Create an HTML file to see your preview.</p>
-    </div>
-    <script>{js}</script>
-</body>
-</html>"""
-        css_content = "\n".join([f['content'] for f in css_files])
-        js_content = "\n".join([f['content'] for f in js_files])
-        html_content = html_content.format(css=css_content, js=js_content)
-    else:
-        html_content = html_file['content']
-        
-        # Inject CSS and JS if not already included
-        if css_files and '<style>' not in html_content:
-            css_content = "\n".join([f['content'] for f in css_files])
-            html_content = html_content.replace('</head>', f'<style>{css_content}</style></head>')
-        
-        if js_files and '</body>' in html_content:
-            js_content = "\n".join([f['content'] for f in js_files])
-            html_content = html_content.replace('</body>', f'<script>{js_content}</script></body>')
-    
-    return HTMLResponse(content=html_content)
-
-@api_router.get("/projects/{project_id}/preview-data")
-async def get_preview_data(project_id: str):
-    """Get preview data including HTML, CSS, JS separately"""
-    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
-    
-    html_files = [f for f in files if f['filepath'].endswith('.html')]
-    css_files = [f for f in files if f['filepath'].endswith('.css')]
-    js_files = [f for f in files if f['filepath'].endswith('.js')]
-    
-    return {
-        "html": [{"path": f['filepath'], "content": f['content']} for f in html_files],
-        "css": [{"path": f['filepath'], "content": f['content']} for f in css_files],
-        "js": [{"path": f['filepath'], "content": f['content']} for f in js_files],
-        "project_type": project['type']
-    }
 
 # ============ AGENT MEMORY PERSISTENCE ============
 
@@ -2849,86 +2714,7 @@ Output as JSON array:
     
     return {"extracted": 0, "memories": []}
 
-# ============ CUSTOM QUICK ACTIONS ============
-
-@api_router.post("/custom-actions")
-async def create_custom_action(action_data: CustomActionCreate):
-    """Create a custom quick action"""
-    action = CustomQuickAction(
-        name=action_data.name,
-        description=action_data.description,
-        prompt=action_data.prompt,
-        chain=action_data.chain,
-        icon=action_data.icon,
-        category=action_data.category,
-        is_global=action_data.is_global,
-        project_id=action_data.project_id
-    )
-    doc = action.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    await db.custom_actions.insert_one(doc)
-    return serialize_doc(doc)
-
-@api_router.get("/custom-actions")
-async def get_custom_actions(project_id: Optional[str] = None):
-    """Get custom quick actions (global + project-specific)"""
-    query = {"$or": [{"is_global": True}]}
-    if project_id:
-        query["$or"].append({"project_id": project_id})
-    
-    actions = await db.custom_actions.find(query, {"_id": 0}).to_list(100)
-    return actions
-
-@api_router.delete("/custom-actions/{action_id}")
-async def delete_custom_action(action_id: str):
-    await db.custom_actions.delete_one({"id": action_id})
-    return {"success": True}
-
-@api_router.post("/custom-actions/{action_id}/execute")
-async def execute_custom_action(action_id: str, project_id: str):
-    """Execute a custom quick action"""
-    action = await db.custom_actions.find_one({"id": action_id}, {"_id": 0})
-    if not action:
-        raise HTTPException(status_code=404, detail="Custom action not found")
-    
-    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    # Fill template variables
-    prompt = action['prompt'].replace('{engine_type}', project.get('type', 'game'))
-    prompt = prompt.replace('{engine_version}', project.get('engine_version', ''))
-    prompt = prompt.replace('{project_name}', project.get('name', ''))
-    
-    chain_request = AgentChainRequest(
-        project_id=project_id,
-        message=prompt,
-        chain=action['chain']
-    )
-    
-    return await execute_agent_chain(chain_request)
-
-@api_router.post("/custom-actions/{action_id}/execute/stream")
-async def stream_custom_action(action_id: str, project_id: str):
-    """Stream execute a custom quick action"""
-    action = await db.custom_actions.find_one({"id": action_id}, {"_id": 0})
-    if not action:
-        raise HTTPException(status_code=404, detail="Custom action not found")
-    
-    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    prompt = action['prompt'].replace('{engine_type}', project.get('type', 'game'))
-    prompt = prompt.replace('{engine_version}', project.get('engine_version', ''))
-    
-    chain_request = AgentChainRequest(
-        project_id=project_id,
-        message=prompt,
-        chain=action['chain']
-    )
-    
-    return await stream_agent_chain(chain_request)
+# NOTE: Custom Quick Actions have been extracted to /routes/quick_actions.py
 
 # ============ PROJECT DUPLICATION ============
 
@@ -8059,6 +7845,7 @@ try:
     from routes.build_memory import router as memory_router
     from routes.settings import router as settings_router
     from routes.settings import local_bridge_router
+    from routes.quick_actions import router as quick_actions_router
     
     app.include_router(game_engine_router, prefix="/api", tags=["game-engine"])
     app.include_router(hardware_router, prefix="/api", tags=["hardware"])
@@ -8069,7 +7856,8 @@ try:
     app.include_router(memory_router, prefix="/api", tags=["memory"])
     app.include_router(settings_router, prefix="/api", tags=["settings"])
     app.include_router(local_bridge_router, prefix="/api", tags=["local-bridge"])
-    logger.info("Successfully loaded new feature routers (game-engine, hardware, research, pipeline, god-mode-v1, god-mode-v2, memory, settings)")
+    app.include_router(quick_actions_router, prefix="/api", tags=["quick-actions"])
+    logger.info("Successfully loaded new feature routers (game-engine, hardware, research, pipeline, god-mode-v1, god-mode-v2, memory, settings, quick-actions)")
 except Exception as e:
     logger.warning(f"Could not load new feature routers: {e}")
 

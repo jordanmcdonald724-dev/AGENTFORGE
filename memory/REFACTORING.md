@@ -13,12 +13,15 @@
 |---------|---------------|-------------|--------|
 | Settings & Local Bridge | ~91 | `routes/settings.py` | ✅ DONE |
 | God Mode V1 | ~394 | `routes/god_mode_v1.py` | ✅ DONE |
+| Quick Actions | ~58 | `routes/quick_actions.py` | ✅ DONE |
+| Live Preview | ~72 | `routes/quick_actions.py` | ✅ DONE |
+| Custom Actions | ~83 | `routes/quick_actions.py` | ✅ DONE |
 
 ### Server.py Progress
 - **Original Size**: 8,578 lines
-- **Current Size**: 8,096 lines  
-- **Lines Removed**: ~482 lines (5.6% reduction)
-- **Routes Modularized**: Settings, Local Bridge, God Mode V1, God Mode V2, Memory, Pipeline, Game Engine, Hardware, Research
+- **Current Size**: 7,884 lines  
+- **Lines Removed**: ~694 lines (8.1% reduction)
+- **Routes Modularized**: Settings, Local Bridge, God Mode V1, God Mode V2, Memory, Pipeline, Game Engine, Hardware, Research, Quick Actions, Custom Actions, Live Preview
 
 ### Phase 1: Extract Standalone Features (Low Risk)
 These sections have minimal dependencies and can be extracted first:
