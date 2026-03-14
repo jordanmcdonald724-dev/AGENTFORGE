@@ -1,0 +1,9 @@
+{
+  "name": "com.agentforge.localbridge",
+  "description": "AgentForge Local Bridge",
+  "path": "C:\\Users\\%USERNAME%\\.agentforge\\agentforge_bridge.bat",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://nmakkklbhdjmddeglkgaonikejnphaii/"
+  ]
+}
