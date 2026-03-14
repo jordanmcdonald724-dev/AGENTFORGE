@@ -8,13 +8,14 @@ import {
   Brain, Code, Shield, Rocket, Users, Activity, CheckCircle,
   XCircle, Clock, Cpu, Layers, Eye, ChevronRight, Loader2,
   Terminal, FileCode, Sparkles, Download, RefreshCw, Timer,
-  Database, TrendingUp, GitBranch
+  Database, TrendingUp, GitBranch, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { API } from '@/App';
+import FileDropZone from '@/components/FileDropZone';
 
 // Agent Configuration
 const AGENTS = {
@@ -52,6 +53,8 @@ const GodModePage = () => {
   
   const [logs, setLogs] = useState([]);
   const [files, setFiles] = useState([]);
+  const [buildPrompt, setBuildPrompt] = useState('');
+  const [attachedFiles, setAttachedFiles] = useState([]);
   const [stats, setStats] = useState({
     buildTime: 0,
     filesGenerated: 0,
@@ -298,27 +301,49 @@ const GodModePage = () => {
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 max-w-6xl mx-auto w-full px-6 py-8">
-        {/* Build Input - Emergen style */}
+        {/* Build Input - Emergent style */}
         {!isBuilding && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
               <FileDropZone 
-                onFilesAdded={(files) => setAttachedFiles(prev => [...prev, ...files])}
+                onFilesAdded={(newFiles) => setAttachedFiles(prev => [...prev, ...newFiles])}
               >
-                <div className="flex gap-3 items-end">
-                  <textarea
-                    value={buildPrompt}
-                    onChange={(e) => setBuildPrompt(e.target.value)}
-                    placeholder="Describe what you want to build, or drag files here..."
-                    className="flex-1 min-h-[100px] max-h-[300px] bg-transparent border-0 text-white placeholder-zinc-500 focus:outline-none resize-none p-3"
-                    style={{ fontFamily: 'inherit' }}
-                  />
-                </div>
+                <textarea
+                  value={buildPrompt}
+                  onChange={(e) => setBuildPrompt(e.target.value)}
+                  placeholder="Describe what you want to build, or drag files here..."
+                  className="w-full min-h-[120px] max-h-[300px] bg-transparent border-0 text-white placeholder-zinc-500 focus:outline-none resize-none p-4"
+                  style={{ fontFamily: 'inherit' }}
+                  data-testid="god-mode-prompt"
+                />
               </FileDropZone>
+              
+              {/* Attached Files Display */}
+              {attachedFiles.length > 0 && (
+                <div className="border-t border-zinc-800 p-3">
+                  <div className="flex flex-wrap gap-2">
+                    {attachedFiles.map((file, idx) => (
+                      <div 
+                        key={idx}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700/50 text-sm"
+                      >
+                        <FileCode className="w-4 h-4 text-zinc-400" />
+                        <span className="text-zinc-300 max-w-[150px] truncate">{file.name}</span>
+                        <button
+                          onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
+                          className="p-0.5 rounded hover:bg-zinc-700 transition-colors"
+                        >
+                          <X className="w-3 h-3 text-zinc-400" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </motion.div>
         )}

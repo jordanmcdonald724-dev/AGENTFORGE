@@ -18,7 +18,7 @@ DB_NAME=agentforge
 CORS_ORIGINS=*
 
 # AI Services (Required for agents to work)
-FAL_KEY=00fc2230-59bc-4f40-a42a-ba313a5523f3:114c9ab5a4bbd94c1cac728820cf60e0
+FAL_KEY=premium-os-ui:114c9ab5a4bbd94c1cac728820cf60e0
 EMERGENT_LLM_KEY=sk-emergent-93a44EcAbB7E68aE7B
 ```
 
@@ -96,7 +96,7 @@ Users will configure these in the AgentForge UI Settings page when they want to 
 ```
 DB_NAME=agentforge
 CORS_ORIGINS=*
-FAL_KEY=00fc2230-59bc-4f40-a42a-ba313a5523f3:114c9ab5a4bbd94c1cac728820cf60e0
+FAL_KEY=premium-os-ui:114c9ab5a4bbd94c1cac728820cf60e0
 EMERGENT_LLM_KEY=sk-emergent-93a44EcAbB7E68aE7B
 ```
 

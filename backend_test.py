@@ -17,7 +17,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 # Test Configuration
-BACKEND_URL = "https://file-examiner-10.preview.emergentagent.com/api"
+BACKEND_URL = "https://premium-os-ui.preview.emergentagent.com/api"
 TEST_PROJECT_ID = "334166ac-9ea3-45d8-b4d2-3c81e7ef19c1"
 
 class APITestRunner:

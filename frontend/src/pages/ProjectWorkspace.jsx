@@ -836,7 +836,7 @@ const ProjectWorkspace = () => {
                   <Radio className="w-4 h-4 mr-2 text-cyan-400" />
                   Simulate Build
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setMemoriesDialogOpen(true)}>
+                <DropdownMenuItem onClick={() => setMemoryDialog(true)}>
                   <Brain className="w-4 h-4 mr-2 text-purple-400" />
                   View Memories
                 </DropdownMenuItem>
@@ -854,7 +854,7 @@ const ProjectWorkspace = () => {
         </div>
       </header>
 
-      {/* Dialogs stay the same */}
+      {/* Dialogs */}
       <Dialog open={simulationDialog} onOpenChange={setSimulationDialog}>
               <DialogTrigger asChild><Button variant="outline" size="sm" className="border-cyan-700 text-cyan-400 hover:bg-cyan-500/10" data-testid="simulation-btn"><Radio className="w-4 h-4 mr-1" />Simulate</Button></DialogTrigger>
               <DialogContent className="bg-[#18181b] border-zinc-700 max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -1082,69 +1082,6 @@ const ProjectWorkspace = () => {
               </Dialog>
             )}
 
-            {/* Other header buttons */}
-            <Dialog open={refactorDialog} onOpenChange={setRefactorDialog}>
-              <DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><Replace className="w-4 h-4 mr-1" />Refactor</Button></DialogTrigger>
-              <DialogContent className="bg-[#18181b] border-zinc-700 max-w-lg">
-                <DialogHeader><DialogTitle className="font-rajdhani text-white flex items-center gap-2"><Wand2 className="w-5 h-5 text-blue-400" />Multi-File Refactor</DialogTitle></DialogHeader>
-                <div className="space-y-4 py-4">
-                  <Select value={refactorData.type} onValueChange={(v) => setRefactorData({ ...refactorData, type: v })}><SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="find_replace">Find & Replace</SelectItem><SelectItem value="rename">Rename Symbol</SelectItem></SelectContent></Select>
-                  <Input placeholder="Find what..." value={refactorData.target} onChange={(e) => setRefactorData({ ...refactorData, target: e.target.value })} className="bg-zinc-900 border-zinc-700" />
-                  <Input placeholder="Replace with..." value={refactorData.new_value} onChange={(e) => setRefactorData({ ...refactorData, new_value: e.target.value })} className="bg-zinc-900 border-zinc-700" />
-                  <Button variant="outline" className="w-full border-zinc-700" onClick={previewRefactor}><Search className="w-4 h-4 mr-2" />Preview Changes</Button>
-                  {refactorPreview && (<div className="p-3 rounded bg-zinc-900 border border-zinc-700"><p className="text-sm text-zinc-400 mb-2">{refactorPreview.files_affected} files will be modified</p>{refactorPreview.changes?.slice(0, 3).map((c, i) => (<div key={i} className="text-xs text-zinc-500">• {c.filepath} ({c.occurrences} occurrences)</div>))}</div>)}
-                </div>
-                <DialogFooter><Button onClick={applyRefactor} disabled={!refactorPreview?.files_affected} className="bg-blue-500 hover:bg-blue-600">Apply Refactor</Button></DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={memoryDialog} onOpenChange={setMemoryDialog}>
-              <DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><Brain className="w-4 h-4 mr-1" />Memory</Button></DialogTrigger>
-              <DialogContent className="bg-[#18181b] border-zinc-700 max-w-lg">
-                <DialogHeader><DialogTitle className="font-rajdhani text-white flex items-center gap-2"><Brain className="w-5 h-5 text-purple-400" />Agent Memories ({memories.length})</DialogTitle></DialogHeader>
-                <div className="py-4">
-                  <Button variant="outline" className="w-full mb-4 border-zinc-700" onClick={extractMemories}><Sparkles className="w-4 h-4 mr-2" />Extract Memories from Conversation</Button>
-                  <ScrollArea className="h-[300px]">
-                    {memories.length === 0 ? <p className="text-center text-zinc-500 py-8">No memories yet</p> : (
-                      <div className="space-y-2">{memories.map((m) => (<div key={m.id} className="p-3 rounded bg-zinc-900 border border-zinc-800 group"><div className="flex items-center justify-between mb-1"><Badge variant="outline" className="text-[10px] border-zinc-700">{m.agent_name}</Badge><Badge className={`text-[10px] ${m.importance >= 7 ? 'bg-amber-500/20 text-amber-400' : 'bg-zinc-800 text-zinc-500'}`}>imp: {m.importance}</Badge></div><p className="text-sm text-zinc-300">{m.content}</p><Button variant="ghost" size="sm" className="h-6 mt-2 opacity-0 group-hover:opacity-100" onClick={() => deleteMemory(m.id)}><Trash2 className="w-3 h-3 text-red-400 mr-1" />Delete</Button></div>))}</div>
-                    )}
-                  </ScrollArea>
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={duplicateDialog} onOpenChange={setDuplicateDialog}>
-              <DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><CopyPlus className="w-4 h-4" /></Button></DialogTrigger>
-              <DialogContent className="bg-[#18181b] border-zinc-700">
-                <DialogHeader><DialogTitle className="font-rajdhani text-white">Duplicate Project</DialogTitle></DialogHeader>
-                <div className="py-4"><Input placeholder="New project name" value={duplicateName} onChange={(e) => setDuplicateName(e.target.value)} className="bg-zinc-900 border-zinc-700" /></div>
-                <DialogFooter><Button onClick={duplicateProject} className="bg-blue-500 hover:bg-blue-600"><CopyPlus className="w-4 h-4 mr-2" />Duplicate with Files</Button></DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={githubDialogOpen} onOpenChange={setGithubDialogOpen}><DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><Github className="w-4 h-4 mr-1" />Push</Button></DialogTrigger><DialogContent className="bg-[#18181b] border-zinc-700"><DialogHeader><DialogTitle className="font-rajdhani text-white"><Github className="w-5 h-5 inline mr-2" />Push to GitHub</DialogTitle></DialogHeader><div className="space-y-4 py-4"><div><label className="text-sm text-zinc-400 mb-2 block">GitHub Token</label><Input type="password" placeholder="ghp_xxxx" value={githubToken} onChange={(e) => setGithubToken(e.target.value)} className="bg-zinc-900 border-zinc-700" /></div><div><label className="text-sm text-zinc-400 mb-2 block">Repo Name</label><Input value={githubRepoName} onChange={(e) => setGithubRepoName(e.target.value)} className="bg-zinc-900 border-zinc-700" /></div><div className="flex items-center gap-2"><input type="checkbox" id="create-new" checked={githubCreateNew} onChange={(e) => setGithubCreateNew(e.target.checked)} /><label htmlFor="create-new" className="text-sm text-zinc-400">Create new if not exists</label></div></div><DialogFooter><Button onClick={pushToGithub} disabled={pushing} className="bg-blue-500 hover:bg-blue-600">{pushing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Rocket className="w-4 h-4 mr-2" />}Push</Button></DialogFooter></DialogContent></Dialog>
-
-            <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}><DialogTrigger asChild><Button variant="outline" size="sm" className="border-zinc-700"><Image className="w-4 h-4" /></Button></DialogTrigger><DialogContent className="bg-[#18181b] border-zinc-700"><DialogHeader><DialogTitle className="font-rajdhani text-white">Generate Asset</DialogTitle></DialogHeader><div className="space-y-4 py-4"><Textarea placeholder="Describe..." value={imagePrompt} onChange={(e) => setImagePrompt(e.target.value)} className="bg-zinc-900 border-zinc-700 min-h-[100px]" /><Select value={imageCategory} onValueChange={setImageCategory}><SelectTrigger className="bg-zinc-900 border-zinc-700"><SelectValue /></SelectTrigger><SelectContent className="bg-zinc-900 border-zinc-700"><SelectItem value="concept">Concept Art</SelectItem><SelectItem value="character">Character</SelectItem><SelectItem value="environment">Environment</SelectItem><SelectItem value="ui">UI</SelectItem><SelectItem value="texture">Texture</SelectItem></SelectContent></Select></div><DialogFooter><Button onClick={generateImage} disabled={generatingImage} className="bg-blue-500 hover:bg-blue-600">{generatingImage ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}Generate</Button></DialogFooter></DialogContent></Dialog>
-
-            {/* Theme Selector */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="border-zinc-700" data-testid="theme-btn">
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-64 bg-zinc-900 border-zinc-700" align="end">
-                <DropdownMenuLabel className="text-zinc-400">Appearance</DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-zinc-800" />
-                <ThemeSelector />
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <Button variant="outline" size="sm" className="border-zinc-700" onClick={exportProject}><Download className="w-4 h-4" /></Button>
-          </div>
-        </div>
-      </header>
-
       {/* Main */}
       <div className="flex-1 overflow-hidden min-h-0">
         <ResizablePanelGroup direction="horizontal">
@@ -1309,32 +1246,60 @@ const ProjectWorkspace = () => {
                   </div>
                   <div className="flex-shrink-0 p-4 border-t" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
                     {selectedAgent && <div className="mb-2 flex items-center gap-2"><span className="text-xs" style={{ color: 'var(--text-muted)' }}>Speaking to:</span><Badge style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>{agents.find(a => a.id === selectedAgent)?.name}</Badge><Button variant="ghost" size="sm" className="h-5 px-2" onClick={() => setSelectedAgent(null)}><X className="w-3 h-3" /></Button></div>}
-                    <div className="flex gap-3">
-                      <textarea 
-                        placeholder={project?.phase === "clarification" ? "Describe your project..." : "What would you like to build?"} 
-                        value={chatInput} 
-                        onChange={(e) => setChatInput(e.target.value)} 
-                        onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageStreaming(); }}} 
-                        className="flex-1 min-h-[120px] text-sm rounded-lg p-4 outline-none focus:ring-2"
-                        style={{ 
-                          backgroundColor: 'var(--bg-tertiary)', 
-                          border: '2px solid var(--border-color)',
-                          color: 'var(--text-primary)',
-                          resize: 'vertical',
-                          maxHeight: '400px'
-                        }}
-                        data-testid="chat-input" 
-                      />
-                      <Button 
-                        onClick={sendMessageStreaming} 
-                        disabled={sending || !chatInput.trim()} 
-                        className="self-end h-14 px-6 rounded-lg text-white font-medium"
-                        style={{ backgroundColor: 'var(--accent)' }}
-                        data-testid="send-btn"
-                      >
-                        {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-5 h-5 mr-2" />Send</>}
-                      </Button>
-                    </div>
+                    
+                    {/* Attached Files Display */}
+                    {attachedFiles.length > 0 && (
+                      <div className="mb-3 flex flex-wrap gap-2">
+                        {attachedFiles.map((file, idx) => (
+                          <div 
+                            key={idx}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm"
+                            style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}
+                          >
+                            <FileCode className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                            <span className="max-w-[150px] truncate" style={{ color: 'var(--text-secondary)' }}>{file.name}</span>
+                            <button
+                              onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
+                              className="p-0.5 rounded hover:bg-zinc-700/50 transition-colors"
+                            >
+                              <X className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    <FileDropZone 
+                      onFilesAdded={(newFiles) => setAttachedFiles(prev => [...prev, ...newFiles])}
+                      className="rounded-lg"
+                    >
+                      <div className="flex gap-3">
+                        <textarea 
+                          placeholder={project?.phase === "clarification" ? "Describe your project or drop files here..." : "What would you like to build? (drag files to attach)"} 
+                          value={chatInput} 
+                          onChange={(e) => setChatInput(e.target.value)} 
+                          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageStreaming(); }}} 
+                          className="flex-1 min-h-[120px] text-sm rounded-lg p-4 outline-none focus:ring-2"
+                          style={{ 
+                            backgroundColor: 'var(--bg-tertiary)', 
+                            border: '2px solid var(--border-color)',
+                            color: 'var(--text-primary)',
+                            resize: 'vertical',
+                            maxHeight: '400px'
+                          }}
+                          data-testid="chat-input" 
+                        />
+                        <Button 
+                          onClick={sendMessageStreaming} 
+                          disabled={sending || !chatInput.trim()} 
+                          className="self-end h-14 px-6 rounded-lg text-white font-medium"
+                          style={{ backgroundColor: 'var(--accent)' }}
+                          data-testid="send-btn"
+                        >
+                          {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-5 h-5 mr-2" />Send</>}
+                        </Button>
+                      </div>
+                    </FileDropZone>
                   </div>
                   </div>
                 )}

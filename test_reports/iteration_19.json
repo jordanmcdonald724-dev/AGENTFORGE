@@ -72,8 +72,8 @@
   "context_for_next_testing_agent": "Full testing of AgentForge AI Software Factory complete. Backend APIs for pipeline (10 specialist agents), God Mode V2 (streaming recursive build), memory system (stats, recommendations, agent performance), settings, and local bridge all working. Frontend Command Center shows all 10 agents (DIRECTOR, ATLAS, PIXEL, NEXUS, TITAN, SYNAPSE, DEPLOY, SENTINEL, PHOENIX, PROBE) with recursive loop progress (4 iterations: Functional Build, Improved UX, Optimized Performance, Production Polish). God Mode page has PUSH TO LOCAL and LOCAL BUILD buttons for Unreal Engine integration. All routes properly mounted via include_router in server.py.",
 
   "test_environment": {
-    "frontend_url": "https://file-examiner-10.preview.emergentagent.com",
-    "backend_url": "https://file-examiner-10.preview.emergentagent.com/api",
+    "frontend_url": "https://premium-os-ui.preview.emergentagent.com",
+    "backend_url": "https://premium-os-ui.preview.emergentagent.com/api",
     "test_project_id": "62d21bbb-119c-4938-91ba-5d796d8aa0fd",
     "viewport": "1920x1080 (Desktop)"
   },

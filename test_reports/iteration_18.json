@@ -65,7 +65,7 @@
   "context_for_next_testing_agent": "UI redesign regression test complete. Grouped dropdown navigation replaces the previous 17-tab horizontal bar. All 16 panels accessible via dropdown menu organized in 5 groups (Core, Build, Assets, Advanced, Operations). 4 themes available (Dark, Light, Midnight, JARVIS). Quick shortcuts provide fast access to Chat, War Room, and Blueprints. Theme selector uses radix-ui dropdown that stays open after selection (expected behavior).",
 
   "test_environment": {
-    "frontend_url": "https://file-examiner-10.preview.emergentagent.com",
+    "frontend_url": "https://premium-os-ui.preview.emergentagent.com",
     "test_project": "Labs Test Project",
     "viewport": "1920x1080 (Desktop)"
   },
