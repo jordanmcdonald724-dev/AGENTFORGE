@@ -7,7 +7,7 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 14, 2026) - CRITICAL UI FIX
+### Latest Update (March 14, 2026) - CRITICAL UI FIX + HEADER REFACTOR
 
 **Black Screen Fix:**
 - ✅ **Fixed fatal JSX error** in `ProjectWorkspace.jsx` - Duplicate `</header>` tag causing React crash
@@ -20,14 +20,27 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 - ✅ **Normal Build chat** - Integrated `FileDropZone` component with attached files display
 - ✅ **Updated placeholders** - Now indicate drag & drop support
 
+**Header Refactor - Clean Tabbed Interface:**
+- ✅ **Consolidated header** - Single-row with integrated tabs (Chat, Tasks, War Room, Blueprints)
+- ✅ **"More" dropdown** - Access additional panels (Build, Assets, Advanced, Operations)
+- ✅ **God Mode button** - Prominent amber button for quick access
+- ✅ **Settings dropdown** - Simulate, Memories, GitHub, Assets, Export
+- ✅ **Removed old redundant** - Dropdown panel selector and tab shortcuts
+
+**Backend Cleanup:**
+- ✅ **Removed duplicate `QUICK_ACTIONS`** from `backend/routes/chains.py`
+- ✅ **Single source of truth** - Now imports from `server.py`
+
 **Files Changed:**
-- `pages/ProjectWorkspace.jsx` - Fixed duplicate header, added FileDropZone to chat input
-- `pages/GodModePage.jsx` - Added missing state vars, FileDropZone import, improved UI
+- `pages/ProjectWorkspace.jsx` - Fixed header, added FileDropZone, refactored to tabbed interface
+- `pages/GodModePage.jsx` - Added missing state vars, FileDropZone import
+- `backend/routes/chains.py` - Removed duplicate, imports from server.py
 
 **Testing Status:**
 - ✅ Dashboard loads correctly
-- ✅ Project Workspace renders with file drop enabled
-- ✅ God Mode page renders with text input and file drop
+- ✅ Project Workspace with clean tabbed header
+- ✅ God Mode page with text input and file drop
+- ✅ Backend `/api/quick-actions` working
 
 ---
 

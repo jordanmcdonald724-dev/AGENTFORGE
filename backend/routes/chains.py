@@ -17,113 +17,11 @@ import re
 
 router = APIRouter(tags=["chains"])
 
-
-QUICK_ACTIONS = {
-    "landing_page": {
-        "id": "landing_page",
-        "name": "Landing Page",
-        "description": "Generate a complete landing page with hero, features, contact",
-        "icon": "layout",
-        "chain": ["FORGE"],
-        "prompt": """Generate a complete, modern React landing page. DO NOT ask questions, just build it.
-
-Create these files:
-
-1. src/App.js - Main app with routing
-2. src/components/Hero.jsx - Hero section with headline, subtext, CTA button
-3. src/components/Features.jsx - 3 feature cards with icons
-4. src/components/Contact.jsx - Contact form (name, email, message)
-5. src/components/Footer.jsx - Simple footer
-6. src/index.css - Tailwind styles, dark modern theme
-
-Use:
-- React 18 with functional components
-- Tailwind CSS for styling
-- Lucide React for icons
-- Dark theme with blue accents
-- Responsive design
-- Smooth animations
-
-Generate ALL the code now. Include FULL file contents with ```javascript:filepath syntax."""
-    },
-    "player_controller": {
-        "id": "player_controller",
-        "name": "Player Controller",
-        "description": "Generate a complete player movement system",
-        "icon": "gamepad",
-        "chain": ["FORGE"],
-        "prompt": """Generate a COMPLETE player controller system for Unreal Engine 5. DO NOT ask questions, just build with these defaults.
-
-Create ALL these files with full implementations:
-
-1. Source/OceanCivilizationSimulator/Player/OCSPlayerController.h
-2. Source/OceanCivilizationSimulator/Player/OCSPlayerController.cpp  
-3. Source/OceanCivilizationSimulator/Player/OCSCharacterMovement.h
-4. Source/OceanCivilizationSimulator/Player/OCSCharacterMovement.cpp
-
-Include:
-- WASD movement (walk: 300, run: 500, sprint: 700 units/s)
-- Sprint (Shift key, 1.4x multiplier)
-- Crouch (Ctrl key, 0.5x speed, reduced capsule to 44,48)
-- Jump velocity 500, coyote time 0.15s
-- Mouse look with 45 pitch clamp
-- Ground detection with line traces
-
-Use UPROPERTY/UFUNCTION macros, make BlueprintCallable.
-
-Output with ```cpp:filepath format NOW."""
-    },
-    "inventory_system": {
-        "id": "inventory_system",
-        "name": "Inventory System",
-        "description": "Generate a flexible inventory system",
-        "icon": "package",
-        "chain": ["COMMANDER", "ATLAS", "FORGE"],
-        "prompt": """Design and implement a complete inventory system:
-- Item base class with properties
-- Inventory container with slots
-- Add/remove/move items
-- Save/load functionality
-For {engine_type} with best practices."""
-    },
-    "save_system": {
-        "id": "save_system",
-        "name": "Save/Load System",
-        "description": "Generate a save game system",
-        "icon": "save",
-        "chain": ["COMMANDER", "FORGE"],
-        "prompt": """Create a robust save/load system:
-- Serialization manager
-- Auto-save functionality
-- Multiple save slots
-For {engine_type}."""
-    },
-    "health_system": {
-        "id": "health_system",
-        "name": "Health & Damage",
-        "description": "Generate health and damage system",
-        "icon": "heart",
-        "chain": ["COMMANDER", "FORGE"],
-        "prompt": """Create a health and damage system:
-- Health component with max/current health
-- Damage types and resistance
-- Healing mechanics
-- UI hooks for health bars
-For {engine_type}."""
-    },
-    "ai_behavior": {
-        "id": "ai_behavior",
-        "name": "AI Behavior Tree",
-        "description": "Generate enemy AI with behavior tree",
-        "icon": "bot",
-        "chain": ["COMMANDER", "ATLAS", "FORGE"],
-        "prompt": """Create an AI system with behavior trees:
-- Behavior tree base nodes
-- Common behaviors (Patrol, Chase, Attack)
-- Perception system
-For {engine_type}."""
-    }
-}
+# Import QUICK_ACTIONS from server.py to maintain single source of truth
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from server import QUICK_ACTIONS
 
 
 @router.get("/quick-actions")

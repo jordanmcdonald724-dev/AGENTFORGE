@@ -762,14 +762,22 @@ const ProjectWorkspace = () => {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden transition-colors duration-300" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      {/* Header */}
+      {/* Clean Header with Integrated Tabs */}
       <header className="flex-shrink-0 backdrop-blur-lg border-b z-50 transition-colors duration-300" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
         <div className="px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} data-testid="back-btn"><ArrowLeft className="w-5 h-5" /></Button>
-            <div>
-              <h1 className="font-rajdhani text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>{project?.name}<Badge className={`${phaseConfig.color} text-xs`}><PhaseIcon className="w-3 h-3 mr-1" />{phaseConfig.label}</Badge>{project?.repo_url && <a href={project.repo_url} target="_blank" rel="noopener noreferrer"><Badge className="bg-zinc-800 text-zinc-400 hover:bg-zinc-700"><Github className="w-3 h-3 mr-1" />GitHub</Badge></a>}</h1>
-              <p className="text-xs flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
+          {/* Left: Back + Project Info */}
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")} data-testid="back-btn" className="h-8 w-8">
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div className="border-r pr-3" style={{ borderColor: 'var(--border-color)' }}>
+              <h1 className="font-rajdhani text-sm font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                {project?.name}
+                <Badge className={`${phaseConfig.color} text-[10px]`}>
+                  <PhaseIcon className="w-3 h-3 mr-1" />{phaseConfig.label}
+                </Badge>
+              </h1>
+              <p className="text-[11px] flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
                 {project?.type?.replace('_', ' ')}
                 {(project?.type === 'unreal' || project?.type === 'unity' || project?.type === 'godot') && (
                   <Select
@@ -784,8 +792,8 @@ const ProjectWorkspace = () => {
                       }
                     }}
                   >
-                    <SelectTrigger className="h-6 w-auto min-w-[80px] px-2 text-xs bg-transparent border-zinc-700">
-                      <SelectValue placeholder="Version" />
+                    <SelectTrigger className="h-5 w-auto min-w-[70px] px-2 text-[10px] bg-transparent border-zinc-700">
+                      <SelectValue placeholder="Ver" />
                     </SelectTrigger>
                     <SelectContent className="bg-zinc-900 border-zinc-700">
                       {project?.type === 'unreal' && (
@@ -793,8 +801,6 @@ const ProjectWorkspace = () => {
                           <SelectItem value="5.7">UE 5.7</SelectItem>
                           <SelectItem value="5.6">UE 5.6</SelectItem>
                           <SelectItem value="5.5">UE 5.5</SelectItem>
-                          <SelectItem value="5.4">UE 5.4</SelectItem>
-                          <SelectItem value="5.3">UE 5.3</SelectItem>
                         </>
                       )}
                       {project?.type === 'unity' && (
@@ -808,7 +814,6 @@ const ProjectWorkspace = () => {
                         <>
                           <SelectItem value="4.3">Godot 4.3</SelectItem>
                           <SelectItem value="4.2">Godot 4.2</SelectItem>
-                          <SelectItem value="4.1">Godot 4.1</SelectItem>
                         </>
                       )}
                     </SelectContent>
@@ -816,22 +821,92 @@ const ProjectWorkspace = () => {
                 )}
               </p>
             </div>
+            
+            {/* Center: Main Tabs */}
+            <div className="flex items-center">
+              {[
+                { id: "chat", icon: MessageSquare, label: "Chat" },
+                { id: "tasks", icon: ListTodo, label: "Tasks", badge: tasks.length },
+                { id: "warroom", icon: Radio, label: "War Room", badge: warRoomMessages.length },
+                { id: "blueprints", icon: GitBranch, label: "Blueprints", badge: blueprints.length },
+              ].map(({ id, icon: Icon, label, badge }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all border-b-2 ${
+                    activeTab === id 
+                      ? 'border-blue-500 text-blue-400' 
+                      : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                  }`}
+                  data-testid={`tab-${id}`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {label}
+                  {badge > 0 && (
+                    <span className={`ml-1 px-1.5 py-0.5 text-[10px] rounded-full ${
+                      activeTab === id ? 'bg-blue-500/20 text-blue-400' : 'bg-zinc-700 text-zinc-400'
+                    }`}>
+                      {badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+              
+              {/* More dropdown for additional panels */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1 px-3 py-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors">
+                    <Menu className="w-3.5 h-3.5" />
+                    More
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-48" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+                  {Object.entries(PANEL_GROUPS).filter(([key]) => !['core'].includes(key)).map(([groupKey, group]) => (
+                    <div key={groupKey}>
+                      <DropdownMenuLabel className="text-[10px] flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
+                        <group.icon className="w-3 h-3" />
+                        {group.label}
+                      </DropdownMenuLabel>
+                      {group.panels.map((panel) => (
+                        <DropdownMenuItem
+                          key={panel.id}
+                          onClick={() => setActiveTab(panel.id)}
+                          className="text-xs cursor-pointer"
+                          style={{ color: activeTab === panel.id ? 'var(--accent)' : 'var(--text-secondary)' }}
+                        >
+                          <panel.icon className="w-3.5 h-3.5 mr-2" />
+                          {panel.label}
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuSeparator style={{ backgroundColor: 'var(--border-color)' }} />
+                    </div>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           
-          {/* Actions moved to tabs - clean header */}
+          {/* Right: Actions */}
           <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-7 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+              onClick={() => navigate(`/project/${projectId}/god-mode`)}
+              data-testid="god-mode-btn"
+            >
+              <Zap className="w-3.5 h-3.5 mr-1" />
+              God Mode
+            </Button>
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="border-zinc-700">
-                  <Settings className="w-4 h-4 mr-1" />
-                  Actions
+                <Button variant="outline" size="sm" className="h-7 text-xs border-zinc-700">
+                  <Settings className="w-3.5 h-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-zinc-900 border-zinc-700">
-                <DropdownMenuItem onClick={() => navigate(`/project/${projectId}/god-mode`)}>
-                  <Zap className="w-4 h-4 mr-2 text-amber-400" />
-                  God Mode
-                </DropdownMenuItem>
+              <DropdownMenuContent className="bg-zinc-900 border-zinc-700" align="end">
                 <DropdownMenuItem onClick={() => setSimulationDialog(true)}>
                   <Radio className="w-4 h-4 mr-2 text-cyan-400" />
                   Simulate Build
@@ -847,6 +922,11 @@ const ProjectWorkspace = () => {
                 <DropdownMenuItem onClick={() => setImageDialogOpen(true)}>
                   <Image className="w-4 h-4 mr-2" />
                   Generate Asset
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-zinc-700" />
+                <DropdownMenuItem onClick={exportProject}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Project
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -1138,93 +1218,6 @@ const ProjectWorkspace = () => {
               {chainProgress && <div className="px-4 py-2 border-b" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /><span className="text-xs" style={{ color: 'var(--accent)' }}>Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
 
               <div className="flex-1 flex flex-col overflow-hidden">
-                {/* Clean Grouped Dropdown Navigation */}
-                <div className="flex-shrink-0 border-b px-4 py-2 flex items-center gap-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="min-w-[180px] justify-between transition-colors duration-300" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }} data-testid="panel-selector">
-                        <span className="flex items-center gap-2">
-                          {(() => {
-                            const ActiveIcon = Object.values(PANEL_GROUPS).flatMap(g => g.panels).find(p => p.id === activeTab)?.icon || MessageSquare;
-                            return <ActiveIcon className="w-4 h-4" style={{ color: 'var(--accent)' }} />;
-                          })()}
-                          <span className="text-sm">
-                            {Object.values(PANEL_GROUPS).flatMap(g => g.panels).find(p => p.id === activeTab)?.label || "Chat"}
-                          </span>
-                        </span>
-                        <ChevronDown className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56 transition-colors duration-300" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }} align="start">
-                      {Object.entries(PANEL_GROUPS).map(([groupKey, group]) => (
-                        <div key={groupKey}>
-                          <DropdownMenuLabel className="text-xs flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-                            <group.icon className="w-3 h-3" />
-                            {group.label}
-                          </DropdownMenuLabel>
-                          {group.panels.map((panel) => {
-                            const PanelIcon = panel.icon;
-                            const isActive = activeTab === panel.id;
-                            return (
-                              <DropdownMenuItem
-                                key={panel.id}
-                                onClick={() => setActiveTab(panel.id)}
-                                className="cursor-pointer"
-                                style={{ 
-                                  backgroundColor: isActive ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent',
-                                  color: isActive ? 'var(--accent)' : 'var(--text-secondary)'
-                                }}
-                                data-testid={`panel-${panel.id}`}
-                              >
-                                <PanelIcon className="w-4 h-4 mr-2" style={{ color: isActive ? 'var(--accent)' : 'var(--text-muted)' }} />
-                                {panel.label}
-                                {panel.id === "warroom" && warRoomMessages.length > 0 && (
-                                  <Badge className="ml-auto text-[10px]" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>{warRoomMessages.length}</Badge>
-                                )}
-                                {panel.id === "blueprints" && blueprints.length > 0 && (
-                                  <Badge className="ml-auto text-[10px] bg-purple-500/20 text-purple-400">{blueprints.length}</Badge>
-                                )}
-                                {panel.id === "tasks" && tasks.length > 0 && (
-                                  <Badge className="ml-auto text-[10px]" style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-secondary)' }}>{tasks.length}</Badge>
-                                )}
-                              </DropdownMenuItem>
-                            );
-                          })}
-                          <DropdownMenuSeparator style={{ backgroundColor: 'var(--border-color)' }} />
-                        </div>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  
-                  {/* Quick panel shortcuts */}
-                  <div className="hidden md:flex items-center gap-1">
-                    {[
-                      { id: "chat", icon: MessageSquare, label: "Chat" },
-                      { id: "warroom", icon: Radio, label: "War Room" },
-                      { id: "blueprints", icon: GitBranch, label: "Blueprints" },
-                    ].map(({ id, icon: Icon, label }) => (
-                      <Button
-                        key={id}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setActiveTab(id)}
-                        key={id}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setActiveTab(id)}
-                        className="h-8 px-3"
-                        style={{ 
-                          backgroundColor: activeTab === id ? 'var(--bg-tertiary)' : 'transparent',
-                          color: activeTab === id ? 'var(--accent)' : 'var(--text-muted)'
-                        }}
-                        data-testid={`quick-${id}`}
-                      >
-                        <Icon className="w-4 h-4 mr-1.5" />
-                        <span className="text-xs">{label}</span>
-                      </Button>
-                    ))}
-                  </div>
-                </div>
 
                 {/* Chat Panel - When active */}
                 {activeTab === "chat" && (
