@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   ArrowLeft, Settings, Save, FolderOpen, Monitor, Gamepad2, 
   Zap, CheckCircle, XCircle, RefreshCw, Download, ExternalLink,
-  Terminal, Cpu, HardDrive
+  Terminal, Cpu, HardDrive, Copy, Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,8 @@ const SettingsPage = () => {
     streamingMode: 'sse'
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [extensionId, setExtensionId] = useState(null);
+  const [configCopied, setConfigCopied] = useState(false);
 
   useEffect(() => {
     // Check bridge connection status
@@ -48,13 +50,22 @@ const SettingsPage = () => {
       }
     };
     
+    // Listen for extension ID from content script
+    const handleMessage = (event) => {
+      if (event.data?.type === 'AGENTFORGE_EXTENSION_ID') {
+        setExtensionId(event.data.extensionId);
+      }
+    };
+    
     window.addEventListener('agentforge-bridge-status', handleBridgeStatus);
+    window.addEventListener('message', handleMessage);
     
     // Load saved settings
     loadSettings();
     
     return () => {
       window.removeEventListener('agentforge-bridge-status', handleBridgeStatus);
+      window.removeEventListener('message', handleMessage);
     };
   }, []);
 
@@ -102,6 +113,43 @@ const SettingsPage = () => {
   const downloadBridge = () => {
     // Create download for bridge files
     window.open(`${API}/local-bridge/download`, '_blank');
+  };
+
+  // Generate and download the config file with correct extension ID
+  const downloadConfig = () => {
+    if (!extensionId) {
+      toast.error('Extension ID not detected. Make sure the extension is installed.');
+      return;
+    }
+    
+    const config = {
+      name: "com.agentforge.localbridge",
+      description: "AgentForge Local Bridge - Connect to local Unreal Engine and Unity projects",
+      path: "C:\\\\Users\\\\YOUR_USERNAME\\\\.agentforge\\\\agentforge_bridge.py",
+      type: "stdio",
+      allowed_origins: [
+        `chrome-extension://${extensionId}/`
+      ]
+    };
+    
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'com.agentforge.localbridge.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast.success('Config downloaded! Save it to: C:\\Users\\YOUR_USERNAME\\.agentforge\\');
+  };
+
+  const copyExtensionId = () => {
+    if (extensionId) {
+      navigator.clipboard.writeText(extensionId);
+      setConfigCopied(true);
+      toast.success('Extension ID copied!');
+      setTimeout(() => setConfigCopied(false), 2000);
+    }
   };
 
   return (
@@ -179,6 +227,35 @@ const SettingsPage = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Extension ID Detection */}
+                {extensionId && (
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold text-green-400">Extension Detected!</h4>
+                        <p className="text-sm text-zinc-400 mt-1">ID: <code className="bg-zinc-800 px-2 py-0.5 rounded">{extensionId}</code></p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={copyExtensionId} className="border-green-500/50 text-green-400">
+                          {configCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!bridgeConnected && extensionId && (
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                    <h4 className="font-semibold text-blue-400 mb-2">One More Step:</h4>
+                    <p className="text-sm text-zinc-400 mb-3">Download this config file and save it to complete setup:</p>
+                    <Button onClick={downloadConfig} className="bg-blue-600 hover:bg-blue-500">
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Config File
+                    </Button>
+                    <p className="text-xs text-zinc-500 mt-2">Save to: <code className="bg-zinc-800 px-1 rounded">C:\Users\YOUR_USERNAME\.agentforge\</code> then restart browser</p>
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={testBridgeConnection} className="border-zinc-700">
                     <RefreshCw className="w-4 h-4 mr-2" />
@@ -188,25 +265,12 @@ const SettingsPage = () => {
                     <Download className="w-4 h-4 mr-2" />
                     Download Bridge
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => window.open('https://chrome.google.com/webstore', '_blank')}
-                    className="border-zinc-700"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Get Extension
-                  </Button>
                 </div>
                 
-                {!bridgeConnected && (
+                {!bridgeConnected && !extensionId && (
                   <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                    <h4 className="font-semibold text-yellow-400 mb-2">Setup Instructions:</h4>
-                    <ol className="text-sm text-zinc-400 space-y-2 list-decimal list-inside">
-                      <li>Download and install the Local Bridge using the button above</li>
-                      <li>Install the AgentForge browser extension</li>
-                      <li>Run the installer script to register the native messaging host</li>
-                      <li>Refresh this page and the bridge should connect automatically</li>
-                    </ol>
+                    <h4 className="font-semibold text-yellow-400 mb-2">Extension Not Detected</h4>
+                    <p className="text-sm text-zinc-400">Make sure you've installed the AgentForge extension and refreshed this page.</p>
                   </div>
                 )}
               </CardContent>

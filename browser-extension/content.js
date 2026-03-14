@@ -248,6 +248,12 @@
           updateStatusIndicator(response.connected);
         }
       });
+      
+      // Expose extension ID to the page for easy setup
+      window.postMessage({
+        type: 'AGENTFORGE_EXTENSION_ID',
+        extensionId: chrome.runtime.id
+      }, '*');
     }
   }
   
