@@ -2668,6 +2668,173 @@ async def stream_quick_action(request: QuickActionRequest):
     
     return await stream_agent_chain(chain_request)
 
+
+# ============ GOD MODE - AUTONOMOUS BUILD ============
+
+class GodModeRequest(BaseModel):
+    project_id: str
+
+@api_router.post("/god-mode/activate")
+async def activate_god_mode(request: GodModeRequest):
+    """Activate God Mode - AI builds the entire project autonomously"""
+    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    await db.projects.update_one(
+        {"id": request.project_id},
+        {"$set": {"god_mode": True, "phase": "building", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"status": "activated", "message": "God Mode activated. AI will build your project."}
+
+@api_router.post("/god-mode/build/stream")
+async def god_mode_build_stream(request: GodModeRequest):
+    """Stream God Mode build - AI builds everything autonomously"""
+    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    agents = await get_or_create_agents()
+    forge_agent = next((a for a in agents if a['name'] == 'FORGE'), agents[0])
+    
+    project_name = project.get('name', 'Project')
+    project_type = project.get('type', 'web_app')
+    project_desc = project.get('description', '')
+    
+    if project_type in ['web_app', 'landing_page', 'saas']:
+        god_mode_prompt = f"""GOD MODE ACTIVATED - BUILD EVERYTHING NOW.
+
+Project: {project_name}
+Type: {project_type}
+Description: {project_desc}
+
+You are in GOD MODE. Build the COMPLETE, PRODUCTION-READY application. NO QUESTIONS. NO CLARIFICATION. JUST BUILD.
+
+Create ALL files for a complete {project_type}:
+- src/App.js (main app)
+- src/index.css (Tailwind + animations)
+- src/components/Header.jsx
+- src/components/Hero.jsx  
+- src/components/Features.jsx
+- src/components/Pricing.jsx
+- src/components/Testimonials.jsx
+- src/components/CTA.jsx
+- src/components/Footer.jsx
+
+Use React 18 + Tailwind CSS. Dark theme. Professional quality. Mobile responsive.
+
+Format: ```javascript:path/to/file.js
+START NOW."""
+
+    elif project_type in ['game', 'unreal', 'unity']:
+        god_mode_prompt = f"""GOD MODE ACTIVATED - BUILD EVERYTHING NOW.
+
+Project: {project_name}
+Engine: {project.get('engine_version', 'Unreal Engine 5')}
+Description: {project_desc}
+
+Build COMPLETE game systems:
+1. Player Controller
+2. Health/Damage System
+3. Inventory System  
+4. Save/Load System
+5. UI Framework
+6. Game Manager
+
+START NOW."""
+
+    else:
+        god_mode_prompt = f"""GOD MODE ACTIVATED - BUILD EVERYTHING NOW.
+
+Project: {project_name}
+Type: {project_type}
+Description: {project_desc}
+
+Build the COMPLETE project. NO QUESTIONS. BEST VERSION.
+START NOW."""
+
+    async def generate():
+        yield f"data: {json.dumps({'type': 'god_mode_start', 'project': project_name})}\n\n"
+        
+        full_content = ""
+        
+        try:
+            stream = llm_client.chat.completions.create(
+                model="google/gemini-2.5-flash",
+                messages=[
+                    {"role": "system", "content": forge_agent['system_prompt'] + "\n\nGOD MODE: Build everything. No questions. Maximum quality."},
+                    {"role": "user", "content": god_mode_prompt}
+                ],
+                max_tokens=16000,
+                stream=True
+            )
+            
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    full_content += content
+                    yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
+            
+            code_blocks = extract_code_blocks(full_content)
+            
+            saved_files = []
+            for block in code_blocks:
+                if block.get('filepath'):
+                    existing = await db.files.find_one({
+                        "project_id": request.project_id,
+                        "filepath": block['filepath']
+                    })
+                    
+                    file_doc = {
+                        "id": str(uuid.uuid4()),
+                        "project_id": request.project_id,
+                        "filepath": block['filepath'],
+                        "filename": block.get('filename', block['filepath'].split('/')[-1]),
+                        "language": block.get('language', 'javascript'),
+                        "content": block['content'],
+                        "version": (existing.get('version', 0) + 1) if existing else 1,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }
+                    
+                    if existing:
+                        await db.files.update_one(
+                            {"project_id": request.project_id, "filepath": block['filepath']},
+                            {"$set": file_doc}
+                        )
+                    else:
+                        await db.files.insert_one(file_doc)
+                    
+                    saved_files.append(block['filepath'])
+            
+            await db.projects.update_one(
+                {"id": request.project_id},
+                {"$set": {"phase": "review", "updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            
+            msg = Message(
+                project_id=request.project_id,
+                agent_id=forge_agent['id'],
+                agent_name="GOD MODE",
+                agent_role="god",
+                content=full_content,
+                code_blocks=code_blocks,
+                phase="building"
+            )
+            msg_doc = msg.model_dump()
+            msg_doc['timestamp'] = msg_doc['timestamp'].isoformat()
+            await db.messages.insert_one(msg_doc)
+            
+            yield f"data: {json.dumps({'type': 'god_mode_complete', 'files_created': len(saved_files), 'saved_files': saved_files})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"God Mode error: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
 # ============ LIVE PREVIEW ============
 
 @api_router.get("/projects/{project_id}/preview")

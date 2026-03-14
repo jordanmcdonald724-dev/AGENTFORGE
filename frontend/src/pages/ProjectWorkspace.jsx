@@ -1065,57 +1065,98 @@ const ProjectWorkspace = () => {
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={55} minSize={35} maxSize={80}>
             <div className="h-full flex flex-col transition-colors duration-300 overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-              {/* Quick Actions - God Mode */}
+              {/* God Mode Panel */}
               <AnimatePresence>
                 {showQuickActions && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b overflow-hidden" style={{ borderColor: 'var(--border-color)', background: 'linear-gradient(180deg, rgba(59,130,246,0.05) 0%, transparent 100%)' }}>
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b overflow-hidden" style={{ borderColor: 'var(--border-color)', background: 'linear-gradient(180deg, rgba(234,179,8,0.08) 0%, transparent 100%)' }}>
                     <div className="p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-rajdhani font-bold text-base flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                          <Zap className="w-5 h-5 text-yellow-400" />
-                          <span>God Mode</span>
-                          <Badge className="bg-yellow-500/20 text-yellow-400 text-[10px]">AI Auto-Build</Badge>
-                        </h3>
-                        <div className="flex gap-2">
-                          <Dialog open={customActionDialog} onOpenChange={setCustomActionDialog}>
-                            <DialogTrigger asChild><Button variant="ghost" size="sm" className="h-7"><Plus className="w-4 h-4 mr-1" />Custom</Button></DialogTrigger>
-                            <DialogContent className="border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
-                              <DialogHeader><DialogTitle className="font-rajdhani" style={{ color: 'var(--text-primary)' }}>Create Custom Action</DialogTitle></DialogHeader>
-                              <div className="space-y-3 py-4">
-                                <Input placeholder="Action name" value={newCustomAction.name} onChange={(e) => setNewCustomAction({ ...newCustomAction, name: e.target.value })} className="border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
-                                <Input placeholder="Description" value={newCustomAction.description} onChange={(e) => setNewCustomAction({ ...newCustomAction, description: e.target.value })} className="border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
-                                <Textarea placeholder="Prompt template (use {engine_type} for variables)" value={newCustomAction.prompt} onChange={(e) => setNewCustomAction({ ...newCustomAction, prompt: e.target.value })} className="border min-h-[100px]" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
-                                <div className="flex items-center gap-2"><input type="checkbox" id="global" checked={newCustomAction.is_global} onChange={(e) => setNewCustomAction({ ...newCustomAction, is_global: e.target.checked })} /><label htmlFor="global" className="text-sm" style={{ color: 'var(--text-secondary)' }}>Available in all projects</label></div>
-                              </div>
-                              <DialogFooter><Button onClick={createCustomAction} className="bg-blue-500 hover:bg-blue-600">Create Action</Button></DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowQuickActions(false)}><ChevronUp className="w-4 h-4" /></Button>
+                      {/* God Mode Button */}
+                      <button 
+                        onClick={async () => {
+                          setSending(true);
+                          try {
+                            const response = await fetch(`${API}/god-mode/build/stream`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ project_id: projectId })
+                            });
+                            
+                            const reader = response.body.getReader();
+                            const decoder = new TextDecoder();
+                            let fullContent = "";
+                            
+                            while (true) {
+                              const { done, value } = await reader.read();
+                              if (done) break;
+                              
+                              const text = decoder.decode(value);
+                              const lines = text.split('\n').filter(line => line.startsWith('data: '));
+                              
+                              for (const line of lines) {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.type === 'god_mode_start') {
+                                  toast.info(`God Mode building ${data.project}...`);
+                                  setStreamingAgent({ name: 'GOD MODE', role: 'god' });
+                                } else if (data.type === 'content') {
+                                  fullContent += data.content;
+                                  setStreamingContent(fullContent);
+                                } else if (data.type === 'god_mode_complete') {
+                                  toast.success(`God Mode complete! Created ${data.files_created} files`);
+                                  setStreamingContent("");
+                                  setStreamingAgent(null);
+                                  // Refresh files
+                                  const filesRes = await axios.get(`${API}/files?project_id=${projectId}`);
+                                  setFiles(filesRes.data);
+                                  // Refresh messages
+                                  const msgRes = await axios.get(`${API}/messages?project_id=${projectId}`);
+                                  setMessages(msgRes.data);
+                                }
+                              }
+                            }
+                          } catch (error) {
+                            toast.error('God Mode failed: ' + error.message);
+                          }
+                          setSending(false);
+                        }}
+                        disabled={sending}
+                        className="w-full p-5 rounded-xl border-2 border-yellow-500/50 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 hover:border-yellow-400 transition-all flex items-center gap-4 disabled:opacity-50 group"
+                        data-testid="god-mode-btn"
+                      >
+                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Zap className="w-8 h-8 text-black" />
                         </div>
+                        <div className="text-left flex-1">
+                          <h4 className="font-bold text-xl text-yellow-400 flex items-center gap-2">
+                            GOD MODE
+                            <Badge className="bg-yellow-500/30 text-yellow-300 text-[10px]">AUTO BUILD</Badge>
+                          </h4>
+                          <p className="text-sm text-zinc-400">AI builds your ENTIRE project automatically. No questions. Best quality. One click.</p>
+                        </div>
+                        {sending ? (
+                          <Loader2 className="w-6 h-6 text-yellow-400 animate-spin" />
+                        ) : (
+                          <ArrowRight className="w-6 h-6 text-yellow-400 group-hover:translate-x-1 transition-transform" />
+                        )}
+                      </button>
+                      
+                      {/* Quick Actions Grid */}
+                      <div className="mt-4 flex items-center justify-between mb-3">
+                        <h3 className="font-rajdhani font-bold text-sm flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>Quick Actions</h3>
+                        <Dialog open={customActionDialog} onOpenChange={setCustomActionDialog}>
+                          <DialogTrigger asChild><Button variant="ghost" size="sm" className="h-7"><Plus className="w-4 h-4 mr-1" />Custom</Button></DialogTrigger>
+                          <DialogContent className="border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+                            <DialogHeader><DialogTitle className="font-rajdhani" style={{ color: 'var(--text-primary)' }}>Create Custom Action</DialogTitle></DialogHeader>
+                            <div className="space-y-3 py-4">
+                              <Input placeholder="Action name" value={newCustomAction.name} onChange={(e) => setNewCustomAction({ ...newCustomAction, name: e.target.value })} className="border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
+                              <Input placeholder="Description" value={newCustomAction.description} onChange={(e) => setNewCustomAction({ ...newCustomAction, description: e.target.value })} className="border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
+                              <Textarea placeholder="Prompt template" value={newCustomAction.prompt} onChange={(e) => setNewCustomAction({ ...newCustomAction, prompt: e.target.value })} className="border min-h-[100px]" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
+                            </div>
+                            <DialogFooter><Button onClick={createCustomAction} className="bg-blue-500 hover:bg-blue-600">Create</Button></DialogFooter>
+                          </DialogContent>
+                        </Dialog>
                       </div>
-                      
-                      {/* Featured Action - Landing Page */}
-                      {allActions.find(a => a.id === 'landing_page') && (
-                        <button 
-                          onClick={() => executeQuickAction('landing_page', false)} 
-                          disabled={sending}
-                          className="w-full mb-4 p-4 rounded-xl border-2 border-dashed border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-500 transition-all flex items-center gap-4 disabled:opacity-50"
-                          data-testid="landing-page-action"
-                        >
-                          <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                            <Layout className="w-6 h-6 text-blue-400" />
-                          </div>
-                          <div className="text-left flex-1">
-                            <h4 className="font-bold text-blue-400">Landing Page</h4>
-                            <p className="text-xs text-zinc-400">Generate a complete React landing page with hero, features, and contact form - NO questions asked!</p>
-                          </div>
-                          <ArrowRight className="w-5 h-5 text-blue-400" />
-                        </button>
-                      )}
-                      
-                      {/* Other Quick Actions */}
                       <div className="grid grid-cols-4 gap-2">
-                        {allActions.filter(a => a.id !== 'landing_page').slice(0, 8).map((action) => {
+                        {allActions.slice(0, 8).map((action) => {
                           const Icon = QUICK_ACTION_ICONS[action.icon] || Sparkles;
                           return (
                             <TooltipProvider key={action.id}><Tooltip><TooltipTrigger asChild>
@@ -1124,7 +1165,7 @@ const ProjectWorkspace = () => {
                                 <Icon className={`w-5 h-5 ${action.isCustom ? 'text-purple-400' : 'text-blue-400'}`} />
                                 <span className="text-[10px] text-zinc-400 line-clamp-1">{action.name}</span>
                               </button>
-                            </TooltipTrigger><TooltipContent><p className="text-xs">{action.description}</p>{action.isCustom && <Button variant="ghost" size="sm" className="h-5 mt-1 text-red-400" onClick={(e) => { e.stopPropagation(); deleteCustomAction(action.id); }}><Trash2 className="w-3 h-3 mr-1" />Delete</Button>}</TooltipContent></Tooltip></TooltipProvider>
+                            </TooltipTrigger><TooltipContent><p className="text-xs">{action.description}</p></TooltipContent></Tooltip></TooltipProvider>
                           );
                         })}
                       </div>
@@ -1132,7 +1173,7 @@ const ProjectWorkspace = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {!showQuickActions && <Button variant="ghost" size="sm" className="mx-3 mt-2 text-xs" style={{ color: 'var(--text-muted)' }} onClick={() => setShowQuickActions(true)}><Zap className="w-3 h-3 mr-1 text-yellow-400" />God Mode</Button>}
+              {!showQuickActions && <Button variant="ghost" size="sm" className="mx-3 mt-2 text-xs border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10" onClick={() => setShowQuickActions(true)}><Zap className="w-4 h-4 mr-1" />God Mode</Button>}
               {chainProgress && <div className="px-4 py-2 border-b" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /><span className="text-xs" style={{ color: 'var(--accent)' }}>Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
 
               <div className="flex-1 flex flex-col overflow-hidden">

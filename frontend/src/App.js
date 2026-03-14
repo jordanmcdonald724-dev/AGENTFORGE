@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/context/ThemeContext";
 import LandingPage from "@/pages/LandingPage";
 import Dashboard from "@/pages/Dashboard";
 import ProjectWorkspace from "@/pages/ProjectWorkspace";
+import GodMode from "@/pages/GodMode";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -20,6 +21,7 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/project/:projectId" element={<ProjectWorkspace />} />
+            <Route path="/god-mode/:projectId" element={<GodMode />} />
           </Routes>
         </BrowserRouter>
         <Toaster position="bottom-right" theme="dark" />

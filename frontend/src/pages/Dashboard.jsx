@@ -403,7 +403,19 @@ const Dashboard = () => {
                         <span className="text-xs text-zinc-600">
                           {new Date(project.created_at).toLocaleDateString()}
                         </span>
-                        <ChevronRight className="w-4 h-4 text-zinc-600 ml-auto group-hover:text-blue-400 transition-colors" />
+                        <div className="ml-auto flex items-center gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="h-7 px-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                            onClick={(e) => { e.stopPropagation(); navigate(`/god-mode/${project.id}`); }}
+                            data-testid={`god-mode-${project.id}`}
+                          >
+                            <Zap className="w-3 h-3 mr-1" />
+                            God Mode
+                          </Button>
+                          <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-blue-400 transition-colors" />
+                        </div>
                       </div>
                     </div>
                   </motion.div>
