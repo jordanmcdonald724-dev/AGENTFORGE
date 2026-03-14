@@ -1,14 +1,15 @@
 @echo off
-REM One-click installer - Extension ID already configured
-
 echo Installing AgentForge Local Bridge...
+echo.
 
 set BRIDGE_DIR=%USERPROFILE%\.agentforge
 if not exist "%BRIDGE_DIR%" mkdir "%BRIDGE_DIR%"
 
-copy "%~dp0agentforge_bridge.py" "%BRIDGE_DIR%\" >nul
-copy "%~dp0agentforge_bridge.bat" "%BRIDGE_DIR%\" >nul
+echo Copying files...
+copy /Y "%~dp0agentforge_bridge.py" "%BRIDGE_DIR%\" >nul
+copy /Y "%~dp0agentforge_bridge.bat" "%BRIDGE_DIR%\" >nul
 
+echo Creating config...
 set MANIFEST_PATH=%BRIDGE_DIR%\com.agentforge.localbridge.json
 
 (
@@ -23,9 +24,16 @@ echo   ]
 echo }
 ) > "%MANIFEST_PATH%"
 
+echo Registering with Edge...
 reg add "HKCU\SOFTWARE\Microsoft\Edge\NativeMessagingHosts\com.agentforge.localbridge" /ve /t REG_SZ /d "%MANIFEST_PATH%" /f >nul 2>&1
 
 echo.
-echo DONE! Restart Edge now.
+echo ========================================
+echo   INSTALLED!
+echo ========================================
+echo.
+echo Location: %BRIDGE_DIR%
+echo.
+echo NOW: Close ALL Edge windows and reopen.
 echo.
 pause

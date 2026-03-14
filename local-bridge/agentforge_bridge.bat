@@ -1,2 +1,3 @@
 @echo off
-python "%~dp0agentforge_bridge.py"
+cd /d "%~dp0"
+python -u agentforge_bridge.py 2>> "%USERPROFILE%\.agentforge\error.log"
