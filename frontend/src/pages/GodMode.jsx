@@ -384,12 +384,27 @@ const GodMode = () => {
   
   // Initialize broadcast channel for live logs
   useEffect(() => {
-    logChannelRef.current = new BroadcastChannel('agentforge-logs');
-    return () => logChannelRef.current?.close();
+    try {
+      logChannelRef.current = new BroadcastChannel('agentforge-logs');
+    } catch (e) {
+      console.log('BroadcastChannel not supported');
+    }
+    return () => {
+      try {
+        logChannelRef.current?.close();
+      } catch (e) {}
+      logChannelRef.current = null;
+    };
   }, []);
   
   const broadcastLog = (type, message, level = 'info') => {
-    logChannelRef.current?.postMessage({ type, message, level });
+    try {
+      if (logChannelRef.current) {
+        logChannelRef.current.postMessage({ type, message, level });
+      }
+    } catch (e) {
+      // Channel closed, ignore
+    }
   };
   
   const addDebug = (msg) => {
