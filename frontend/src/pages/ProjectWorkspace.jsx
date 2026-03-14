@@ -818,23 +818,44 @@ const ProjectWorkspace = () => {
             </div>
           </div>
           
-          <div className="hidden lg:flex items-center gap-2">
-            {agents.map((agent) => {
-              const AgentIcon = getAgentIcon(agent.role);
-              return (<button key={agent.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all`} style={{ backgroundColor: selectedAgent === agent.id ? 'color-mix(in srgb, var(--accent) 20%, transparent)' : 'var(--bg-tertiary)', borderColor: selectedAgent === agent.id ? 'var(--accent)' : 'var(--border-color)', color: selectedAgent === agent.id ? 'var(--accent)' : 'var(--text-secondary)' }} onClick={() => setSelectedAgent(selectedAgent === agent.id ? null : agent.id)}><div className={`w-2 h-2 rounded-full ${getStatusColor(agent.status)}`} /><AgentIcon className="w-3.5 h-3.5" /><span className="text-xs font-medium">{agent.name}</span></button>);
-            })}
-          </div>
-
+          {/* Actions moved to tabs - clean header */}
           <div className="flex items-center gap-2">
-            <Button 
-              size="sm" 
-              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-medium"
-            >
-              <Zap className="w-4 h-4 mr-1" />
-            </Button>
-            
-            {/* Simulation Mode Button */}
-            <Dialog open={simulationDialog} onOpenChange={setSimulationDialog}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="border-zinc-700">
+                  <Settings className="w-4 h-4 mr-1" />
+                  Actions
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-zinc-900 border-zinc-700">
+                <DropdownMenuItem onClick={() => navigate(`/project/${projectId}/god-mode`)}>
+                  <Zap className="w-4 h-4 mr-2 text-amber-400" />
+                  God Mode
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSimulationDialog(true)}>
+                  <Radio className="w-4 h-4 mr-2 text-cyan-400" />
+                  Simulate Build
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setMemoriesDialogOpen(true)}>
+                  <Brain className="w-4 h-4 mr-2 text-purple-400" />
+                  View Memories
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setGithubDialogOpen(true)}>
+                  <Github className="w-4 h-4 mr-2" />
+                  Push to GitHub
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setImageDialogOpen(true)}>
+                  <Image className="w-4 h-4 mr-2" />
+                  Generate Asset
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </header>
+
+      {/* Dialogs stay the same */}
+      <Dialog open={simulationDialog} onOpenChange={setSimulationDialog}>
               <DialogTrigger asChild><Button variant="outline" size="sm" className="border-cyan-700 text-cyan-400 hover:bg-cyan-500/10" data-testid="simulation-btn"><Radio className="w-4 h-4 mr-1" />Simulate</Button></DialogTrigger>
               <DialogContent className="bg-[#18181b] border-zinc-700 max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader><DialogTitle className="font-rajdhani text-white flex items-center gap-2"><Radio className="w-5 h-5 text-cyan-400" />Build Simulation (Dry Run)</DialogTitle></DialogHeader>
