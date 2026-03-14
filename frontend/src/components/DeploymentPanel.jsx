@@ -15,12 +15,24 @@ import { API } from "@/App";
 const PLATFORM_ICONS = {
   vercel: Triangle,
   railway: Train,
+  netlify: Zap,
+  render: Rocket,
+  github_pages: ExternalLink,
+  cloudflare_pages: Zap,
+  fly: Rocket,
+  surge: Rocket,
   itch: Gamepad2
 };
 
 const PLATFORM_COLORS = {
   vercel: "zinc",
   railway: "purple",
+  netlify: "teal",
+  render: "indigo",
+  github_pages: "slate",
+  cloudflare_pages: "orange",
+  fly: "violet",
+  surge: "green",
   itch: "red"
 };
 

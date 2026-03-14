@@ -23,7 +23,8 @@ DEPLOYMENT_PLATFORMS = {
         "color": "zinc",
         "description": "Best for web apps and static sites",
         "supports": ["web_app", "webpage", "static"],
-        "requires": ["VERCEL_TOKEN"]
+        "requires": ["VERCEL_TOKEN"],
+        "free": True
     },
     "railway": {
         "id": "railway",
@@ -32,16 +33,78 @@ DEPLOYMENT_PLATFORMS = {
         "color": "purple",
         "description": "Full-stack apps with databases",
         "supports": ["web_app", "api", "fullstack"],
-        "requires": ["RAILWAY_TOKEN"]
+        "requires": ["RAILWAY_TOKEN"],
+        "free": True
+    },
+    "netlify": {
+        "id": "netlify",
+        "name": "Netlify",
+        "icon": "zap",
+        "color": "teal",
+        "description": "100GB bandwidth/month, 300 build minutes - FREE",
+        "supports": ["web_app", "webpage", "static"],
+        "requires": ["NETLIFY_TOKEN"],
+        "free": True
+    },
+    "render": {
+        "id": "render",
+        "name": "Render",
+        "icon": "box",
+        "color": "indigo",
+        "description": "Free web services + databases - Railway alternative",
+        "supports": ["web_app", "api", "fullstack"],
+        "requires": ["RENDER_API_KEY"],
+        "free": True
+    },
+    "github_pages": {
+        "id": "github_pages",
+        "name": "GitHub Pages",
+        "icon": "github",
+        "color": "slate",
+        "description": "Unlimited FREE static hosting forever",
+        "supports": ["webpage", "static"],
+        "requires": ["GITHUB_TOKEN"],
+        "free": True
+    },
+    "cloudflare_pages": {
+        "id": "cloudflare_pages",
+        "name": "Cloudflare Pages",
+        "icon": "cloud",
+        "color": "orange",
+        "description": "Unlimited sites & requests - FREE forever",
+        "supports": ["web_app", "webpage", "static"],
+        "requires": ["CLOUDFLARE_API_TOKEN"],
+        "free": True
+    },
+    "fly": {
+        "id": "fly",
+        "name": "Fly.io",
+        "icon": "plane",
+        "color": "violet",
+        "description": "3 free VMs, modern platform",
+        "supports": ["web_app", "api", "fullstack"],
+        "requires": ["FLY_API_TOKEN"],
+        "free": True
+    },
+    "surge": {
+        "id": "surge",
+        "name": "Surge.sh",
+        "icon": "rocket",
+        "color": "green",
+        "description": "Simple, unlimited static sites - FREE forever",
+        "supports": ["webpage", "static"],
+        "requires": [],
+        "free": True
     },
     "itch": {
         "id": "itch",
         "name": "Itch.io",
         "icon": "gamepad-2",
         "color": "red",
-        "description": "Game distribution platform",
+        "description": "Game distribution platform - FREE",
         "supports": ["game", "web_game"],
-        "requires": ["ITCH_API_KEY", "ITCH_USERNAME"]
+        "requires": ["ITCH_API_KEY", "ITCH_USERNAME"],
+        "free": True
     }
 }
 
