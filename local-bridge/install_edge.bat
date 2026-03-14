@@ -1,11 +1,10 @@
 @echo off
 REM AgentForge Local Bridge - Windows Installer for Edge
-REM This script installs the native messaging host for Microsoft Edge
+REM Run this as Administrator
 
 echo.
 echo ========================================
 echo  AgentForge Local Bridge Installer
-echo  (Microsoft Edge Version)
 echo ========================================
 echo.
 
@@ -18,37 +17,35 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Get the directory where this script is located
-set SCRIPT_DIR=%~dp0
-
 REM Create .agentforge directory in user home
 set BRIDGE_DIR=%USERPROFILE%\.agentforge
 if not exist "%BRIDGE_DIR%" mkdir "%BRIDGE_DIR%"
 
-REM Copy the bridge script
-echo Copying bridge script...
-copy "%SCRIPT_DIR%agentforge_bridge.py" "%BRIDGE_DIR%\agentforge_bridge.py" >nul
+REM Copy files
+echo Copying bridge files...
+copy "%~dp0agentforge_bridge.py" "%BRIDGE_DIR%\" >nul
+copy "%~dp0agentforge_bridge.bat" "%BRIDGE_DIR%\" >nul
 
 echo.
-echo Enter your Extension ID (from edge://extensions):
-set /p EXT_ID=
+echo Go to edge://extensions and copy your AgentForge Extension ID
+echo.
+set /p EXT_ID=Paste Extension ID here: 
 
 if "%EXT_ID%"=="" (
-    echo ERROR: Extension ID is required
+    echo ERROR: Extension ID required
     pause
     exit /b 1
 )
 
-REM Create the native messaging host manifest
-echo Creating native messaging manifest...
+REM Create manifest pointing to the BAT file (not .py directly)
 set MANIFEST_PATH=%BRIDGE_DIR%\com.agentforge.localbridge.json
 
-REM Create manifest with the extension ID
+echo Creating config...
 (
 echo {
 echo   "name": "com.agentforge.localbridge",
 echo   "description": "AgentForge Local Bridge",
-echo   "path": "%BRIDGE_DIR:\=\\%\\agentforge_bridge.py",
+echo   "path": "%BRIDGE_DIR:\=\\%\\agentforge_bridge.bat",
 echo   "type": "stdio",
 echo   "allowed_origins": [
 echo     "chrome-extension://%EXT_ID%/"
@@ -56,18 +53,12 @@ echo   ]
 echo }
 ) > "%MANIFEST_PATH%"
 
-REM Register with Edge
-echo Registering with Microsoft Edge...
+REM Register for Edge
 reg add "HKCU\SOFTWARE\Microsoft\Edge\NativeMessagingHosts\com.agentforge.localbridge" /ve /t REG_SZ /d "%MANIFEST_PATH%" /f >nul 2>&1
 
 echo.
 echo ========================================
-echo  Installation Complete!
+echo  DONE! Now restart Edge completely.
 echo ========================================
-echo.
-echo Bridge installed to: %BRIDGE_DIR%
-echo Extension ID: %EXT_ID%
-echo.
-echo NOW: Restart Microsoft Edge completely
 echo.
 pause
