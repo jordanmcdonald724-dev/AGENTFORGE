@@ -1304,7 +1304,7 @@ const ProjectWorkspace = () => {
                           <button
                             type="button"
                             onClick={() => document.getElementById('file-input-chat')?.click()}
-                            className="absolute bottom-3 left-3 p-2 rounded-lg transition-colors hover:bg-zinc-700/50"
+                            className="absolute bottom-3 left-1 p-2 rounded-lg transition-colors hover:bg-zinc-700/50"
                             style={{ color: 'var(--text-muted)' }}
                             title="Attach files"
                           >
