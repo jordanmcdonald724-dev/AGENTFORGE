@@ -1180,6 +1180,33 @@ DEPLOYMENT_PLATFORMS = {
 
 # Quick Actions Configuration
 QUICK_ACTIONS = {
+    "landing_page": {
+        "id": "landing_page",
+        "name": "Landing Page",
+        "description": "Generate a complete landing page with hero, features, contact",
+        "icon": "layout",
+        "chain": ["FORGE"],
+        "prompt": """Generate a complete, modern React landing page. DO NOT ask questions, just build it.
+
+Create these files:
+
+1. src/App.js - Main app with routing
+2. src/components/Hero.jsx - Hero section with headline, subtext, CTA button
+3. src/components/Features.jsx - 3 feature cards with icons
+4. src/components/Contact.jsx - Contact form (name, email, message)
+5. src/components/Footer.jsx - Simple footer
+6. src/index.css - Tailwind styles, dark modern theme
+
+Use:
+- React 18 with functional components
+- Tailwind CSS for styling
+- Lucide React for icons
+- Dark theme with blue accents
+- Responsive design
+- Smooth animations
+
+Generate ALL the code now. Include FULL file contents with ```javascript:filepath syntax."""
+    },
     "player_controller": {
         "id": "player_controller",
         "name": "Player Controller",

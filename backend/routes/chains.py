@@ -11,6 +11,7 @@ from typing import List, Optional
 from core.database import db
 from core.clients import llm_client
 from core.utils import serialize_doc, logger
+from models.project import QuickActionRequest
 import json
 import re
 
@@ -18,6 +19,33 @@ router = APIRouter(tags=["chains"])
 
 
 QUICK_ACTIONS = {
+    "landing_page": {
+        "id": "landing_page",
+        "name": "Landing Page",
+        "description": "Generate a complete landing page with hero, features, contact",
+        "icon": "layout",
+        "chain": ["FORGE"],
+        "prompt": """Generate a complete, modern React landing page. DO NOT ask questions, just build it.
+
+Create these files:
+
+1. src/App.js - Main app with routing
+2. src/components/Hero.jsx - Hero section with headline, subtext, CTA button
+3. src/components/Features.jsx - 3 feature cards with icons
+4. src/components/Contact.jsx - Contact form (name, email, message)
+5. src/components/Footer.jsx - Simple footer
+6. src/index.css - Tailwind styles, dark modern theme
+
+Use:
+- React 18 with functional components
+- Tailwind CSS for styling
+- Lucide React for icons
+- Dark theme with blue accents
+- Responsive design
+- Smooth animations
+
+Generate ALL the code now. Include FULL file contents with ```javascript:filepath syntax."""
+    },
     "player_controller": {
         "id": "player_controller",
         "name": "Player Controller",
@@ -141,8 +169,12 @@ async def execute_quick_action(project_id: str, action_id: str, parameters: dict
 
 
 @router.post("/quick-actions/execute/stream")
-async def stream_quick_action(project_id: str, action_id: str, parameters: dict = None):
+async def stream_quick_action(request: QuickActionRequest):
     """Execute a quick action with streaming"""
+    project_id = request.project_id
+    action_id = request.action_id
+    parameters = request.parameters
+    
     if action_id not in QUICK_ACTIONS:
         raise HTTPException(status_code=404, detail=f"Quick action {action_id} not found")
     

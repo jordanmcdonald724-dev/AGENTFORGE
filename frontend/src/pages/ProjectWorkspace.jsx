@@ -416,7 +416,17 @@ const ProjectWorkspace = () => {
                 const agentMsg = { id: `agent-${Date.now()}`, project_id: projectId, agent_id: currentAgent?.id, agent_name: currentAgent?.name, agent_role: currentAgent?.role, content: fullContent, code_blocks: data.code_blocks || [], delegations: data.delegations || [], timestamp: new Date().toISOString() };
                 setMessages(prev => [...prev, agentMsg]);
                 setStreamingContent(""); setStreamingAgent(null);
-                if (data.code_blocks?.length > 0) await saveCodeBlocks(data.code_blocks, currentAgent);
+                if (data.code_blocks?.length > 0) {
+                  await saveCodeBlocks(data.code_blocks, currentAgent);
+                  // Refresh files list
+                  const filesRes = await axios.get(`${API}/files?project_id=${projectId}`);
+                  setFiles(filesRes.data);
+                }
+                // Handle phase change
+                if (data.new_phase) {
+                  setProject(prev => ({ ...prev, phase: data.new_phase }));
+                  toast.success(`Project advanced to ${data.new_phase} phase`);
+                }
                 setAgents(prev => prev.map(a => ({ ...a, status: "idle" })));
               }
             } catch (e) {}
