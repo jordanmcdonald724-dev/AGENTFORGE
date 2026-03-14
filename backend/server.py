@@ -5,6 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import tempfile
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any
@@ -2703,6 +2704,9 @@ async def god_mode_build_stream(request: GodModeRequest):
     project_desc = project.get('description', '')
     engine = project.get('engine_version', 'Unreal Engine 5')
     
+    # Get start phase from request (for resume functionality)
+    start_phase = getattr(request, 'start_phase', 0) if hasattr(request, 'start_phase') else 0
+    
     # Define build phases based on project type
     if project_type in ['game', 'unreal', 'unity']:
         phases = [
@@ -2835,11 +2839,18 @@ Format: ```javascript:path/file.jsx```"""
         yield f"data: {json.dumps({'type': 'god_mode_start', 'project': project_name, 'total_phases': len(phases)})}\n\n"
         
         all_saved_files = []
+        heartbeat_counter = 0
         
         for phase_idx, phase in enumerate(phases):
+            # Skip phases if resuming
+            if phase_idx < start_phase:
+                yield f"data: {json.dumps({'type': 'phase_skipped', 'phase': phase['name'], 'phase_num': phase_idx + 1})}\n\n"
+                continue
+            
             yield f"data: {json.dumps({'type': 'phase_start', 'phase': phase['name'], 'phase_num': phase_idx + 1, 'total': len(phases)})}\n\n"
             
             full_content = ""
+            chunk_buffer = ""
             
             try:
                 stream = llm_client.chat.completions.create(
@@ -2856,9 +2867,60 @@ Format: ```javascript:path/file.jsx```"""
                     if chunk.choices and chunk.choices[0].delta.content:
                         content = chunk.choices[0].delta.content
                         full_content += content
-                        yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
+                        chunk_buffer += content
+                        
+                        # Send content in batches to reduce message overhead
+                        if len(chunk_buffer) > 100:
+                            yield f"data: {json.dumps({'type': 'content', 'content': chunk_buffer})}\n\n"
+                            chunk_buffer = ""
+                        
+                        # Send heartbeat every ~50 chunks to keep connection alive
+                        heartbeat_counter += 1
+                        if heartbeat_counter % 50 == 0:
+                            yield f"data: {json.dumps({'type': 'heartbeat', 'phase': phase['name']})}\n\n"
+                        
+                        # Real-time file extraction - check for complete code blocks
+                        if "```" in full_content:
+                            code_blocks = extract_code_blocks(full_content)
+                            for block in code_blocks:
+                                filepath = block.get('filepath')
+                                if filepath and filepath not in all_saved_files:
+                                    try:
+                                        existing = await db.files.find_one({
+                                            "project_id": request.project_id,
+                                            "filepath": filepath
+                                        })
+                                        
+                                        file_doc = {
+                                            "id": str(uuid.uuid4()),
+                                            "project_id": request.project_id,
+                                            "filepath": filepath,
+                                            "filename": block.get('filename', filepath.split('/')[-1]),
+                                            "language": block.get('language', 'cpp'),
+                                            "content": block['content'],
+                                            "version": (existing.get('version', 0) + 1) if existing else 1,
+                                            "created_at": datetime.now(timezone.utc).isoformat(),
+                                            "updated_at": datetime.now(timezone.utc).isoformat()
+                                        }
+                                        
+                                        if existing:
+                                            await db.files.update_one(
+                                                {"project_id": request.project_id, "filepath": filepath},
+                                                {"$set": file_doc}
+                                            )
+                                        else:
+                                            await db.files.insert_one(file_doc)
+                                        
+                                        all_saved_files.append(filepath)
+                                        yield f"data: {json.dumps({'type': 'file_saved', 'filepath': filepath})}\n\n"
+                                    except Exception as e:
+                                        logger.error(f"Error saving file {filepath}: {e}")
                 
-                # Save files from this phase
+                # Send any remaining buffer
+                if chunk_buffer:
+                    yield f"data: {json.dumps({'type': 'content', 'content': chunk_buffer})}\n\n"
+                
+                # Final file extraction for this phase (catch any missed blocks)
                 code_blocks = extract_code_blocks(full_content)
                 phase_files = []
                 
@@ -2897,22 +2959,78 @@ Format: ```javascript:path/file.jsx```"""
                         except Exception as e:
                             logger.error(f"Error saving file {filepath}: {e}")
                 
-                yield f"data: {json.dumps({'type': 'phase_complete', 'phase': phase['name'], 'files': len(phase_files)})}\n\n"
+                # Save phase progress to DB for resume capability
+                await db.projects.update_one(
+                    {"id": request.project_id},
+                    {"$set": {
+                        "god_mode_phase": phase_idx + 1,
+                        "god_mode_files": all_saved_files,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+                
+                yield f"data: {json.dumps({'type': 'phase_complete', 'phase': phase['name'], 'files': len(phase_files), 'total_files': len(all_saved_files)})}\n\n"
                 
             except Exception as e:
                 logger.error(f"Phase {phase['name']} error: {e}")
-                yield f"data: {json.dumps({'type': 'phase_error', 'phase': phase['name'], 'error': str(e)})}\n\n"
+                yield f"data: {json.dumps({'type': 'phase_error', 'phase': phase['name'], 'error': str(e), 'phase_num': phase_idx})}\n\n"
+                # Don't stop completely - continue to next phase or allow resume
         
         # Final cleanup
         await db.projects.update_one(
             {"id": request.project_id},
-            {"$set": {"phase": "review", "god_mode_complete": True, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            {"$set": {"phase": "review", "god_mode_complete": True, "god_mode_phase": len(phases), "updated_at": datetime.now(timezone.utc).isoformat()}}
         )
         
         yield f"data: {json.dumps({'type': 'god_mode_complete', 'files_created': len(all_saved_files), 'saved_files': all_saved_files})}\n\n"
     
-    return StreamingResponse(generate(), media_type="text/event-stream")
+    return StreamingResponse(
+        generate(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no"  # Disable nginx buffering
+        }
+    )
     
+
+# God Mode status/resume endpoint
+@api_router.get("/god-mode/status/{project_id}")
+async def get_god_mode_status(project_id: str):
+    """Get God Mode build status for resume functionality"""
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(200)
+    
+    return {
+        "project_id": project_id,
+        "god_mode_complete": project.get("god_mode_complete", False),
+        "god_mode_phase": project.get("god_mode_phase", 0),
+        "files_saved": len(files),
+        "file_paths": [f["filepath"] for f in files]
+    }
+
+class GodModeResumeRequest(BaseModel):
+    project_id: str
+    start_phase: int = 0
+
+@api_router.post("/god-mode/resume")
+async def resume_god_mode_build(request: GodModeResumeRequest):
+    """Resume a God Mode build from a specific phase"""
+    project = await db.projects.find_one({"id": request.project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    # Create a GodModeRequest with the start_phase
+    god_request = GodModeRequest(project_id=request.project_id)
+    god_request.start_phase = request.start_phase
+    
+    return await god_mode_build_stream(god_request)
+
+
 # ============ LIVE PREVIEW ============
 
 @api_router.get("/projects/{project_id}/preview")
@@ -8248,8 +8366,8 @@ async def get_active_reality_pipelines():
     ).to_list(20)
     return pipelines
 
-# Include router
-app.include_router(api_router)
+# Include router - MOVED TO END
+# app.include_router(api_router)
 
 # Include modular routers from /routes directory
 try:
@@ -8294,6 +8412,106 @@ try:
     logger.info("Successfully loaded new feature routers (game-engine, hardware, research)")
 except Exception as e:
     logger.warning(f"Could not load new feature routers: {e}")
+
+# ============ SETTINGS & LOCAL BRIDGE ============
+
+class UserSettings(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    default_engine: str = "unreal"
+    theme: str = "dark"
+    auto_save_files: bool = True
+    streaming_mode: str = "sse"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+@api_router.get("/settings")
+async def get_settings():
+    """Get user settings"""
+    settings = await db.settings.find_one({}, {"_id": 0})
+    if not settings:
+        # Return defaults
+        return {
+            "default_engine": "unreal",
+            "theme": "dark",
+            "auto_save_files": True,
+            "streaming_mode": "sse"
+        }
+    return settings
+
+@api_router.post("/settings")
+async def save_settings(settings: Dict[str, Any]):
+    """Save user settings"""
+    existing = await db.settings.find_one({})
+    
+    settings_doc = {
+        **settings,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if existing:
+        await db.settings.update_one({}, {"$set": settings_doc})
+    else:
+        settings_doc["id"] = str(uuid.uuid4())
+        settings_doc["created_at"] = datetime.now(timezone.utc).isoformat()
+        await db.settings.insert_one(settings_doc)
+    
+    return {"success": True}
+
+@api_router.get("/local-bridge/download")
+async def download_local_bridge():
+    """Download the local bridge installation package"""
+    import tempfile
+    import shutil
+    
+    # Create a zip file with all bridge components
+    bridge_dir = ROOT_DIR.parent / "local-bridge"
+    
+    if not bridge_dir.exists():
+        raise HTTPException(status_code=404, detail="Bridge files not found")
+    
+    # Create temp zip file
+    temp_dir = tempfile.mkdtemp()
+    zip_path = Path(temp_dir) / "AgentForge-LocalBridge.zip"
+    
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for file in bridge_dir.iterdir():
+            if file.is_file():
+                zipf.write(file, file.name)
+    
+    return FileResponse(
+        zip_path,
+        media_type="application/zip",
+        filename="AgentForge-LocalBridge.zip"
+    )
+
+@api_router.get("/local-bridge/extension")
+async def download_extension():
+    """Download the browser extension"""
+    ext_dir = ROOT_DIR.parent / "browser-extension"
+    
+    if not ext_dir.exists():
+        raise HTTPException(status_code=404, detail="Extension files not found")
+    
+    # Create temp zip file
+    temp_dir = Path(tempfile.mkdtemp())
+    zip_path = temp_dir / "AgentForge-Extension.zip"
+    
+    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for file in ext_dir.rglob('*'):
+            if file.is_file():
+                arcname = file.relative_to(ext_dir)
+                zipf.write(file, arcname)
+    
+    return FileResponse(
+        zip_path,
+        media_type="application/zip",
+        filename="AgentForge-Extension.zip"
+    )
+
+# Include api_router AFTER all routes are defined
+app.include_router(api_router)
+
 
 app.add_middleware(
     CORSMiddleware,

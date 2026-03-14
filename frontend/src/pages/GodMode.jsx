@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Zap, ArrowLeft, Loader2, CheckCircle, Code, FileCode, Rocket, 
   Brain, Search, GitBranch, Box, Layers, Sparkles, Terminal,
-  ChevronRight, Play, Pause, RotateCcw
+  ChevronRight, Play, Pause, RotateCcw, Upload, Settings, Hammer
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,8 +37,16 @@ const GodMode = () => {
   const [progress, setProgress] = useState(0);
   const [logs, setLogs] = useState([]);
   const [files, setFiles] = useState([]);
+  const [fileContents, setFileContents] = useState([]); // Store full file data for local push
   const [streamContent, setStreamContent] = useState('');
   const logsEndRef = useRef(null);
+  
+  // Local Bridge state
+  const [bridgeConnected, setBridgeConnected] = useState(false);
+  const [isPushing, setIsPushing] = useState(false);
+  const [isLocalBuilding, setIsLocalBuilding] = useState(false);
+  const [lastFailedPhase, setLastFailedPhase] = useState(null);
+  const [lastHeartbeat, setLastHeartbeat] = useState(null);
   
   const phases = [
     { id: 'research', name: 'Research', icon: Search, description: 'Analyzing requirements & best practices' },
@@ -51,6 +59,48 @@ const GodMode = () => {
 
   useEffect(() => {
     fetchProject();
+    
+    // Listen for local bridge events
+    const handleBridgeStatus = (e) => {
+      setBridgeConnected(e.detail.connected);
+      if (e.detail.connected) {
+        addLog('🔌 Local Bridge connected!', 'success');
+      }
+    };
+    
+    const handleFileSaved = (e) => {
+      addLog(`📁 Saved to local: ${e.detail.filepath}`, 'success');
+    };
+    
+    const handleBuildStatus = (e) => {
+      const { status, data } = e.detail;
+      if (status === 'started') {
+        addLog('🔨 Local build started...', 'info');
+      } else if (status === 'progress') {
+        addLog(`🔧 ${data.message}`, 'info');
+      } else if (status === 'complete') {
+        addLog('✅ Local build complete!', 'success');
+        toast.success('Project built successfully in local IDE!');
+        setIsLocalBuilding(false);
+      } else if (status === 'error') {
+        addLog(`❌ Build error: ${data.error}`, 'error');
+        toast.error('Local build failed');
+        setIsLocalBuilding(false);
+      }
+    };
+    
+    window.addEventListener('agentforge-bridge-status', handleBridgeStatus);
+    window.addEventListener('agentforge-file-saved', handleFileSaved);
+    window.addEventListener('agentforge-build-status', handleBuildStatus);
+    
+    // Check initial bridge status
+    window.dispatchEvent(new CustomEvent('agentforge-get-status'));
+    
+    return () => {
+      window.removeEventListener('agentforge-bridge-status', handleBridgeStatus);
+      window.removeEventListener('agentforge-file-saved', handleFileSaved);
+      window.removeEventListener('agentforge-build-status', handleBuildStatus);
+    };
   }, [projectId]);
 
   useEffect(() => {
@@ -66,6 +116,7 @@ const GodMode = () => {
       const filesRes = await axios.get(`${API}/files?project_id=${projectId}`);
       if (filesRes.data.length > 0) {
         setFiles(filesRes.data.map(f => f.filepath));
+        setFileContents(filesRes.data); // Store full file data
         setBuildPhase('complete');
         setProgress(100);
       }
@@ -134,10 +185,17 @@ const GodMode = () => {
               addLog(`\n🔨 Phase ${data.phase_num}/${data.total}: ${data.phase}`, 'phase');
               setBuildPhase(data.phase_num <= 2 ? 'core' : data.phase_num <= 4 ? 'features' : 'polish');
               setProgress(Math.floor((data.phase_num / data.total) * 80) + 10);
+            } else if (data.type === 'phase_skipped') {
+              addLog(`⏭️ Skipped (already complete): ${data.phase}`, 'info');
             } else if (data.type === 'phase_complete') {
-              addLog(`✅ ${data.phase} complete (${data.files} files)`, 'success');
+              addLog(`✅ ${data.phase} complete (${data.files} files, total: ${data.total_files || data.files})`, 'success');
             } else if (data.type === 'phase_error') {
               addLog(`⚠️ ${data.phase} error: ${data.error}`, 'error');
+              // Store phase number for resume
+              setLastFailedPhase(data.phase_num);
+            } else if (data.type === 'heartbeat') {
+              // Connection is alive - update last heartbeat time
+              setLastHeartbeat(Date.now());
             } else if (data.type === 'content') {
               fullContent += data.content;
               
@@ -168,7 +226,7 @@ const GodMode = () => {
               addLog('🎉 GOD MODE BUILD COMPLETE!', 'success');
               toast.success('God Mode Complete!');
               
-              // Refresh project
+              // Refresh project and load file contents
               fetchProject();
             } else if (data.type === 'error') {
               addLog(`❌ Error: ${data.message}`, 'error');
@@ -227,6 +285,72 @@ const GodMode = () => {
       case 'file': return 'text-blue-400';
       default: return 'text-zinc-400';
     }
+  };
+
+  // Push files to local IDE
+  const pushToLocal = async () => {
+    if (!bridgeConnected) {
+      toast.error('Local Bridge not connected. Install the extension first.');
+      navigate('/settings');
+      return;
+    }
+    
+    if (fileContents.length === 0) {
+      // Fetch files if not loaded
+      try {
+        const filesRes = await axios.get(`${API}/files?project_id=${projectId}`);
+        setFileContents(filesRes.data);
+      } catch (error) {
+        toast.error('Failed to load files');
+        return;
+      }
+    }
+    
+    setIsPushing(true);
+    addLog('📤 Pushing files to local IDE...', 'info');
+    
+    const engine = project?.type === 'unity' ? 'unity' : 'unreal';
+    
+    window.dispatchEvent(new CustomEvent('agentforge-push-files', {
+      detail: {
+        files: fileContents.map(f => ({
+          filepath: f.filepath,
+          filename: f.filename,
+          content: f.content,
+          language: f.language
+        })),
+        engine
+      }
+    }));
+    
+    setTimeout(() => {
+      setIsPushing(false);
+      addLog(`✅ Pushed ${fileContents.length} files to local ${engine} project`, 'success');
+      toast.success(`Pushed ${fileContents.length} files to local IDE!`);
+    }, 1500);
+  };
+
+  // Trigger local build
+  const triggerLocalBuild = () => {
+    if (!bridgeConnected) {
+      toast.error('Local Bridge not connected');
+      return;
+    }
+    
+    setIsLocalBuilding(true);
+    const engine = project?.type === 'unity' ? 'unity' : 'unreal';
+    
+    addLog('🔨 Starting local build...', 'info');
+    
+    window.dispatchEvent(new CustomEvent('agentforge-trigger-build', {
+      detail: {
+        engine,
+        buildConfig: {
+          platform: 'Win64',
+          configuration: 'Development'
+        }
+      }
+    }));
   };
 
   return (
@@ -288,6 +412,65 @@ const GodMode = () => {
                 </Button>
               </>
             )}
+            
+            {/* Local Bridge Buttons */}
+            <div className="flex items-center gap-2 ml-2 pl-2 border-l border-zinc-700">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => navigate('/settings')}
+                className="border-zinc-700"
+                title="Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+              
+              {files.length > 0 && (
+                <>
+                  <Button
+                    onClick={pushToLocal}
+                    disabled={isPushing || !bridgeConnected}
+                    className={bridgeConnected 
+                      ? "bg-blue-600 hover:bg-blue-500" 
+                      : "bg-zinc-700 opacity-50"
+                    }
+                    title={bridgeConnected ? "Push to Local IDE" : "Install Local Bridge extension"}
+                    data-testid="push-to-local-btn"
+                  >
+                    {isPushing ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4 mr-2" />
+                    )}
+                    {isPushing ? 'PUSHING...' : 'PUSH TO LOCAL'}
+                  </Button>
+                  
+                  <Button
+                    onClick={triggerLocalBuild}
+                    disabled={isLocalBuilding || !bridgeConnected}
+                    className={bridgeConnected 
+                      ? "bg-purple-600 hover:bg-purple-500" 
+                      : "bg-zinc-700 opacity-50"
+                    }
+                    title={bridgeConnected ? "Build in Local IDE" : "Install Local Bridge extension"}
+                    data-testid="local-build-btn"
+                  >
+                    {isLocalBuilding ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Hammer className="w-4 h-4 mr-2" />
+                    )}
+                    {isLocalBuilding ? 'BUILDING...' : 'LOCAL BUILD'}
+                  </Button>
+                </>
+              )}
+              
+              {/* Bridge Status Indicator */}
+              <div 
+                className={`w-2 h-2 rounded-full ${bridgeConnected ? 'bg-green-500' : 'bg-red-500'}`}
+                title={bridgeConnected ? 'Local Bridge Connected' : 'Local Bridge Disconnected'}
+              />
+            </div>
           </div>
         </div>
       </header>

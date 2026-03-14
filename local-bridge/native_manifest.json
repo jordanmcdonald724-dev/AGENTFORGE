@@ -1,0 +1,9 @@
+{
+  "name": "com.agentforge.localbridge",
+  "description": "AgentForge Local Bridge - Connect to local Unreal Engine and Unity projects",
+  "path": "REPLACE_WITH_PYTHON_PATH",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://EXTENSION_ID_HERE/"
+  ]
+}
