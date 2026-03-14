@@ -96,11 +96,33 @@ def trigger_build(data):
         uproject = f
         break
     
+    # For UE 5.7, try to find the build tool
+    # Check common locations for UE 5.7
+    ue_locations = [
+        Path('C:/Program Files/Epic Games/UE_5.7'),
+        Path('D:/UE_5.7'),
+        Path('D:/Epic Games/UE_5.7'),
+        Path('C:/UE_5.7'),
+    ]
+    
+    engine_path = None
+    for loc in ue_locations:
+        if loc.exists():
+            engine_path = loc
+            break
+    
+    if engine_path:
+        log(f"Found UE 5.7 at: {engine_path}")
+        send_message({
+            'type': 'build_progress',
+            'data': {'message': f'Found Unreal Engine 5.7 at {engine_path}'}
+        })
+    
     send_message({
         'type': 'build_complete',
         'data': {
             'success': True,
-            'message': f'Files ready! Open {uproject or project_path} in Unreal Editor and press Ctrl+Alt+F11 to compile.'
+            'message': f'Files saved! Open {uproject or project_path} in Unreal Editor 5.7 and press Ctrl+Alt+F11 to compile.'
         }
     })
 
