@@ -43,6 +43,7 @@ import CommandCenter from "@/components/CommandCenter";
 import GameEnginePanel from "@/components/GameEnginePanel";
 import HardwarePanel from "@/components/HardwarePanel";
 import ResearchPanel from "@/components/ResearchPanel";
+import FileDropZone from "@/components/FileDropZone";
 
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
@@ -159,6 +160,7 @@ const ProjectWorkspace = () => {
   const [regeneratingDemo, setRegeneratingDemo] = useState(false);
   
   const [chatInput, setChatInput] = useState("");
+  const [attachedFiles, setAttachedFiles] = useState([]);
   const [sending, setSending] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
   const [streamingAgent, setStreamingAgent] = useState(null);
@@ -384,8 +386,18 @@ const ProjectWorkspace = () => {
   const sendMessageStreaming = async () => {
     if (!chatInput.trim() || sending) return;
     setSending(true);
-    const userMessage = chatInput;
+    
+    // Prepare message with files
+    let userMessage = chatInput;
+    if (attachedFiles.length > 0) {
+      userMessage += '\n\n**Attached Files:**\n';
+      attachedFiles.forEach(file => {
+        userMessage += `\n**${file.name}** (${file.type}):\n\`\`\`\n${file.content}\n\`\`\`\n`;
+      });
+    }
+    
     setChatInput("");
+    setAttachedFiles([]);
     setStreamingContent("");
 
     const tempUserMsg = { id: `temp-user-${Date.now()}`, project_id: projectId, agent_id: "user", agent_name: "You", agent_role: "user", content: userMessage, timestamp: new Date().toISOString() };
