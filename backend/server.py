@@ -2703,56 +2703,191 @@ async def god_mode_build_stream(request: GodModeRequest):
     project_desc = project.get('description', '')
     
     if project_type in ['web_app', 'landing_page', 'saas']:
-        god_mode_prompt = f"""GOD MODE ACTIVATED - BUILD EVERYTHING NOW.
+        god_mode_prompt = f"""🔥 GOD MODE: AAA WEB APPLICATION BUILD 🔥
 
 Project: {project_name}
 Type: {project_type}
-Description: {project_desc}
+Vision: {project_desc}
 
-You are in GOD MODE. Build the COMPLETE, PRODUCTION-READY application. NO QUESTIONS. NO CLARIFICATION. JUST BUILD.
+You are building a WORLD-CLASS web application. Think Stripe, Linear, Vercel quality.
+NO basic templates. NO placeholder content. PRODUCTION-READY from line one.
 
-Create ALL files for a complete {project_type}:
-- src/App.js (main app)
-- src/index.css (Tailwind + animations)
-- src/components/Header.jsx
-- src/components/Hero.jsx  
-- src/components/Features.jsx
-- src/components/Pricing.jsx
-- src/components/Testimonials.jsx
-- src/components/CTA.jsx
-- src/components/Footer.jsx
+MANDATORY QUALITY STANDARDS:
+- Stunning visual design with depth, shadows, gradients
+- Smooth 60fps animations on everything
+- Perfect responsive design (mobile-first)
+- Accessibility compliant (WCAG 2.1)
+- Performance optimized (Core Web Vitals green)
 
-Use React 18 + Tailwind CSS. Dark theme. Professional quality. Mobile responsive.
+CREATE THESE FILES (COMPLETE IMPLEMENTATIONS):
 
-Format: ```javascript:path/to/file.js
-START NOW."""
+1. src/App.js - Full routing, state management, providers
+2. src/index.css - Advanced Tailwind config, custom animations, glass morphism
+3. src/components/Layout/Header.jsx - Sticky, animated, with mobile menu
+4. src/components/Layout/Footer.jsx - Full footer with links, newsletter
+5. src/components/Hero/Hero.jsx - Dramatic hero with animated background, particle effects
+6. src/components/Hero/HeroStats.jsx - Animated counters
+7. src/components/Features/Features.jsx - Bento grid layout, hover animations
+8. src/components/Features/FeatureCard.jsx - 3D transforms on hover
+9. src/components/Pricing/Pricing.jsx - Interactive pricing with toggle
+10. src/components/Pricing/PricingCard.jsx - Highlighted popular plan
+11. src/components/Testimonials/Testimonials.jsx - Carousel with avatars
+12. src/components/CTA/CTA.jsx - High-conversion CTA section
+13. src/components/ui/Button.jsx - Multiple variants, loading states
+14. src/components/ui/Card.jsx - Glass effect, hover states
+15. src/hooks/useScrollAnimation.js - Intersection observer animations
+16. src/utils/animations.js - Framer Motion variants
+
+TECH STACK:
+- React 18 with hooks
+- Tailwind CSS with custom config
+- Framer Motion for animations
+- Lucide React for icons
+
+DESIGN REQUIREMENTS:
+- Dark theme with subtle gradients
+- Accent color that pops
+- Depth through shadows and blur
+- Micro-interactions on every element
+- Smooth scroll animations
+- Professional typography hierarchy
+
+Format every file as: ```javascript:exact/path/to/file.jsx
+
+BUILD THE ENTIRE APPLICATION NOW. MAKE IT STUNNING."""
 
     elif project_type in ['game', 'unreal', 'unity']:
-        god_mode_prompt = f"""GOD MODE ACTIVATED - BUILD EVERYTHING NOW.
+        engine = project.get('engine_version', 'Unreal Engine 5')
+        god_mode_prompt = f"""🎮 GOD MODE: AAA GAME DEVELOPMENT BUILD 🎮
 
 Project: {project_name}
-Engine: {project.get('engine_version', 'Unreal Engine 5')}
-Description: {project_desc}
+Engine: {engine}
+Vision: {project_desc}
 
-Build COMPLETE game systems:
-1. Player Controller
-2. Health/Damage System
-3. Inventory System  
-4. Save/Load System
-5. UI Framework
-6. Game Manager
+You are building AAA-QUALITY game systems. Think Assassin's Creed, God of War, Elden Ring.
+NO basic tutorials. NO placeholder logic. PRODUCTION-READY from line one.
 
-START NOW."""
+MANDATORY QUALITY STANDARDS:
+- Professional architecture (no spaghetti code)
+- Modular, extensible systems
+- Performance optimized
+- Network-ready where applicable
+- Full feature implementations
+
+CREATE THESE COMPLETE SYSTEMS:
+
+═══════════════════════════════════════
+CORE SYSTEMS (Must Have)
+═══════════════════════════════════════
+
+1. PLAYER CONTROLLER SYSTEM
+   - Advanced character controller with state machine
+   - States: Idle, Walk, Run, Sprint, Jump, Fall, Land, Crouch, Slide, Climb
+   - Smooth transitions between states
+   - Input buffering for responsive controls
+   - Camera system with collision avoidance
+   - Gamepad + keyboard/mouse support
+
+2. COMBAT SYSTEM  
+   - Combo system with input windows
+   - Light/Heavy attacks with cancels
+   - Dodge/Roll with i-frames
+   - Block/Parry mechanics
+   - Damage types (Physical, Fire, Ice, Lightning)
+   - Hit reactions and stagger system
+   - Lock-on targeting
+
+3. INVENTORY SYSTEM
+   - Categories (Weapons, Armor, Consumables, Materials, Quest Items)
+   - Stack management
+   - Weight/Capacity system
+   - Quick slots
+   - Item comparison
+   - Sorting and filtering
+   - Persistence (save/load)
+
+4. ABILITY SYSTEM
+   - Ability base class with cooldowns
+   - Mana/Resource management
+   - Ability upgrades/skill tree
+   - Active and passive abilities
+   - Combo abilities
+   - Buff/Debuff system
+
+5. AI SYSTEM
+   - Behavior Tree architecture
+   - Perception system (sight, sound, damage)
+   - States: Patrol, Alert, Chase, Attack, Search, Flee
+   - Group tactics
+   - Boss AI patterns
+   - Navmesh pathfinding
+
+6. SAVE/LOAD SYSTEM
+   - Complete game state serialization
+   - Multiple save slots
+   - Auto-save functionality
+   - Cloud save ready
+   - Save file validation
+
+7. UI FRAMEWORK
+   - HUD (Health, Stamina, Mana, Minimap, Objectives)
+   - Menus (Main, Pause, Settings, Inventory)
+   - Dialogue system with choices
+   - Quest tracker
+   - Damage numbers
+   - Notification system
+
+8. AUDIO SYSTEM
+   - Sound manager with pooling
+   - Spatial audio
+   - Music system with transitions
+   - Ambient sound layers
+   - Footstep system
+   - Combat audio cues
+
+9. QUEST SYSTEM
+   - Quest structure (Main, Side, Daily)
+   - Objectives tracking
+   - Rewards system
+   - Quest chains
+   - Journal/Log
+
+10. PROGRESSION SYSTEM
+    - XP and leveling
+    - Stat allocation
+    - Skill trees
+    - Equipment scaling
+    - New Game+
+
+Format for {'C++' if 'Unreal' in engine else 'C#'}:
+```{'cpp' if 'Unreal' in engine else 'csharp'}:Source/ProjectName/SystemName.{'h' if 'Unreal' in engine else 'cs'}
+
+BUILD ALL SYSTEMS NOW. AAA QUALITY ONLY."""
 
     else:
-        god_mode_prompt = f"""GOD MODE ACTIVATED - BUILD EVERYTHING NOW.
+        god_mode_prompt = f"""🚀 GOD MODE: PREMIUM {project_type.upper()} BUILD 🚀
 
 Project: {project_name}
 Type: {project_type}
-Description: {project_desc}
+Vision: {project_desc}
 
-Build the COMPLETE project. NO QUESTIONS. BEST VERSION.
-START NOW."""
+You are building a PREMIUM, PROFESSIONAL-GRADE {project_type}.
+NO basic implementations. NO shortcuts. PRODUCTION-READY from line one.
+
+MANDATORY QUALITY STANDARDS:
+- Clean architecture
+- Full feature implementation
+- Error handling everywhere
+- Performance optimized
+- Well documented
+- Extensible design
+
+BUILD THE COMPLETE {project_type.upper()} WITH ALL FEATURES.
+MAKE IT THE BEST VERSION POSSIBLE.
+
+Format: ```language:path/to/file.ext
+
+START BUILDING NOW."""
 
     async def generate():
         yield f"data: {json.dumps({'type': 'god_mode_start', 'project': project_name})}\n\n"
@@ -2763,10 +2898,10 @@ START NOW."""
             stream = llm_client.chat.completions.create(
                 model="google/gemini-2.5-flash",
                 messages=[
-                    {"role": "system", "content": forge_agent['system_prompt'] + "\n\nGOD MODE: Build everything. No questions. Maximum quality."},
+                    {"role": "system", "content": forge_agent['system_prompt'] + "\n\n🔥 GOD MODE ACTIVE 🔥\nYou are building AAA quality. No basic code. No placeholders. Full implementations only. This is your masterpiece."},
                     {"role": "user", "content": god_mode_prompt}
                 ],
-                max_tokens=16000,
+                max_tokens=32000,
                 stream=True
             )
             
