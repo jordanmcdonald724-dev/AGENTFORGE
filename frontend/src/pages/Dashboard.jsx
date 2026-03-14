@@ -427,11 +427,6 @@ const Dashboard = () => {
                       >
                         Open
                       </Button>
-                      <Button
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                      </Button>
                     </div>
                   </motion.div>
                 );
