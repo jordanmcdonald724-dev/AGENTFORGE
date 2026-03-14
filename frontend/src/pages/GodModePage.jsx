@@ -298,27 +298,26 @@ const GodModePage = () => {
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 max-w-6xl mx-auto w-full px-6 py-8">
-        {/* Build Prompt Input */}
+        {/* Build Input - Emergen style */}
         {!isBuilding && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <div className="bg-white/[0.02] border border-white/5 rounded-xl p-6">
-              <label className="text-sm font-medium text-zinc-400 mb-3 block">
-                Build Instructions (Optional - will use project description if empty)
-              </label>
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
               <FileDropZone 
                 onFilesAdded={(files) => setAttachedFiles(prev => [...prev, ...files])}
               >
-                <textarea
-                  value={buildPrompt}
-                  onChange={(e) => setBuildPrompt(e.target.value)}
-                  placeholder="Add specific instructions or drag files here... (Leave empty to use project description)"
-                  className="w-full min-h-[120px] bg-zinc-900/50 border border-white/10 rounded-lg p-4 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-vertical"
-                  style={{ maxHeight: '300px' }}
-                />
+                <div className="flex gap-3 items-end">
+                  <textarea
+                    value={buildPrompt}
+                    onChange={(e) => setBuildPrompt(e.target.value)}
+                    placeholder="Describe what you want to build, or drag files here..."
+                    className="flex-1 min-h-[100px] max-h-[300px] bg-transparent border-0 text-white placeholder-zinc-500 focus:outline-none resize-none p-3"
+                    style={{ fontFamily: 'inherit' }}
+                  />
+                </div>
               </FileDropZone>
             </div>
           </motion.div>
