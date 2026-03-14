@@ -9,7 +9,7 @@ import os
 import time
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://ai-agent-team.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://file-examiner-10.preview.emergentagent.com')
 API_URL = f"{BASE_URL}/api"
 
 # ============ FIXTURES ============

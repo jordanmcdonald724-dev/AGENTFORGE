@@ -65,8 +65,8 @@
   "context_for_next_testing_agent": "Server.py refactoring from 8578 to 7373 lines complete. All extracted routes verified working. Routes tested: settings.py (settings + local-bridge), god_mode_v1.py (V1 status), god_mode_v2.py (V2 status), quick_actions.py (quick-actions + custom-actions), agent_memory.py (memory), build_operations.py (open-world systems, war-room, blueprints, demos), build_memory.py (memory stats). All 15 endpoints return correct HTTP status codes and expected data structures.",
 
   "test_environment": {
-    "frontend_url": "https://ai-agent-team.preview.emergentagent.com",
-    "backend_url": "https://ai-agent-team.preview.emergentagent.com/api",
+    "frontend_url": "https://file-examiner-10.preview.emergentagent.com",
+    "backend_url": "https://file-examiner-10.preview.emergentagent.com/api",
     "test_project_id": "334166ac-9ea3-45d8-b4d2-3c81e7ef19c1"
   },
 

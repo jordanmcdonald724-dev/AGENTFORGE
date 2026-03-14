@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 
 class AgentTeamAPITester:
-    def __init__(self, base_url="https://ai-agent-team.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://file-examiner-10.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.session = requests.Session()
         self.session.headers.update({'Content-Type': 'application/json'})

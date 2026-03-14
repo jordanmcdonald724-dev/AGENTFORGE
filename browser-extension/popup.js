@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Settings button - open AgentForge settings page
   settingsBtn.addEventListener('click', () => {
-    chrome.tabs.create({ url: 'https://ai-agent-team.preview.emergentagent.com/settings' });
+    chrome.tabs.create({ url: 'https://file-examiner-10.preview.emergentagent.com/settings' });
   });
   
   function updateStatus(connected) {
