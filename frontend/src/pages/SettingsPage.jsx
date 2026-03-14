@@ -44,6 +44,7 @@ const SettingsPage = () => {
     
     // Listen for bridge status events
     const handleBridgeStatus = (e) => {
+      console.log('Bridge status event:', e.detail);
       setBridgeConnected(e.detail.connected);
       if (e.detail.connected) {
         toast.success('Local Bridge Connected!');
@@ -54,6 +55,8 @@ const SettingsPage = () => {
     const handleMessage = (event) => {
       if (event.data?.type === 'AGENTFORGE_EXTENSION_ID') {
         setExtensionId(event.data.extensionId);
+        // Re-check connection status when extension is detected
+        setTimeout(checkBridgeStatus, 500);
       }
     };
     
@@ -63,9 +66,13 @@ const SettingsPage = () => {
     // Load saved settings
     loadSettings();
     
+    // Periodic check for connection status
+    const interval = setInterval(checkBridgeStatus, 3000);
+    
     return () => {
       window.removeEventListener('agentforge-bridge-status', handleBridgeStatus);
       window.removeEventListener('message', handleMessage);
+      clearInterval(interval);
     };
   }, []);
 
