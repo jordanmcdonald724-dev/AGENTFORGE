@@ -23,12 +23,13 @@
 | Simulation Mode | ~70 | `routes/build_operations.py` | ✅ DONE |
 | Playable Demos | ~28 | `routes/build_operations.py` | ✅ DONE |
 | Blueprints | ~36 | `routes/build_operations.py` | ✅ DONE |
+| Autonomous Builds | ~485 | `routes/autonomous_builds.py` | ✅ DONE |
 
 ### Server.py Progress
 - **Original Size**: 8,578 lines
-- **Current Size**: 7,373 lines
-- **Lines Removed**: ~1,205 lines (14.0% reduction)
-- **Routes Modularized**: 14 route files now in /routes/
+- **Current Size**: ~6,890 lines (pending cleanup)
+- **Total Lines Extracted**: ~1,688 lines (19.7% reduction)
+- **Routes Modularized**: 15 route files now in /routes/
 
 ### Phase 1: Extract Standalone Features (Low Risk)
 These sections have minimal dependencies and can be extracted first:
