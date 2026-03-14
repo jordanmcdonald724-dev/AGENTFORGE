@@ -173,7 +173,7 @@ const ProjectWorkspace = () => {
   const [activeTab, setActiveTab] = useState("chat");
   const [rightTab, setRightTab] = useState("code");
   const [copiedCode, setCopiedCode] = useState(null);
-  const [showQuickActions, setShowQuickActions] = useState(true);
+  const [showQuickActions, setShowQuickActions] = useState(false);
   
   // Dialog states
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -1051,10 +1051,10 @@ const ProjectWorkspace = () => {
       </header>
 
       {/* Main */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden min-h-0">
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={45} minSize={30}>
-            <div className="h-full flex flex-col transition-colors duration-300" style={{ backgroundColor: 'var(--bg-primary)' }}>
+            <div className="h-full flex flex-col transition-colors duration-300 overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
               {/* Quick Actions */}
               <AnimatePresence>
                 {showQuickActions && (
@@ -1100,9 +1100,9 @@ const ProjectWorkspace = () => {
               {!showQuickActions && <Button variant="ghost" size="sm" className="mx-3 mt-2 text-xs" style={{ color: 'var(--text-muted)' }} onClick={() => setShowQuickActions(true)}><ChevronDown className="w-3 h-3 mr-1" />Show Quick Actions</Button>}
               {chainProgress && <div className="px-4 py-2 border-b" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /><span className="text-xs" style={{ color: 'var(--accent)' }}>Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
 
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                {/* Clean Grouped Dropdown Navigation */}
-                <div className="flex-shrink-0 border-b px-4 py-2 flex items-center gap-3 transition-colors duration-300" style={{ borderColor: 'var(--border-color)' }}>
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+                {/* Clean Grouped Dropdown Navigation - Sticky */}
+                <div className="flex-shrink-0 border-b px-4 py-2 flex items-center gap-3 transition-colors duration-300 sticky top-0 z-10" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" className="min-w-[180px] justify-between transition-colors duration-300" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }} data-testid="panel-selector">
@@ -1190,8 +1190,8 @@ const ProjectWorkspace = () => {
                 </div>
 
                 {/* Chat Tab */}
-                <TabsContent value="chat" className="flex-1 flex flex-col m-0 overflow-hidden">
-                  <ScrollArea className="flex-1 p-4"><div className="space-y-4">
+                <TabsContent value="chat" className="flex-1 flex flex-col m-0 min-h-0">
+                  <div className="flex-1 overflow-auto p-4"><div className="space-y-4">
                     {messages.length === 0 && !streamingContent ? (<div className="text-center py-12"><Sparkles className="w-12 h-12 mx-auto mb-4" style={{ color: 'color-mix(in srgb, var(--accent) 50%, transparent)' }} /><h3 className="font-rajdhani text-xl mb-2" style={{ color: 'var(--text-primary)' }}>Ready to Build</h3><p className="text-sm max-w-md mx-auto mb-4" style={{ color: 'var(--text-muted)' }}>Describe your project or use Quick Actions above.</p></div>) : (<>
                       {messages.map((msg) => {
                         const isUser = msg.agent_role === "user";
@@ -1203,7 +1203,7 @@ const ProjectWorkspace = () => {
                     </>)}
                     {sending && !streamingContent && <div className="flex gap-3"><div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-tertiary)' }}><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /></div><div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)' }}><div className="typing-indicator"><span></span><span></span><span></span></div></div></div>}
                     <div ref={chatEndRef} />
-                  </div></ScrollArea>
+                  </div></div>
                   <div className="flex-shrink-0 p-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
                     {selectedAgent && <div className="mb-2 flex items-center gap-2"><span className="text-xs" style={{ color: 'var(--text-muted)' }}>Speaking to:</span><Badge style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>{agents.find(a => a.id === selectedAgent)?.name}</Badge><Button variant="ghost" size="sm" className="h-5 px-2" onClick={() => setSelectedAgent(null)}><X className="w-3 h-3" /></Button></div>}
                     <div className="flex gap-2"><Textarea placeholder={project?.phase === "clarification" ? "Describe your project..." : "What next?"} value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageStreaming(); }}} className="bg-zinc-900 border-zinc-700 min-h-[80px] resize-none text-sm" data-testid="chat-input" /><Button onClick={sendMessageStreaming} disabled={sending || !chatInput.trim()} className="bg-blue-500 hover:bg-blue-600 px-4 self-end" data-testid="send-btn">{sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}</Button></div>
