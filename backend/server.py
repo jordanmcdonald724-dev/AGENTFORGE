@@ -2893,6 +2893,8 @@ START BUILDING NOW."""
         yield f"data: {json.dumps({'type': 'god_mode_start', 'project': project_name})}\n\n"
         
         full_content = ""
+        saved_files = []
+        last_save_check = 0
         
         try:
             stream = llm_client.chat.completions.create(
@@ -2910,51 +2912,95 @@ START BUILDING NOW."""
                     content = chunk.choices[0].delta.content
                     full_content += content
                     yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
+                    
+                    # Save files as we detect them (every 2000 chars check)
+                    if len(full_content) - last_save_check > 2000:
+                        last_save_check = len(full_content)
+                        code_blocks = extract_code_blocks(full_content)
+                        
+                        for block in code_blocks:
+                            filepath = block.get('filepath')
+                            if filepath and filepath not in saved_files:
+                                try:
+                                    existing = await db.files.find_one({
+                                        "project_id": request.project_id,
+                                        "filepath": filepath
+                                    })
+                                    
+                                    file_doc = {
+                                        "id": str(uuid.uuid4()),
+                                        "project_id": request.project_id,
+                                        "filepath": filepath,
+                                        "filename": block.get('filename', filepath.split('/')[-1]),
+                                        "language": block.get('language', 'cpp'),
+                                        "content": block['content'],
+                                        "version": (existing.get('version', 0) + 1) if existing else 1,
+                                        "created_at": datetime.now(timezone.utc).isoformat(),
+                                        "updated_at": datetime.now(timezone.utc).isoformat()
+                                    }
+                                    
+                                    if existing:
+                                        await db.files.update_one(
+                                            {"project_id": request.project_id, "filepath": filepath},
+                                            {"$set": file_doc}
+                                        )
+                                    else:
+                                        await db.files.insert_one(file_doc)
+                                    
+                                    saved_files.append(filepath)
+                                    yield f"data: {json.dumps({'type': 'file_saved', 'filepath': filepath})}\n\n"
+                                except Exception as e:
+                                    logger.error(f"Error saving file {filepath}: {e}")
             
+            # Final save for any remaining files
             code_blocks = extract_code_blocks(full_content)
-            
-            saved_files = []
             for block in code_blocks:
-                if block.get('filepath'):
-                    existing = await db.files.find_one({
-                        "project_id": request.project_id,
-                        "filepath": block['filepath']
-                    })
-                    
-                    file_doc = {
-                        "id": str(uuid.uuid4()),
-                        "project_id": request.project_id,
-                        "filepath": block['filepath'],
-                        "filename": block.get('filename', block['filepath'].split('/')[-1]),
-                        "language": block.get('language', 'javascript'),
-                        "content": block['content'],
-                        "version": (existing.get('version', 0) + 1) if existing else 1,
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat()
-                    }
-                    
-                    if existing:
-                        await db.files.update_one(
-                            {"project_id": request.project_id, "filepath": block['filepath']},
-                            {"$set": file_doc}
-                        )
-                    else:
-                        await db.files.insert_one(file_doc)
-                    
-                    saved_files.append(block['filepath'])
+                filepath = block.get('filepath')
+                if filepath and filepath not in saved_files:
+                    try:
+                        existing = await db.files.find_one({
+                            "project_id": request.project_id,
+                            "filepath": filepath
+                        })
+                        
+                        file_doc = {
+                            "id": str(uuid.uuid4()),
+                            "project_id": request.project_id,
+                            "filepath": filepath,
+                            "filename": block.get('filename', filepath.split('/')[-1]),
+                            "language": block.get('language', 'cpp'),
+                            "content": block['content'],
+                            "version": (existing.get('version', 0) + 1) if existing else 1,
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                            "updated_at": datetime.now(timezone.utc).isoformat()
+                        }
+                        
+                        if existing:
+                            await db.files.update_one(
+                                {"project_id": request.project_id, "filepath": filepath},
+                                {"$set": file_doc}
+                            )
+                        else:
+                            await db.files.insert_one(file_doc)
+                        
+                        saved_files.append(filepath)
+                        yield f"data: {json.dumps({'type': 'file_saved', 'filepath': filepath})}\n\n"
+                    except Exception as e:
+                        logger.error(f"Error saving file {filepath}: {e}")
             
             await db.projects.update_one(
                 {"id": request.project_id},
                 {"$set": {"phase": "review", "updated_at": datetime.now(timezone.utc).isoformat()}}
             )
             
+            # Save message
             msg = Message(
                 project_id=request.project_id,
                 agent_id=forge_agent['id'],
                 agent_name="GOD MODE",
                 agent_role="god",
-                content=full_content,
-                code_blocks=code_blocks,
+                content=full_content[:50000],  # Limit stored content
+                code_blocks=code_blocks[:20],  # Limit stored blocks
                 phase="building"
             )
             msg_doc = msg.model_dump()

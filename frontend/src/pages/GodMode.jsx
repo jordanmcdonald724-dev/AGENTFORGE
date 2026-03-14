@@ -153,6 +153,13 @@ const GodMode = () => {
                 addLog('💎 Polishing...', 'phase');
               }
               
+            } else if (data.type === 'file_saved') {
+              // Real-time file save notification
+              addLog(`📄 Saved: ${data.filepath}`, 'file');
+              setFiles(prev => prev.includes(data.filepath) ? prev : [...prev, data.filepath]);
+              // Update progress based on files saved
+              setProgress(prev => Math.min(prev + 3, 95));
+              
             } else if (data.type === 'god_mode_complete') {
               setBuildPhase('complete');
               setProgress(100);
