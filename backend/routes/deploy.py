@@ -121,6 +121,12 @@ async def get_deploy_config():
     return {
         "vercel": bool(os.environ.get("VERCEL_TOKEN")),
         "railway": bool(os.environ.get("RAILWAY_TOKEN")),
+        "netlify": bool(os.environ.get("NETLIFY_TOKEN")),
+        "render": bool(os.environ.get("RENDER_API_KEY")),
+        "github_pages": bool(os.environ.get("GITHUB_TOKEN")),
+        "cloudflare_pages": bool(os.environ.get("CLOUDFLARE_API_TOKEN")),
+        "fly": bool(os.environ.get("FLY_API_TOKEN")),
+        "surge": True,  # No API key needed
         "itch": bool(os.environ.get("ITCH_API_KEY") and os.environ.get("ITCH_USERNAME"))
     }
 
