@@ -1204,30 +1204,32 @@ const ProjectWorkspace = () => {
                     {sending && !streamingContent && <div className="flex gap-3"><div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-tertiary)' }}><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /></div><div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)' }}><div className="typing-indicator"><span></span><span></span><span></span></div></div></div>}
                     <div ref={chatEndRef} />
                   </div></div>
-                  <div className="flex-shrink-0 p-4 border-t" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
+                  <div className="p-4 border-t" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
                     {selectedAgent && <div className="mb-2 flex items-center gap-2"><span className="text-xs" style={{ color: 'var(--text-muted)' }}>Speaking to:</span><Badge style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>{agents.find(a => a.id === selectedAgent)?.name}</Badge><Button variant="ghost" size="sm" className="h-5 px-2" onClick={() => setSelectedAgent(null)}><X className="w-3 h-3" /></Button></div>}
                     <div className="flex gap-3">
-                      <Textarea 
+                      <textarea 
                         placeholder={project?.phase === "clarification" ? "Describe your project..." : "What would you like to build?"} 
                         value={chatInput} 
                         onChange={(e) => setChatInput(e.target.value)} 
                         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageStreaming(); }}} 
-                        className="flex-1 min-h-[100px] max-h-[300px] resize-y text-sm rounded-lg p-3"
+                        className="flex-1 min-h-[120px] text-sm rounded-lg p-4 outline-none focus:ring-2"
                         style={{ 
                           backgroundColor: 'var(--bg-tertiary)', 
-                          borderColor: 'var(--border-color)',
-                          color: 'var(--text-primary)'
+                          border: '2px solid var(--border-color)',
+                          color: 'var(--text-primary)',
+                          resize: 'vertical',
+                          maxHeight: '400px'
                         }}
                         data-testid="chat-input" 
                       />
                       <Button 
                         onClick={sendMessageStreaming} 
                         disabled={sending || !chatInput.trim()} 
-                        className="self-end h-12 px-6 rounded-lg"
+                        className="self-end h-14 px-6 rounded-lg text-white font-medium"
                         style={{ backgroundColor: 'var(--accent)' }}
                         data-testid="send-btn"
                       >
-                        {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                        {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-5 h-5 mr-2" />Send</>}
                       </Button>
                     </div>
                   </div>
