@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import ProjectWorkspace from "@/pages/ProjectWorkspace";
 import GodMode from "@/pages/GodMode";
 import SettingsPage from "@/pages/SettingsPage";
+import LiveLogs from "@/pages/LiveLogs";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API = `${BACKEND_URL}/api`;
@@ -24,6 +25,7 @@ function App() {
             <Route path="/project/:projectId" element={<ProjectWorkspace />} />
             <Route path="/god-mode/:projectId" element={<GodMode />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/logs" element={<LiveLogs />} />
           </Routes>
         </BrowserRouter>
         <Toaster position="bottom-right" theme="dark" />

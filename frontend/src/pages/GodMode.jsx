@@ -64,6 +64,7 @@ const GodMode = () => {
     const handleBridgeStatus = (e) => {
       setBridgeConnected(e.detail.connected);
       addDebug(`Bridge status: ${e.detail.connected ? 'CONNECTED' : 'DISCONNECTED'}`);
+      broadcastLog('bridge', e.detail.connected ? 'CONNECTED' : 'DISCONNECTED', e.detail.connected ? 'success' : 'error');
       if (e.detail.connected) {
         addLog('🔌 Local Bridge connected!', 'success');
       }
@@ -71,16 +72,19 @@ const GodMode = () => {
     
     const handleFileSaved = (e) => {
       addDebug(`File saved locally: ${e.detail.filepath}`);
+      broadcastLog('file', `Saved: ${e.detail.filepath}`, 'success');
       addLog(`📁 Saved to local: ${e.detail.filepath}`, 'success');
     };
     
     const handleBuildStatus = (e) => {
       const { status, data } = e.detail;
       addDebug(`Build status: ${status} - ${JSON.stringify(data)}`);
+      broadcastLog('build', `${status}: ${data?.message || JSON.stringify(data)}`, status === 'error' ? 'error' : 'info');
       if (status === 'started') {
         addLog('🔨 Local build started...', 'info');
       } else if (status === 'progress') {
         addLog(`🔧 ${data.message}`, 'info');
+        broadcastLog('build', data.message, 'info');
       } else if (status === 'complete') {
         addLog('✅ Local build complete!', 'success');
         toast.success('Project built successfully in local IDE!');
@@ -376,10 +380,23 @@ const GodMode = () => {
 
   // Debug log for bridge events
   const [debugLog, setDebugLog] = useState([]);
+  const logChannelRef = useRef(null);
+  
+  // Initialize broadcast channel for live logs
+  useEffect(() => {
+    logChannelRef.current = new BroadcastChannel('agentforge-logs');
+    return () => logChannelRef.current?.close();
+  }, []);
+  
+  const broadcastLog = (type, message, level = 'info') => {
+    logChannelRef.current?.postMessage({ type, message, level });
+  };
+  
   const addDebug = (msg) => {
     const time = new Date().toLocaleTimeString();
     setDebugLog(prev => [...prev.slice(-10), `[${time}] ${msg}`]);
     console.log(`[Bridge Debug] ${msg}`);
+    broadcastLog('system', msg);
   };
 
   // Download all files as ZIP - simple, no extension needed
