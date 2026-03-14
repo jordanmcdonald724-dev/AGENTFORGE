@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import TemplatesDialog from "@/components/TemplatesDialog";
 import {
   Dialog,
   DialogContent,
@@ -71,6 +72,7 @@ const Dashboard = () => {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [newProject, setNewProject] = useState({
     name: "",
@@ -184,6 +186,16 @@ const Dashboard = () => {
                 <Settings className="w-5 h-5 text-zinc-400" />
               </button>
               
+              
+              <Button
+                onClick={() => setTemplatesOpen(true)}
+                variant="outline"
+                className="border-white/10 hover:bg-white/5 text-white gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                Templates
+              </Button>
+
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
                   <Button 
@@ -436,6 +448,9 @@ const Dashboard = () => {
         )}
       </main>
     </div>
+      
+      <TemplatesDialog open={templatesOpen} onClose={() => setTemplatesOpen(false)} />
+
   );
 };
 

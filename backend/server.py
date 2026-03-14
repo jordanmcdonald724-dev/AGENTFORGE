@@ -5580,6 +5580,7 @@ try:
     from routes.agent_memory import router as agent_memory_router
     from routes.build_operations import router as build_operations_router
     from routes.autonomous_builds import router as autonomous_builds_router
+    from routes.templates import router as templates_router
     
     app.include_router(game_engine_router, prefix="/api", tags=["game-engine"])
     app.include_router(hardware_router, prefix="/api", tags=["hardware"])
@@ -5594,6 +5595,7 @@ try:
     app.include_router(agent_memory_router, prefix="/api", tags=["agent-memory"])
     app.include_router(build_operations_router, prefix="/api", tags=["build-operations"])
     app.include_router(autonomous_builds_router, prefix="/api", tags=["builds"])
+    app.include_router(templates_router, prefix="/api/templates", tags=["templates"])
     logger.info("Successfully loaded new feature routers")
 except Exception as e:
     logger.warning(f"Could not load new feature routers: {e}")
