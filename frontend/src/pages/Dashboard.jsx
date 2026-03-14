@@ -60,7 +60,7 @@ const PROJECT_TYPES = [
 ];
 
 const ENGINE_VERSIONS = {
-  unreal: ["5.4", "5.3", "5.2"],
+  unreal: ["5.7", "5.4", "5.3", "5.2"],
   unity: ["2023.3 LTS", "2022.3 LTS"],
   godot: ["4.3", "4.2"],
 };
