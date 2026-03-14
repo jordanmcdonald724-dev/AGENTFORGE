@@ -8,6 +8,18 @@
 
 ## Refactoring Strategy
 
+### Completed Extractions
+| Section | Lines Removed | Target File | Status |
+|---------|---------------|-------------|--------|
+| Settings & Local Bridge | ~91 | `routes/settings.py` | ✅ DONE |
+| God Mode V1 | ~394 | `routes/god_mode_v1.py` | ✅ DONE |
+
+### Server.py Progress
+- **Original Size**: 8,578 lines
+- **Current Size**: 8,096 lines  
+- **Lines Removed**: ~482 lines (5.6% reduction)
+- **Routes Modularized**: Settings, Local Bridge, God Mode V1, God Mode V2, Memory, Pipeline, Game Engine, Hardware, Research
+
 ### Phase 1: Extract Standalone Features (Low Risk)
 These sections have minimal dependencies and can be extracted first:
 
