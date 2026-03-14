@@ -7,6 +7,7 @@ Multi-agent AI development system with:
 - Specialist agents
 - Review & improvement loops
 - Self-improving iterations
+- Project memory/learning
 """
 
 from fastapi import APIRouter, HTTPException
@@ -420,6 +421,77 @@ OUTPUT FORMAT:
 BE STRICT. AAA quality only."""
 
 
+REFACTOR_PROMPT = """You are PHOENIX, Senior Refactor Engineer AI.
+
+YOUR ROLE: Take review feedback and IMPROVE the code.
+
+YOU FIX:
+1. Architecture issues - Better modularity, cleaner separation
+2. Performance problems - Optimize algorithms, reduce complexity
+3. Code quality - Better naming, cleaner patterns
+4. Security vulnerabilities - Fix all security issues
+5. Technical debt - Remove duplication, improve maintainability
+
+INPUT: You receive:
+- Original code
+- Review feedback with issues
+- Improvement suggestions
+
+OUTPUT: Improved code with:
+- All issues fixed
+- Better architecture
+- Improved performance
+- Cleaner implementation
+
+CODE FORMAT:
+```language:filepath
+// Refactored, improved code
+```
+
+ALWAYS:
+- Address ALL review issues
+- Maintain functionality
+- Improve readability
+- Optimize where possible
+- Add documentation"""
+
+
+TESTER_PROMPT = """You are PROBE, Senior QA Engineer AI.
+
+YOUR ROLE: Test everything before deployment.
+
+TEST TYPES:
+1. UNIT TESTS - Individual functions
+2. INTEGRATION TESTS - System interactions
+3. E2E TESTS - Full user flows
+4. PERFORMANCE TESTS - Load and stress
+5. SECURITY TESTS - Vulnerability scanning
+
+OUTPUT FORMAT:
+```json
+{
+  "test_suite": "ModuleName",
+  "total_tests": 25,
+  "passed": 23,
+  "failed": 2,
+  "coverage": 87,
+  "failures": [
+    {
+      "test": "test_name",
+      "expected": "value",
+      "actual": "value",
+      "fix_suggestion": "suggestion"
+    }
+  ]
+}
+```
+
+Also generate test code:
+```language:tests/test_module.ext
+// Test implementation
+```"""
+
+
 # ============ MODELS ============
 
 class BuildPhase(BaseModel):
@@ -457,49 +529,71 @@ SPECIALIST_AGENTS = {
         "name": "DIRECTOR",
         "role": "director",
         "prompt": DIRECTOR_PROMPT,
-        "specialization": ["coordination", "planning", "quality_control"]
+        "specialization": ["coordination", "planning", "quality_control"],
+        "color": "#FFD700"  # Gold
     },
     "architect": {
         "name": "ATLAS",
         "role": "architect", 
         "prompt": ARCHITECT_PROMPT,
-        "specialization": ["system_design", "architecture", "patterns"]
+        "specialization": ["system_design", "architecture", "patterns"],
+        "color": "#3B82F6"  # Blue
     },
     "frontend": {
         "name": "PIXEL",
         "role": "frontend_engineer",
         "prompt": FRONTEND_ENGINEER_PROMPT,
-        "specialization": ["react", "ui", "ux", "components"]
+        "specialization": ["react", "ui", "ux", "components"],
+        "color": "#10B981"  # Green
     },
     "backend": {
         "name": "NEXUS",
         "role": "backend_engineer",
         "prompt": BACKEND_ENGINEER_PROMPT,
-        "specialization": ["api", "database", "server", "security"]
+        "specialization": ["api", "database", "server", "security"],
+        "color": "#8B5CF6"  # Purple
     },
     "game_engine": {
         "name": "TITAN",
         "role": "game_engine_engineer",
         "prompt": GAME_ENGINE_ENGINEER_PROMPT,
-        "specialization": ["unreal", "unity", "gameplay", "systems"]
+        "specialization": ["unreal", "unity", "gameplay", "systems"],
+        "color": "#F97316"  # Orange
     },
     "ai_engineer": {
         "name": "SYNAPSE",
         "role": "ai_engineer",
         "prompt": AI_ENGINEER_PROMPT,
-        "specialization": ["llm", "ml", "ai_integration"]
+        "specialization": ["llm", "ml", "ai_integration"],
+        "color": "#EC4899"  # Pink
     },
     "devops": {
         "name": "DEPLOY",
         "role": "devops_engineer",
         "prompt": DEVOPS_ENGINEER_PROMPT,
-        "specialization": ["ci_cd", "docker", "kubernetes", "monitoring"]
+        "specialization": ["ci_cd", "docker", "kubernetes", "monitoring"],
+        "color": "#14B8A6"  # Teal
     },
     "reviewer": {
         "name": "SENTINEL",
         "role": "reviewer",
         "prompt": REVIEW_PROMPT,
-        "specialization": ["code_review", "security", "quality"]
+        "specialization": ["code_review", "security", "quality"],
+        "color": "#EF4444"  # Red
+    },
+    "refactor": {
+        "name": "PHOENIX",
+        "role": "refactor_engineer",
+        "prompt": REFACTOR_PROMPT,
+        "specialization": ["refactoring", "optimization", "cleanup"],
+        "color": "#F59E0B"  # Amber
+    },
+    "tester": {
+        "name": "PROBE",
+        "role": "qa_engineer",
+        "prompt": TESTER_PROMPT,
+        "specialization": ["testing", "qa", "automation"],
+        "color": "#6366F1"  # Indigo
     }
 }
 
