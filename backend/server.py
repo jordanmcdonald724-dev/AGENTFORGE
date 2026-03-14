@@ -1374,7 +1374,23 @@ async def stream_agent_chain(request: AgentChainRequest):
 # - GET/POST/DELETE /api/war-room/*
 
 async def broadcast_to_war_room(project_id: str, from_agent: str, content: str, message_type: str = "progress", build_id: str = None):
-    """Helper to broadcast a message to war room - kept in server.py for internal use"""
+    """Helper to broadcast a message to war room - with duplicate prevention"""
+    from datetime import timedelta
+    
+    # Check for recent duplicate (same agent, type, and content within last 30 seconds)
+    recent_cutoff = (datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat()
+    existing = await db.war_room.find_one({
+        "project_id": project_id,
+        "from_agent": from_agent,
+        "content": content,
+        "message_type": message_type,
+        "timestamp": {"$gte": recent_cutoff}
+    })
+    
+    if existing:
+        # Skip duplicate message
+        return None
+    
     message = WarRoomMessage(
         project_id=project_id,
         build_id=build_id,

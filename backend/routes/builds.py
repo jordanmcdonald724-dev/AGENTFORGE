@@ -140,7 +140,20 @@ async def stream_war_room(project_id: str):
 
 @router.post("/war-room/{project_id}/message")
 async def post_war_room_message(project_id: str, from_agent: str, content: str, message_type: str = "discussion"):
-    """Post a message to the war room"""
+    """Post a message to the war room - with duplicate prevention"""
+    # Check for recent duplicate
+    recent_cutoff = (datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat()
+    existing = await db.war_room.find_one({
+        "project_id": project_id,
+        "from_agent": from_agent,
+        "content": content,
+        "message_type": message_type,
+        "timestamp": {"$gte": recent_cutoff}
+    })
+    
+    if existing:
+        return serialize_doc(existing)  # Return existing instead of creating duplicate
+    
     msg = WarRoomMessage(
         project_id=project_id,
         from_agent=from_agent,
