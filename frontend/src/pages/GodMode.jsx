@@ -63,17 +63,20 @@ const GodMode = () => {
     // Listen for local bridge events
     const handleBridgeStatus = (e) => {
       setBridgeConnected(e.detail.connected);
+      addDebug(`Bridge status: ${e.detail.connected ? 'CONNECTED' : 'DISCONNECTED'}`);
       if (e.detail.connected) {
         addLog('🔌 Local Bridge connected!', 'success');
       }
     };
     
     const handleFileSaved = (e) => {
+      addDebug(`File saved locally: ${e.detail.filepath}`);
       addLog(`📁 Saved to local: ${e.detail.filepath}`, 'success');
     };
     
     const handleBuildStatus = (e) => {
       const { status, data } = e.detail;
+      addDebug(`Build status: ${status} - ${JSON.stringify(data)}`);
       if (status === 'started') {
         addLog('🔨 Local build started...', 'info');
       } else if (status === 'progress') {
@@ -94,6 +97,7 @@ const GodMode = () => {
     window.addEventListener('agentforge-build-status', handleBuildStatus);
     
     // Check initial bridge status
+    addDebug('Checking bridge status...');
     window.dispatchEvent(new CustomEvent('agentforge-get-status'));
     
     return () => {
@@ -351,6 +355,14 @@ const GodMode = () => {
         }
       }
     }));
+  };
+
+  // Debug log for bridge events
+  const [debugLog, setDebugLog] = useState([]);
+  const addDebug = (msg) => {
+    const time = new Date().toLocaleTimeString();
+    setDebugLog(prev => [...prev.slice(-10), `[${time}] ${msg}`]);
+    console.log(`[Bridge Debug] ${msg}`);
   };
 
   // Download all files as ZIP - simple, no extension needed
@@ -630,6 +642,20 @@ const GodMode = () => {
                   No questions asked. Just the best possible implementation.
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Debug Panel */}
+        {debugLog.length > 0 && (
+          <div className="mt-6 p-4 bg-zinc-900 border border-zinc-700 rounded-lg">
+            <h4 className="text-xs font-bold text-zinc-500 mb-2">BRIDGE DEBUG LOG</h4>
+            <div className="font-mono text-xs space-y-1">
+              {debugLog.map((msg, i) => (
+                <div key={i} className={msg.includes('CONNECTED') ? 'text-green-400' : msg.includes('DISCONNECTED') ? 'text-red-400' : 'text-zinc-400'}>
+                  {msg}
+                </div>
+              ))}
             </div>
           </div>
         )}
