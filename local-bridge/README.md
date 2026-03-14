@@ -1,98 +1,108 @@
 # AgentForge Local Bridge
 
-Connect AgentForge to your local Unreal Engine and Unity projects. This bridge allows God Mode to push generated code directly into your local IDE and trigger builds.
+Connect AgentForge to your local Unreal Engine and Unity projects. Push generated code directly to your IDE and launch builds from the web app.
 
-## Components
+## Quick Start (One-Click Install)
 
-1. **Browser Extension** - Runs in Chrome/Edge, bridges the web app to your local machine
-2. **Native Messaging Host** - Python script that handles file operations and build commands
+### Step 1: Download & Extract
+1. Download the Local Bridge ZIP from AgentForge Settings (`/settings`)
+2. Extract to any folder (e.g., `C:\AgentForge-Bridge\`)
 
-## Installation
-
-### Step 1: Install the Native Messaging Host
-
-1. **Download** the Local Bridge package from AgentForge Settings page
-2. **Extract** to any folder (e.g., `C:\AgentForge-Bridge\`)
-3. **Run** `install_windows.bat` as Administrator
-
-The installer will:
-- Copy the bridge script to `%USERPROFILE%\.agentforge\`
-- Register the native messaging host with Chrome/Edge
-
-### Step 2: Install the Browser Extension
-
-1. Open Chrome and go to `chrome://extensions/`
+### Step 2: Install Browser Extension
+1. Open Chrome/Edge and go to `chrome://extensions` or `edge://extensions`
 2. Enable **Developer mode** (toggle in top right)
 3. Click **Load unpacked**
-4. Select the `browser-extension` folder
+4. Select the `browser-extension` folder from the download
 
-### Step 3: Update Extension ID
+### Step 3: Run One-Click Installer
+1. Double-click **`OneClickInstaller.bat`**
+2. The installer will automatically:
+   - Check Python is installed
+   - Copy bridge files to `%USERPROFILE%\.agentforge\`
+   - Register with Chrome, Edge, and Chromium
+   - Configure everything
 
-1. Copy the Extension ID shown in `chrome://extensions/`
-2. Run `update_extension_id.bat YOUR_EXTENSION_ID`
-3. Restart Chrome
+### Step 4: Restart Browser
+Close ALL browser windows and reopen. The bridge should connect automatically!
 
-### Step 4: Configure Project Paths
+---
 
+## Configuration
+
+### Project Paths
 1. Go to AgentForge Settings page (`/settings`)
 2. Enter your Unreal Engine project path (folder containing `.uproject`)
 3. Enter your Unity project path (folder containing `Assets`)
 4. Save settings
 
+### If Extension ID Changed
+If you reinstalled the extension and got a new ID:
+1. Run **`UpdateExtensionID.bat`**
+2. Enter your new Extension ID when prompted
+3. Restart browser
+
+---
+
 ## Usage
 
 ### Push Files to Local IDE
-
-1. Complete a God Mode build
+1. Complete a God Mode build in AgentForge
 2. Click **"PUSH TO LOCAL"** button
 3. Files will be saved to your configured project path
 
-### Trigger Local Build
-
+### Launch Unreal Engine
 1. After pushing files, click **"LOCAL BUILD"**
-2. The bridge will attempt to compile your project
-3. Build progress appears in the log
+2. The bridge will launch Unreal Editor with your project
 
-## Project Structure Mapping
-
-### Unreal Engine
-- Files are saved to `Source/[ProjectName]/`
-- Example: `Combat/DamageSystem.h` → `C:\MyGame\Source\MyGame\Combat\DamageSystem.h`
-
-### Unity
-- Files are saved to `Assets/Scripts/`
-- Example: `PlayerController.cs` → `C:\MyUnityGame\Assets\Scripts\PlayerController.cs`
+---
 
 ## Troubleshooting
 
-### Bridge not connecting
-1. Check if the native host is registered: Look in Windows Registry at `HKCU\SOFTWARE\Google\Chrome\NativeMessagingHosts`
-2. Ensure Python 3.8+ is installed and in PATH
-3. Check logs at `%USERPROFILE%\.agentforge\bridge.log`
+### Bridge Not Connecting
 
-### Build not starting
-1. Verify engine paths in settings
-2. For Unreal: Ensure you have the correct UE5 version installed
-3. For Unity: Ensure Unity Hub is installed
+1. **Check extension is enabled** - Go to `chrome://extensions` and ensure the AgentForge extension is ON
+2. **Check native host registration** - Run `regedit` and look for:
+   - `HKCU\SOFTWARE\Google\Chrome\NativeMessagingHosts\com.agentforge.localbridge`
+   - `HKCU\SOFTWARE\Microsoft\Edge\NativeMessagingHosts\com.agentforge.localbridge`
+3. **Check logs** - View `%USERPROFILE%\.agentforge\bridge.log`
+4. **Re-run installer** - Run `OneClickInstaller.bat` again
 
-### Files not appearing in IDE
-1. Check the project path is correct
-2. Ensure the path points to the project root (not a subfolder)
-3. Refresh/reimport in Unreal/Unity
+### Wrong Extension ID
+
+1. Copy your Extension ID from `chrome://extensions`
+2. Run `UpdateExtensionID.bat YOUR_ID_HERE`
+3. Restart browser
+
+### Python Not Found
+
+1. Install Python 3.8+ from https://www.python.org/downloads/
+2. **Important**: Check "Add Python to PATH" during installation
+3. Run the installer again
+
+---
+
+## Files Included
+
+| File | Purpose |
+|------|---------|
+| `OneClickInstaller.bat` | Main installer - run this first |
+| `UpdateExtensionID.bat` | Update extension ID if it changed |
+| `Uninstall.bat` | Remove the local bridge |
+| `agentforge_bridge.py` | Python script that handles file operations |
+| `agentforge_bridge.bat` | Launcher for the Python script |
+
+---
 
 ## Requirements
 
 - Windows 10/11
-- Python 3.8+
-- Chrome or Edge browser
+- Python 3.8+ (with PATH configured)
+- Chrome, Edge, or Chromium browser
 - Unreal Engine 5.x and/or Unity 2021+
 
-## Security
-
-- The extension only communicates with `emergentagent.com` and `localhost`
-- All file operations are sandboxed to your configured project paths
-- No data is sent to external servers
+---
 
 ## Support
 
-For issues, visit the AgentForge documentation or reach out through the app.
+For issues, check the AgentForge Settings page or view the logs at:
+`%USERPROFILE%\.agentforge\bridge.log`

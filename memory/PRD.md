@@ -35,7 +35,17 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ---
 
-### Previous Update (March 2026) - LOCAL BRIDGE INTEGRATION
+### Previous Update (March 2026) - LOCAL BRIDGE IMPROVED
+
+**One-Click Installer Created:**
+- ✅ **OneClickInstaller.bat** - Single file installs everything automatically
+- ✅ **UpdateExtensionID.bat** - User-friendly ID updater with validation
+- ✅ **Uninstall.bat** - Clean removal of all components
+- ✅ Auto-registers with Chrome, Edge, AND Chromium
+- ✅ Pre-configured with known Extension ID
+- ✅ Clear next steps shown after installation
+
+**Previous Local Bridge Features:**
 
 **New Features Implemented:**
 - ✅ **Local Bridge System** - Browser extension + native host for local IDE integration
