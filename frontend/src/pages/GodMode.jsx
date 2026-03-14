@@ -311,10 +311,14 @@ const GodMode = () => {
       return;
     }
     
-    if (fileContents.length === 0) {
+    let filesToPush = fileContents;
+    
+    if (filesToPush.length === 0) {
       // Fetch files if not loaded
       try {
+        addDebug('Fetching files from server...');
         const filesRes = await axios.get(`${API}/files?project_id=${projectId}`);
+        filesToPush = filesRes.data;
         setFileContents(filesRes.data);
       } catch (error) {
         toast.error('Failed to load files');
@@ -324,26 +328,27 @@ const GodMode = () => {
     
     setIsPushing(true);
     addLog('📤 Pushing files to local IDE...', 'info');
-    
-    const engine = project?.type === 'unity' ? 'unity' : 'unreal';
+    addDebug(`Pushing ${filesToPush.length} files to D:\\UE_5.7\\OceanCivilization`);
     
     window.dispatchEvent(new CustomEvent('agentforge-push-files', {
       detail: {
-        files: fileContents.map(f => ({
+        files: filesToPush.map(f => ({
           filepath: f.filepath,
           filename: f.filename,
           content: f.content,
           language: f.language
         })),
-        engine
+        projectPath: 'D:\\UE_5.7\\OceanCivilization',
+        engine: 'unreal'
       }
     }));
     
     setTimeout(() => {
       setIsPushing(false);
-      addLog(`✅ Pushed ${fileContents.length} files to local ${engine} project`, 'success');
-      toast.success(`Pushed ${fileContents.length} files to local IDE!`);
-    }, 1500);
+      addLog(`✅ Pushed ${filesToPush.length} files to local project`, 'success');
+      addDebug('Push complete');
+      toast.success(`Pushed ${filesToPush.length} files to D:\\UE_5.7\\OceanCivilization!`);
+    }, 2000);
   };
 
   // Trigger local build
@@ -354,13 +359,13 @@ const GodMode = () => {
     }
     
     setIsLocalBuilding(true);
-    const engine = project?.type === 'unity' ? 'unity' : 'unreal';
-    
-    addLog('🔨 Starting local build...', 'info');
+    addLog('🔨 Starting local Unreal Engine build...', 'info');
+    addDebug('Triggering build at D:\\UE_5.7\\OceanCivilization');
     
     window.dispatchEvent(new CustomEvent('agentforge-trigger-build', {
       detail: {
-        engine,
+        projectPath: 'D:\\UE_5.7\\OceanCivilization',
+        engine: 'unreal',
         buildConfig: {
           platform: 'Win64',
           configuration: 'Development'

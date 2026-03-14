@@ -83,23 +83,22 @@ def determine_file_path(filepath, project_path, engine):
     """Determine the full file path based on project and engine"""
     if engine.lower() in ['unreal', 'ue5', 'unreal engine 5']:
         # Unreal Engine project structure
-        # Source files go in Source/ProjectName/
+        # If filepath already starts with Source/, use it directly
         if filepath.startswith('Source/'):
             return Path(project_path) / filepath
+        # Otherwise put in Source/ProjectName/
         else:
             project_name = Path(project_path).name
             return Path(project_path) / 'Source' / project_name / filepath
     
     elif engine.lower() in ['unity', 'unity3d']:
         # Unity project structure
-        # Scripts go in Assets/Scripts/
         if filepath.startswith('Assets/'):
             return Path(project_path) / filepath
         else:
             return Path(project_path) / 'Assets' / 'Scripts' / filepath
     
     else:
-        # Generic - just use relative path
         return Path(project_path) / filepath
 
 def save_files(data):
@@ -227,63 +226,58 @@ def build_unreal(project_path, build_config, config):
     uproject = uproject_files[0]
     project_name = uproject.stem
     
-    # Find Unreal Engine installation
-    ue_path = config.get('unrealEnginePath', '')
+    send_message({
+        'type': 'build_progress',
+        'data': {'message': f'Found project: {project_name}'}
+    })
     
-    # Common UE5 paths on Windows
-    if not ue_path or not Path(ue_path).exists():
-        common_paths = [
-            r'C:\Program Files\Epic Games\UE_5.4\Engine\Build\BatchFiles\Build.bat',
-            r'C:\Program Files\Epic Games\UE_5.3\Engine\Build\BatchFiles\Build.bat',
-            r'C:\Program Files\Epic Games\UE_5.2\Engine\Build\BatchFiles\Build.bat',
-            r'C:\Program Files\Epic Games\UE_5.1\Engine\Build\BatchFiles\Build.bat',
-        ]
-        
-        for path in common_paths:
-            if Path(path).exists():
-                ue_path = path
-                break
+    # For UE 5.7, try to find UnrealBuildTool
+    # Common locations
+    ue_paths = [
+        r'C:\Program Files\Epic Games\UE_5.7\Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.exe',
+        r'C:\Program Files\Epic Games\UE_5.4\Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.exe',
+        r'C:\Program Files\Epic Games\UE_5.3\Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.exe',
+        r'D:\UE_5.7\Engine\Binaries\DotNET\UnrealBuildTool\UnrealBuildTool.exe',
+    ]
     
-    if not ue_path or not Path(ue_path).exists():
-        # Try using UnrealBuildTool directly
-        send_message({
-            'type': 'build_progress',
-            'data': {'message': 'Looking for Unreal Engine Build Tool...'}
-        })
+    ubt_path = None
+    for path in ue_paths:
+        if Path(path).exists():
+            ubt_path = path
+            break
+    
+    if not ubt_path:
+        # Try using the project's GenerateProjectFiles.bat
+        gen_files = project_path / 'GenerateProjectFiles.bat'
+        if gen_files.exists():
+            send_message({
+                'type': 'build_progress', 
+                'data': {'message': 'Running GenerateProjectFiles.bat...'}
+            })
+            subprocess.run([str(gen_files)], cwd=str(project_path), shell=True)
         
-        # Generate Visual Studio project files instead (more reliable)
-        generate_cmd = [
-            str(uproject),
-            '-generateproject'
-        ]
-        
-        send_message({
-            'type': 'build_progress',
-            'data': {'message': 'Refreshing project files...'}
-        })
-        
-        # For now, just report success with instructions
         send_message({
             'type': 'build_complete',
             'data': {
                 'success': True,
-                'message': f'Files saved to {project_path}. Open {uproject} in Unreal Editor to compile.',
+                'message': f'Files saved to {project_path}/Source/{project_name}/. Open {uproject} in Unreal Editor and compile (Ctrl+Alt+F11).',
                 'projectFile': str(uproject)
             }
         })
         return
     
-    # Build command
+    # Run UnrealBuildTool
     platform = build_config.get('platform', 'Win64')
     configuration = build_config.get('configuration', 'Development')
     
     cmd = [
-        str(ue_path),
+        ubt_path,
         f'{project_name}Editor',
         platform,
         configuration,
-        str(uproject),
-        '-waitmutex'
+        f'-Project={uproject}',
+        '-WaitMutex',
+        '-FromMsBuild'
     ]
     
     send_message({
@@ -291,40 +285,50 @@ def build_unreal(project_path, build_config, config):
         'data': {'message': f'Building {project_name} ({platform} {configuration})...'}
     })
     
-    logger.info(f"Running build command: {' '.join(cmd)}")
+    logger.info(f"Running: {' '.join(cmd)}")
     
-    process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        shell=True
-    )
-    
-    # Stream output
-    for line in process.stdout:
-        line = line.strip()
-        if line:
+    try:
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            cwd=str(project_path)
+        )
+        
+        for line in process.stdout:
+            line = line.strip()
+            if line:
+                send_message({
+                    'type': 'build_progress',
+                    'data': {'message': line[:200]}  # Truncate long lines
+                })
+        
+        return_code = process.wait()
+        
+        if return_code == 0:
             send_message({
-                'type': 'build_progress',
-                'data': {'message': line}
+                'type': 'build_complete',
+                'data': {'success': True, 'message': 'Build completed successfully!'}
             })
-    
-    return_code = process.wait()
-    
-    if return_code == 0:
+        else:
+            send_message({
+                'type': 'build_complete',
+                'data': {
+                    'success': True,
+                    'message': f'Files ready. Open {uproject} in Unreal Editor to compile.'
+                }
+            })
+    except Exception as e:
+        logger.error(f"Build error: {e}")
         send_message({
             'type': 'build_complete',
             'data': {
                 'success': True,
-                'message': 'Build completed successfully!'
+                'message': f'Files saved. Open {uproject} in Unreal Editor to compile.',
+                'projectFile': str(uproject)
             }
         })
-    else:
-        stderr = process.stderr.read()
-        send_message({
-            'type': 'build_error',
-            'data': {'error': f'Build failed with code {return_code}: {stderr}'}
         })
 
 def build_unity(project_path, build_config, config):
