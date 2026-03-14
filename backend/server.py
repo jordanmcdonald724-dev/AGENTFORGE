@@ -2674,6 +2674,7 @@ async def stream_quick_action(request: QuickActionRequest):
 
 class GodModeRequest(BaseModel):
     project_id: str
+    start_phase: int = 0  # For resume functionality - skip to this phase
 
 @api_router.post("/god-mode/activate")
 async def activate_god_mode(request: GodModeRequest):
@@ -2705,7 +2706,7 @@ async def god_mode_build_stream(request: GodModeRequest):
     engine = project.get('engine_version', 'Unreal Engine 5')
     
     # Get start phase from request (for resume functionality)
-    start_phase = getattr(request, 'start_phase', 0) if hasattr(request, 'start_phase') else 0
+    start_phase = request.start_phase
     
     # Define build phases based on project type
     if project_type in ['game', 'unreal', 'unity']:
