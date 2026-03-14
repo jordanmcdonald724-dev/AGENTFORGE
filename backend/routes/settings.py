@@ -16,7 +16,7 @@ import uuid
 import tempfile
 import zipfile
 
-router = APIRouter(prefix="/settings", tags=["settings"])
+router = APIRouter()  # No prefix here, will be added when included
 
 
 # ============ MODELS ============

@@ -77,6 +77,17 @@ tts_client = OpenAITextToSpeech(api_key=os.environ.get('EMERGENT_LLM_KEY', ''))
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# Root-level health check for Kubernetes (no /api prefix)
+@app.get("/health")
+async def root_health():
+    """Health check endpoint for Kubernetes liveness/readiness probes"""
+    try:
+        # Test MongoDB connection
+        await db.command('ping')
+        return {"status": "healthy", "database": "connected", "timestamp": datetime.now(timezone.utc).isoformat()}
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e), "timestamp": datetime.now(timezone.utc).isoformat()}
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
@@ -617,6 +628,17 @@ async def update_project(project_id: str, updates: dict):
     updates['updated_at'] = datetime.now(timezone.utc).isoformat()
     await db.projects.update_one({"id": project_id}, {"$set": updates})
     return {"success": True}
+
+
+# PUT method (full update) - alias to PATCH for compatibility  
+@api_router.put("/projects/{project_id}")
+async def replace_project(project_id: str, updates: dict):
+    """Full project update - accepts complete project object"""
+    updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+    result = await db.projects.update_one({"id": project_id}, {"$set": updates})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return {"success": True, "message": "Project updated"}
 
 @api_router.delete("/projects/{project_id}")
 async def delete_project(project_id: str):
@@ -1371,6 +1393,36 @@ async def broadcast_to_war_room(project_id: str, from_agent: str, content: str, 
 # - GET /api/builds/{project_id}, /api/builds/{project_id}/current
 # - POST /api/builds/{build_id}/advance, /pause, /resume, /cancel
 # - POST /api/builds/{build_id}/run-full
+
+# War Room endpoint (stub for frontend compatibility)
+@api_router.get("/war-room/{project_id}")
+async def get_war_room(project_id: str):
+    """Get war room messages for a project"""
+    messages = await db.war_room.find({"project_id": project_id}, {"_id": 0}).sort("timestamp", -1).limit(100).to_list(100)
+    return messages
+
+# Current build endpoint (stub for frontend compatibility)
+@api_router.get("/builds/{project_id}/current")
+async def get_current_build(project_id: str):
+    """Get current/latest build for a project"""
+    build = await db.builds.find_one({"project_id": project_id}, {"_id": 0}, sort=[("created_at", -1)])
+    if not build:
+        raise HTTPException(status_code=404, detail="No builds found for this project")
+    return build
+
+# Open world systems endpoint (stub for frontend compatibility)
+@api_router.get("/systems/open-world")
+async def get_open_world_systems():
+    """Get open world game systems templates"""
+    return {
+        "systems": [
+            {"id": "npc", "name": "NPC System", "description": "AI-driven NPCs with schedules and behaviors"},
+            {"id": "weather", "name": "Weather System", "description": "Dynamic weather and day/night cycles"},
+            {"id": "economy", "name": "Economy System", "description": "Trading, shops, and resource management"},
+            {"id": "quest", "name": "Quest System", "description": "Dynamic quest generation and tracking"}
+        ]
+    }
+
 # - POST /api/builds/{build_id}/stage/{index}/execute
 
 # ============ PLAYABLE DEMO GENERATION ============
@@ -5589,7 +5641,7 @@ try:
     app.include_router(god_mode_v2_router, prefix="/api", tags=["god-mode-v2"])
     app.include_router(god_mode_v1_router, prefix="/api", tags=["god-mode"])
     app.include_router(memory_router, prefix="/api", tags=["memory"])
-    app.include_router(settings_router, prefix="/api", tags=["settings"])
+    app.include_router(settings_router, prefix="/api/settings", tags=["settings"])
     app.include_router(local_bridge_router, prefix="/api", tags=["local-bridge"])
     app.include_router(quick_actions_router, prefix="/api", tags=["quick-actions"])
     app.include_router(agent_memory_router, prefix="/api", tags=["agent-memory"])
