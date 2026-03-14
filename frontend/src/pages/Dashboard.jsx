@@ -447,8 +447,9 @@ const Dashboard = () => {
           </div>
         )}
       </main>
+      
+      <TemplatesDialog open={templatesOpen} onClose={() => setTemplatesOpen(false)} />
     </div>
-    <TemplatesDialog open={templatesOpen} onClose={() => setTemplatesOpen(false)} />
   );
 };
 
