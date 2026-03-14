@@ -156,15 +156,6 @@ const FileDropZone = ({ onFilesAdded, children, className = '' }) => {
           className="hidden"
           accept="*/*"
         />
-
-        {/* Upload Button Overlay */}
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="absolute bottom-4 right-20 p-2 rounded-lg bg-zinc-800/80 hover:bg-zinc-700/80 border border-zinc-700 transition-colors backdrop-blur-sm"
-          title="Attach files"
-        >
-          <Upload className="w-4 h-4 text-zinc-400" />
-        </button>
       </div>
 
       {/* Uploaded Files List */}
