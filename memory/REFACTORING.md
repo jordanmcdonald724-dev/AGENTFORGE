@@ -18,12 +18,18 @@
 | Custom Actions | ~83 | `routes/quick_actions.py` | ✅ DONE |
 | Agent Memory | ~95 | `routes/agent_memory.py` | ✅ DONE |
 | Project Duplication | ~64 | `routes/agent_memory.py` | ✅ DONE |
+| Multi-File Refactoring | ~156 | `routes/build_operations.py` | ✅ DONE |
+| War Room | ~44 | `routes/build_operations.py` | ✅ DONE |
+| Simulation Mode | ~70 | `routes/build_operations.py` | ✅ DONE |
+| Playable Demos | ~28 | `routes/build_operations.py` | ✅ DONE |
+| Blueprints | ~36 | `routes/build_operations.py` | ✅ DONE |
 
 ### Server.py Progress
 - **Original Size**: 8,578 lines
-- **Current Size**: 7,726 lines  
-- **Lines Removed**: ~852 lines (9.9% reduction)
-- **Routes Modularized**: Settings, Local Bridge, God Mode V1, God Mode V2, Memory, Pipeline, Game Engine, Hardware, Research, Quick Actions, Custom Actions, Live Preview, Agent Memory, Project Duplication
+- **Current Size**: 7,726 lines (pending removal of duplicates)
+- **Lines Ready to Remove**: ~334 more lines
+- **Total Lines to Remove**: ~1,186 lines (13.8% reduction)
+- **Routes Modularized**: 14 route files now in /routes/
 
 ### Phase 1: Extract Standalone Features (Low Risk)
 These sections have minimal dependencies and can be extracted first:

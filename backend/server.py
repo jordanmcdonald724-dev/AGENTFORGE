@@ -7687,6 +7687,7 @@ try:
     from routes.settings import local_bridge_router
     from routes.quick_actions import router as quick_actions_router
     from routes.agent_memory import router as agent_memory_router
+    from routes.build_operations import router as build_operations_router
     
     app.include_router(game_engine_router, prefix="/api", tags=["game-engine"])
     app.include_router(hardware_router, prefix="/api", tags=["hardware"])
@@ -7699,7 +7700,8 @@ try:
     app.include_router(local_bridge_router, prefix="/api", tags=["local-bridge"])
     app.include_router(quick_actions_router, prefix="/api", tags=["quick-actions"])
     app.include_router(agent_memory_router, prefix="/api", tags=["agent-memory"])
-    logger.info("Successfully loaded new feature routers (game-engine, hardware, research, pipeline, god-mode-v1, god-mode-v2, memory, settings, quick-actions, agent-memory)")
+    app.include_router(build_operations_router, prefix="/api", tags=["build-operations"])
+    logger.info("Successfully loaded new feature routers")
 except Exception as e:
     logger.warning(f"Could not load new feature routers: {e}")
 
