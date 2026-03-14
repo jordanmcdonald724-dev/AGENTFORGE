@@ -15,7 +15,9 @@ import {
   Globe,
   Smartphone,
   Rocket,
-  ChevronRight
+  ChevronRight,
+  Brain,
+  FlaskConical
 } from "lucide-react";
 
 const LandingPage = () => {
@@ -38,14 +40,10 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#09090b] overflow-hidden">
-      {/* Background Effects */}
-      <div className="fixed inset-0 gradient-mesh opacity-60" />
-      <div className="fixed inset-0 bg-gradient-to-b from-transparent via-transparent to-[#09090b]" />
-      
-      {/* Navigation */}
-      <nav className="relative z-50 px-6 py-5">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+    <div className="min-h-screen bg-[#09090b] overflow-hidden flex">
+      {/* Sidebar */}
+      <aside className="relative z-50 w-64 border-r border-white/10 bg-black/40 backdrop-blur-xl flex flex-col">
+        <div className="p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
@@ -54,15 +52,43 @@ const LandingPage = () => {
               Agent<span className="text-blue-400">Forge</span>
             </span>
           </div>
-          <Button 
-            onClick={() => navigate("/studio")}
-            className="bg-white/10 hover:bg-white/15 text-white border-0 backdrop-blur-sm"
-            data-testid="nav-start-btn"
-          >
-            Launch Studio
-          </Button>
         </div>
-      </nav>
+        
+        <nav className="flex-1 p-4">
+          <div className="space-y-2">
+            <Button
+              onClick={() => navigate("/studio")}
+              variant="ghost"
+              className="w-full justify-start text-white hover:bg-white/10"
+            >
+              <Rocket className="w-4 h-4 mr-3" />
+              Studio
+            </Button>
+            <Button
+              onClick={() => navigate("/god-mode")}
+              variant="ghost"
+              className="w-full justify-start text-white hover:bg-white/10"
+            >
+              <Brain className="w-4 h-4 mr-3" />
+              God Mode
+            </Button>
+            <Button
+              onClick={() => navigate("/research")}
+              variant="ghost"
+              className="w-full justify-start text-white hover:bg-white/10"
+            >
+              <FlaskConical className="w-4 h-4 mr-3" />
+              Research Lab
+            </Button>
+          </div>
+        </nav>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        {/* Background Effects */}
+        <div className="fixed inset-0 gradient-mesh opacity-60 pointer-events-none" />
+        <div className="fixed inset-0 bg-gradient-to-b from-transparent via-transparent to-[#09090b] pointer-events-none" />
 
       {/* Hero Section */}
       <main className="relative z-10">
@@ -270,6 +296,7 @@ const LandingPage = () => {
           <p className="text-zinc-600 text-sm">AI Development Studio</p>
         </div>
       </footer>
+      </div>
     </div>
   );
 };

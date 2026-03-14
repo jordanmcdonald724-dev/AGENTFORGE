@@ -25,6 +25,7 @@ function App() {
             <Route path="/studio" element={<Dashboard />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/project/:projectId" element={<ProjectWorkspace />} />
+            <Route path="/god-mode" element={<GodModePage />} />
             <Route path="/project/:projectId/god-mode" element={<GodModePage />} />
             <Route path="/research" element={<ResearchLab />} />
             <Route path="/settings" element={<SettingsPage />} />
