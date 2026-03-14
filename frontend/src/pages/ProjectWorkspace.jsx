@@ -814,6 +814,17 @@ const ProjectWorkspace = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* God Mode Button - Goes to separate page */}
+            <Button 
+              onClick={() => navigate(`/project/${projectId}/god-mode`)}
+              size="sm" 
+              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-medium"
+              data-testid="god-mode-btn"
+            >
+              <Zap className="w-4 h-4 mr-1" />
+              God Mode
+            </Button>
+            
             {/* Simulation Mode Button */}
             <Dialog open={simulationDialog} onOpenChange={setSimulationDialog}>
               <DialogTrigger asChild><Button variant="outline" size="sm" className="border-cyan-700 text-cyan-400 hover:bg-cyan-500/10" data-testid="simulation-btn"><Radio className="w-4 h-4 mr-1" />Simulate</Button></DialogTrigger>
@@ -1110,45 +1121,34 @@ const ProjectWorkspace = () => {
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={55} minSize={35} maxSize={80}>
             <div className="h-full flex flex-col transition-colors duration-300 overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-              {/* God Mode Panel */}
+              {/* Quick Actions Panel - Clean version */}
               <AnimatePresence>
                 {showQuickActions && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b overflow-hidden" style={{ borderColor: 'var(--border-color)', background: 'linear-gradient(180deg, rgba(234,179,8,0.08) 0%, transparent 100%)' }}>
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b overflow-hidden" style={{ borderColor: 'var(--border-color)' }}>
                     <div className="p-4">
-                      {/* God Mode Button - Opens dedicated page */}
-                      <button 
-                        onClick={() => navigate(`/god-mode/${projectId}`)}
-                        className="w-full p-5 rounded-xl border-2 border-yellow-500/50 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 hover:border-yellow-400 transition-all flex items-center gap-4 group"
-                        data-testid="god-mode-btn"
-                      >
-                        <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                          <Zap className="w-8 h-8 text-black" />
-                        </div>
-                        <div className="text-left flex-1">
-                          <h4 className="font-bold text-xl text-yellow-400 flex items-center gap-2">
-                            GOD MODE
-                            <Badge className="bg-yellow-500/30 text-yellow-300 text-[10px]">AAA BUILD</Badge>
-                          </h4>
-                          <p className="text-sm text-zinc-400">AI builds your ENTIRE project automatically. No questions. Best quality. One click.</p>
-                        </div>
-                        <ArrowRight className="w-6 h-6 text-yellow-400 group-hover:translate-x-1 transition-transform" />
-                      </button>
-                      
                       {/* Quick Actions Grid */}
-                      <div className="mt-4 flex items-center justify-between mb-3">
-                        <h3 className="font-rajdhani font-bold text-sm flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>Quick Actions</h3>
-                        <Dialog open={customActionDialog} onOpenChange={setCustomActionDialog}>
-                          <DialogTrigger asChild><Button variant="ghost" size="sm" className="h-7"><Plus className="w-4 h-4 mr-1" />Custom</Button></DialogTrigger>
-                          <DialogContent className="border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
-                            <DialogHeader><DialogTitle className="font-rajdhani" style={{ color: 'var(--text-primary)' }}>Create Custom Action</DialogTitle></DialogHeader>
-                            <div className="space-y-3 py-4">
-                              <Input placeholder="Action name" value={newCustomAction.name} onChange={(e) => setNewCustomAction({ ...newCustomAction, name: e.target.value })} className="border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
-                              <Input placeholder="Description" value={newCustomAction.description} onChange={(e) => setNewCustomAction({ ...newCustomAction, description: e.target.value })} className="border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
-                              <Textarea placeholder="Prompt template" value={newCustomAction.prompt} onChange={(e) => setNewCustomAction({ ...newCustomAction, prompt: e.target.value })} className="border min-h-[100px]" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
-                            </div>
-                            <DialogFooter><Button onClick={createCustomAction} className="bg-blue-500 hover:bg-blue-600">Create</Button></DialogFooter>
-                          </DialogContent>
-                        </Dialog>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+                          <Sparkles className="w-4 h-4 text-blue-400" />
+                          Quick Actions
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <Dialog open={customActionDialog} onOpenChange={setCustomActionDialog}>
+                            <DialogTrigger asChild><Button variant="ghost" size="sm" className="h-7 text-xs"><Plus className="w-3 h-3 mr-1" />Custom</Button></DialogTrigger>
+                            <DialogContent className="border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
+                              <DialogHeader><DialogTitle style={{ color: 'var(--text-primary)' }}>Create Custom Action</DialogTitle></DialogHeader>
+                              <div className="space-y-3 py-4">
+                                <Input placeholder="Action name" value={newCustomAction.name} onChange={(e) => setNewCustomAction({ ...newCustomAction, name: e.target.value })} className="border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
+                                <Input placeholder="Description" value={newCustomAction.description} onChange={(e) => setNewCustomAction({ ...newCustomAction, description: e.target.value })} className="border" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
+                                <Textarea placeholder="Prompt template" value={newCustomAction.prompt} onChange={(e) => setNewCustomAction({ ...newCustomAction, prompt: e.target.value })} className="border min-h-[100px]" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-color)' }} />
+                              </div>
+                              <DialogFooter><Button onClick={createCustomAction} className="bg-blue-500 hover:bg-blue-600">Create</Button></DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowQuickActions(false)}>
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                       <div className="grid grid-cols-4 gap-2">
                         {allActions.slice(0, 8).map((action) => {
@@ -1168,7 +1168,7 @@ const ProjectWorkspace = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {!showQuickActions && <Button variant="ghost" size="sm" className="mx-3 mt-2 text-xs border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10" onClick={() => setShowQuickActions(true)}><Zap className="w-4 h-4 mr-1" />God Mode</Button>}
+              {!showQuickActions && <Button variant="ghost" size="sm" className="mx-3 mt-2 text-xs border border-zinc-700 text-zinc-400 hover:bg-zinc-800" onClick={() => setShowQuickActions(true)}><Sparkles className="w-4 h-4 mr-1" />Quick Actions</Button>}
               {chainProgress && <div className="px-4 py-2 border-b" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /><span className="text-xs" style={{ color: 'var(--accent)' }}>Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
 
               <div className="flex-1 flex flex-col overflow-hidden">
