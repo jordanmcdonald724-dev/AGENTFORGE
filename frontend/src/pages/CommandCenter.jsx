@@ -5,7 +5,8 @@ import {
   Zap, ArrowLeft, Play, Pause, RotateCcw, Settings, Download,
   Brain, Code, Shield, Rocket, Users, Activity, CheckCircle,
   XCircle, Clock, TrendingUp, Cpu, GitBranch, Layers, Eye,
-  ChevronRight, Loader2, Terminal, BarChart3
+  ChevronRight, Loader2, Terminal, BarChart3, AlertTriangle,
+  Database, Timer, FileCode, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -45,6 +46,14 @@ const CommandCenter = () => {
   const [phases, setPhases] = useState([]);
   const [logs, setLogs] = useState([]);
   const [files, setFiles] = useState([]);
+  const [errors, setErrors] = useState([]);
+  const [buildStats, setBuildStats] = useState({
+    buildTime: 0,
+    filesGenerated: 0,
+    qualityScore: 0,
+    memoryRecorded: false,
+    hasLearnings: false
+  });
   const [metrics, setMetrics] = useState({
     architecture_score: 0,
     code_quality: 0,
@@ -53,6 +62,7 @@ const CommandCenter = () => {
   });
   
   const logsEndRef = useRef(null);
+  const buildStartTime = useRef(null);
 
   useEffect(() => {
     fetchProject();
@@ -91,6 +101,8 @@ const CommandCenter = () => {
     setLogs([]);
     setFiles([]);
     setPhases([]);
+    setErrors([]);
+    buildStartTime.current = Date.now();
     
     addLog('SYSTEM', 'Initializing AI Software Factory...', 'system');
     addLog('SYSTEM', `Starting recursive build with ${totalIterations} iterations`, 'system');
@@ -103,7 +115,8 @@ const CommandCenter = () => {
           project_id: projectId,
           iterations: totalIterations,
           auto_review: true,
-          quality_target: 85
+          quality_target: 85,
+          enable_memory: true
         })
       });
 
@@ -128,7 +141,8 @@ const CommandCenter = () => {
       }
     } catch (error) {
       addLog('SYSTEM', `Build error: ${error.message}`, 'error');
-      toast.error('Build failed');
+      setErrors(prev => [...prev, { phase: 'Connection', error: error.message }]);
+      toast.error('Build failed - connection error');
     }
     
     setIsBuilding(false);
@@ -138,21 +152,35 @@ const CommandCenter = () => {
     switch (data.type) {
       case 'pipeline_start':
         setBuildPhase('planning');
+        setBuildStats(prev => ({ ...prev, hasLearnings: data.has_learnings }));
         addLog('DIRECTOR', `Starting build for: ${data.project}`, 'info');
+        if (data.has_learnings) {
+          addLog('SYSTEM', 'Using learnings from past successful builds', 'success');
+        }
         break;
         
       case 'phase_start':
         setCurrentAgent(data.agent);
-        addLog(data.agent, `Starting: ${data.phase}`, 'phase');
-        setPhases(prev => [...prev, { name: data.phase, agent: data.agent, status: 'active' }]);
+        addLog(data.agent, `Starting: ${data.phase}${data.iteration ? ` (Iteration ${data.iteration})` : ''}`, 'phase');
+        setPhases(prev => [...prev, { name: data.phase, agent: data.agent, status: 'active', iteration: data.iteration }]);
         break;
         
       case 'phase_complete':
-        addLog(data.agent || currentAgent, `Completed: ${data.phase}`, 'success');
+        addLog(data.agent || currentAgent, `Completed: ${data.phase}${data.quality ? ` (Quality: ${data.quality})` : ''}`, 'success');
         setPhases(prev => prev.map(p => 
-          p.name === data.phase ? { ...p, status: 'complete' } : p
+          p.name === data.phase ? { ...p, status: 'complete', quality: data.quality } : p
         ));
-        setProgress(prev => Math.min(prev + 10, 95));
+        if (data.quality) {
+          setMetrics(prev => ({ ...prev, code_quality: Math.max(prev.code_quality, data.quality) }));
+        }
+        break;
+        
+      case 'phase_error':
+        addLog(data.agent || 'SYSTEM', `Error: ${data.error}${data.recoverable ? ' (Continuing...)' : ''}`, 'error');
+        setErrors(prev => [...prev, { phase: data.phase, error: data.error, iteration: data.iteration }]);
+        setPhases(prev => prev.map(p => 
+          p.name === data.phase ? { ...p, status: data.recoverable ? 'warning' : 'error' } : p
+        ));
         break;
         
       case 'iteration_start':
@@ -167,11 +195,14 @@ const CommandCenter = () => {
         break;
         
       case 'iteration_complete':
-        addLog('SYSTEM', `Iteration ${data.iteration} complete`, 'success');
+        addLog('SYSTEM', `Iteration ${data.iteration} complete${data.avg_quality ? ` (Avg Quality: ${data.avg_quality})` : ''}`, 'success');
+        if (data.avg_quality) {
+          setBuildStats(prev => ({ ...prev, qualityScore: data.avg_quality }));
+        }
         break;
         
       case 'director_plan':
-        addLog('DIRECTOR', 'Build plan created', 'success');
+        addLog('DIRECTOR', 'Build plan created with AI learnings', 'success');
         break;
         
       case 'architecture':
@@ -181,28 +212,49 @@ const CommandCenter = () => {
         
       case 'file_saved':
         setFiles(prev => [...prev, data.filepath]);
-        addLog('TITAN', `File: ${data.filepath.split('/').pop()}`, 'file');
+        addLog('TITAN', `File: ${data.filepath.split('/').pop()} (Iter ${data.iteration})`, 'file');
+        setBuildStats(prev => ({ ...prev, filesGenerated: prev.filesGenerated + 1 }));
+        break;
+        
+      case 'heartbeat':
+        // Keep connection alive, update progress
+        setProgress(prev => Math.min(prev + 1, 95));
         break;
         
       case 'review':
-        addLog('SENTINEL', 'Code review complete', 'review');
-        try {
-          const reviewData = JSON.parse(data.content.match(/```json\n([\s\S]*?)\n```/)?.[1] || '{}');
-          if (reviewData.score) {
-            setMetrics(prev => ({ ...prev, code_quality: reviewData.score }));
-          }
-        } catch (e) {}
+        addLog('SENTINEL', `Code review complete (Score: ${data.score || 'N/A'})`, 'review');
+        if (data.score) {
+          setMetrics(prev => ({ ...prev, code_quality: data.score }));
+        }
         break;
         
       case 'pipeline_complete':
         setBuildPhase('complete');
         setProgress(100);
-        addLog('SYSTEM', `BUILD COMPLETE - ${data.total_files} files generated`, 'success');
-        toast.success('Recursive build complete!');
+        const buildTime = buildStartTime.current ? Math.round((Date.now() - buildStartTime.current) / 1000) : data.build_time;
+        setBuildStats({
+          buildTime: buildTime,
+          filesGenerated: data.total_files,
+          qualityScore: data.quality_score || 0,
+          memoryRecorded: data.memory_recorded,
+          hasLearnings: buildStats.hasLearnings
+        });
+        addLog('SYSTEM', `BUILD COMPLETE - ${data.total_files} files, Quality: ${data.quality_score || 'N/A'}, Time: ${buildTime}s`, 'success');
+        if (data.memory_recorded) {
+          addLog('SYSTEM', 'Build recorded to memory system for future learning', 'success');
+        }
+        toast.success(`Recursive build complete! ${data.total_files} files generated`);
         break;
         
-      case 'phase_error':
-        addLog(data.agent || 'SYSTEM', `Error: ${data.error}`, 'error');
+      case 'pipeline_error':
+        addLog('SYSTEM', `Pipeline error: ${data.error}`, 'error');
+        setBuildPhase('error');
+        toast.error('Build pipeline failed');
+        break;
+        
+      case 'build_cancelled':
+        addLog('SYSTEM', `Build cancelled at iteration ${data.iteration}`, 'warning');
+        setBuildPhase('cancelled');
         break;
     }
   };
@@ -460,6 +512,7 @@ const CommandCenter = () => {
                 <Button 
                   className="w-full bg-green-600 hover:bg-green-500"
                   onClick={() => navigate(`/god-mode/${projectId}`)}
+                  data-testid="download-deploy-btn"
                 >
                   <Download className="w-4 h-4 mr-2" />
                   DOWNLOAD & DEPLOY
@@ -471,12 +524,82 @@ const CommandCenter = () => {
                     setCurrentIteration(0);
                     setBuildPhase('idle');
                     setProgress(0);
+                    setErrors([]);
+                    setBuildStats({ buildTime: 0, filesGenerated: 0, qualityScore: 0, memoryRecorded: false, hasLearnings: false });
                   }}
+                  data-testid="build-again-btn"
                 >
                   <RotateCcw className="w-4 h-4 mr-2" />
                   BUILD AGAIN
                 </Button>
               </div>
+            )}
+
+            {/* Build Stats Summary */}
+            {buildPhase === 'complete' && (
+              <Card className="bg-zinc-900/50 border-zinc-800" data-testid="build-stats-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    BUILD SUMMARY
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Build Time</span>
+                    <span className="text-white flex items-center gap-1">
+                      <Timer className="w-3 h-3" />
+                      {buildStats.buildTime}s
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Files Generated</span>
+                    <span className="text-white flex items-center gap-1">
+                      <FileCode className="w-3 h-3" />
+                      {buildStats.filesGenerated}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-500">Quality Score</span>
+                    <span className={`flex items-center gap-1 ${buildStats.qualityScore >= 80 ? 'text-green-400' : buildStats.qualityScore >= 60 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      <TrendingUp className="w-3 h-3" />
+                      {buildStats.qualityScore}/100
+                    </span>
+                  </div>
+                  {buildStats.memoryRecorded && (
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Memory</span>
+                      <span className="text-green-400 flex items-center gap-1">
+                        <Database className="w-3 h-3" />
+                        Recorded
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Errors Panel */}
+            {errors.length > 0 && (
+              <Card className="bg-red-950/30 border-red-900/50" data-testid="errors-panel">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-red-400 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4" />
+                    ERRORS ({errors.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[100px]">
+                    <div className="space-y-1">
+                      {errors.map((err, i) => (
+                        <div key={i} className="text-xs text-red-300 py-1">
+                          <span className="text-red-500">{err.phase}:</span> {err.error.slice(0, 50)}...
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>
