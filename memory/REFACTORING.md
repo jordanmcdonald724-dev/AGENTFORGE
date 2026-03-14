@@ -1,10 +1,10 @@
 # AgentForge Server Refactoring Plan
 
-## Current State
+## Current State (Updated March 2026)
 - **File**: `/app/backend/server.py`
-- **Size**: 8,574 lines
+- **Size**: 5,932 lines (was 8,574)
 - **Route handlers**: 220 using `@api_router`
-- **Sections**: 29 distinct sections marked with `# ============`
+- **All 61 Pydantic models extracted to `/app/backend/models/`**
 
 ## Refactoring Strategy
 
@@ -24,12 +24,15 @@
 | Playable Demos | ~28 | `routes/build_operations.py` | ✅ DONE |
 | Blueprints | ~36 | `routes/build_operations.py` | ✅ DONE |
 | Autonomous Builds | ~485 | `routes/autonomous_builds.py` | ✅ DONE |
+| **Pydantic Models** | **~965** | `models/` directory | ✅ DONE |
 
 ### Server.py Progress
 - **Original Size**: 8,578 lines
-- **Current Size**: 6,897 lines
-- **Total Lines Removed**: ~1,681 lines (19.6% reduction)
+- **Previous Size**: 6,897 lines
+- **Current Size**: 5,932 lines
+- **Total Lines Removed**: ~2,646 lines (30.8% reduction)
 - **Routes Modularized**: 15 route files now in /routes/
+- **Models Extracted**: 61 models now in /models/
 
 ### Phase 1: Extract Standalone Features (Low Risk)
 These sections have minimal dependencies and can be extracted first:
@@ -50,25 +53,35 @@ These sections share helpers and models:
 | Autonomous Builds | 3766-4251 | `routes/autonomous.py` | P2 |
 | Playable Demo Generation | 4252-4580 | `routes/demo.py` | P3 |
 
-### Phase 3: Extract Core Features (Higher Risk)
+### Phase 3: Extract Core Features (Higher Risk) - REMAINING
 These need careful planning:
 
 | Section | Lines | Target File | Priority |
 |---------|-------|-------------|----------|
-| Agent Configuration | 1492-1643 | `core/agents.py` | P3 |
-| Open World Game Systems | 1328-1491 | `core/game_systems.py` | P3 |
-| API Routes | 1832-2316 | Already in routes/ | - |
+| Agent Configuration | - | `core/agents.py` | P3 |
+| Open World Game Systems | - | `core/game_systems.py` | P3 |
+| API Routes | - | Already in routes/ | - |
 
-### Phase 4: Model Extraction
-All models should move to `/app/backend/models/`:
+### Phase 4: Model Extraction ✅ COMPLETED (March 2026)
+All 61 Pydantic models have been extracted to `/app/backend/models/`:
 
-| Model Group | Lines | Target File |
-|-------------|-------|-------------|
-| Base Models | 56-211 | `models/base.py` |
-| v2.3 Models | 212-278 | `models/v2.py` |
-| v3.0 Models | 279-371 | `models/v3.py` |
-| v3.3 Models | 372-489 | `models/collaboration.py` |
-| v3.4 Models | 490-1327 | `models/notifications.py` |
+| Model File | Models | Status |
+|------------|--------|--------|
+| `models/base.py` | Agent, Project, Task, Message, ProjectFile, GeneratedImage, ProjectPlan, AgentMemory, CustomQuickAction | ✅ |
+| `models/project.py` | ProjectCreate, ChatRequest, ImageGenRequest, FileCreate, FileUpdate, TaskCreate, PlanApproval, GitHubPushRequest, AgentChainRequest, RefactorRequest, ProjectDuplicateRequest, CustomActionCreate, MemoryCreate, QuickActionRequest | ✅ |
+| `models/build.py` | SimulationRequest, SimulationResult, AutonomousBuild, WarRoomMessage, StartBuildRequest, PlayableDemo, BuildWorker, BuildFarmJob, BuildQueueItem, DebugLoop, Checkpoint, IdeaConcept, IdeaBatch, SaaSBlueprint, SystemMap | ✅ |
+| `models/collaboration.py` | BlueprintNode, Blueprint, Collaborator, FileLock, CollaborationMessage | ✅ |
+| `models/sandbox.py` | NotificationSettings, AudioAsset, Deployment, SandboxSession, SandboxConfig, PipelineAsset, AssetImportRequest | ✅ |
+| `models/autopsy.py` | ProjectAutopsy | ✅ |
+| `models/agent.py` | DynamicAgent | ✅ |
+| `models/v45_features.py` | GoalLoop, KnowledgeEntry, ArchitectureVariant, ArchitectureExploration, RefactorJob, MissionControlEvent, DeploymentPipeline, SystemModule, RealityPipeline | ✅ |
+
+**Import in server.py:**
+```python
+from models import (
+    Agent, Project, Task, Message, ProjectFile, ...  # All 61 models
+)
+```
 
 ## Extraction Template
 
@@ -119,10 +132,14 @@ These routes are already in separate files:
 
 1. ✅ Document refactoring plan (this file)
 2. ✅ Extract Settings/Local Bridge section (proof of concept)
-3. ⏳ Extract God Mode v1 (after testing v2)
-4. ⏳ Extract remaining sections incrementally
-5. ⏳ Move models to `/app/backend/models/`
-6. ⏳ Final cleanup and testing
+3. ✅ Extract God Mode v1
+4. ✅ Extract Quick Actions, Custom Actions, Live Preview
+5. ✅ Extract Agent Memory, Project Duplication
+6. ✅ Extract Build Operations (Refactoring, War Room, Simulation, Demos, Blueprints)
+7. ✅ Extract Autonomous Builds
+8. ✅ Move models to `/app/backend/models/` (61 models, ~965 lines)
+9. ⏳ Extract remaining helper functions and constants
+10. ⏳ Final cleanup and testing
 
 ## Risk Mitigation
 
@@ -132,19 +149,16 @@ These routes are already in separate files:
 - **Run full test suite** after each extraction
 - **Document any shared dependencies** that need to be exposed
 
-## Estimated Effort
+## Progress Summary
 
-| Phase | Sections | Lines | Estimated Time |
-|-------|----------|-------|----------------|
-| Phase 1 | 4 | ~400 | 1-2 hours |
-| Phase 2 | 3 | ~1500 | 3-4 hours |
-| Phase 3 | 3 | ~800 | 2-3 hours |
-| Phase 4 | 5 | ~1300 | 2-3 hours |
-| **Total** | **15** | **~4000** | **8-12 hours** |
+| Phase | Status | Lines Removed |
+|-------|--------|---------------|
+| Phase 1: Standalone Features | ✅ Complete | ~300 |
+| Phase 2: Coupled Features | ✅ Complete | ~900 |
+| Phase 3: Core Features | ⏳ Pending | ~800 |
+| Phase 4: Model Extraction | ✅ Complete | ~965 |
+| **Total** | **70% Done** | **~2,646** |
 
-After completion, server.py should be reduced to ~4500 lines containing:
-- Core app setup
-- Database connection
-- Middleware
-- Router registration
-- Shared helpers
+**Current server.py size: 5,932 lines (31% reduction from 8,578)**
+
+Target: ~4,000-4,500 lines remaining
