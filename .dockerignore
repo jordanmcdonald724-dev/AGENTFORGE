@@ -1,0 +1,58 @@
+# Exclude large ZIP installers from Docker build
+# These are served from /frontend/public/ for user downloads
+AgentForge-Local-Windows.zip
+AgentForge-Extension.zip
+AgentForge-LocalBridge.zip
+local-bridge/AgentForge-LocalBridge.zip
+
+# Node modules (will be installed during build)
+node_modules/
+frontend/node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+coverage/
+.coverage
+.pytest_cache/
+test_reports/
+
+# Misc
+*.md
+README.md
+LICENSE
+DEPLOYMENT_CHECKLIST.md
+DEPLOYMENT_SETUP_GUIDE.md
+
+# Emergent
+.emergent/
