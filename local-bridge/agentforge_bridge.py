@@ -87,44 +87,75 @@ def save_files(data):
     })
 
 def trigger_build(data):
-    """Trigger build - just notify for now"""
+    """Launch Unreal Engine with the project"""
+    import subprocess
+    
     project_path = data.get('projectPath', 'D:\\UE_5.7\\OceanCivilization')
     
-    # Find .uproject
+    # Find .uproject file
     uproject = None
     for f in Path(project_path).glob('*.uproject'):
         uproject = f
         break
     
-    # For UE 5.7, try to find the build tool
-    # Check common locations for UE 5.7
-    ue_locations = [
-        Path('C:/Program Files/Epic Games/UE_5.7'),
-        Path('D:/UE_5.7'),
-        Path('D:/Epic Games/UE_5.7'),
-        Path('C:/UE_5.7'),
-    ]
-    
-    engine_path = None
-    for loc in ue_locations:
-        if loc.exists():
-            engine_path = loc
-            break
-    
-    if engine_path:
-        log(f"Found UE 5.7 at: {engine_path}")
+    if not uproject:
         send_message({
-            'type': 'build_progress',
-            'data': {'message': f'Found Unreal Engine 5.7 at {engine_path}'}
+            'type': 'build_error',
+            'data': {'error': 'No .uproject file found'}
         })
+        return
+    
+    log(f"Opening project: {uproject}")
     
     send_message({
-        'type': 'build_complete',
-        'data': {
-            'success': True,
-            'message': f'Files saved! Open {uproject or project_path} in Unreal Editor 5.7 and press Ctrl+Alt+F11 to compile.'
-        }
+        'type': 'build_progress',
+        'data': {'message': f'Launching Unreal Engine 5.7...'}
     })
+    
+    # Find Unreal Editor executable
+    ue_editor_paths = [
+        Path('C:/Program Files/Epic Games/UE_5.7/Engine/Binaries/Win64/UnrealEditor.exe'),
+        Path('D:/Epic Games/UE_5.7/Engine/Binaries/Win64/UnrealEditor.exe'),
+        Path('C:/Program Files/Epic Games/UE_5.4/Engine/Binaries/Win64/UnrealEditor.exe'),
+        Path('D:/UE_5.7/Engine/Binaries/Win64/UnrealEditor.exe'),
+    ]
+    
+    editor_path = None
+    for p in ue_editor_paths:
+        if p.exists():
+            editor_path = p
+            break
+    
+    try:
+        if editor_path:
+            # Launch Unreal Editor with the project
+            log(f"Launching: {editor_path} {uproject}")
+            subprocess.Popen([str(editor_path), str(uproject)], 
+                           creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP)
+            send_message({
+                'type': 'build_complete',
+                'data': {
+                    'success': True,
+                    'message': f'Unreal Editor launching with {uproject.name}!'
+                }
+            })
+        else:
+            # Try opening .uproject directly (Windows will use associated program)
+            log(f"Opening via shell: {uproject}")
+            os.startfile(str(uproject))
+            send_message({
+                'type': 'build_complete',
+                'data': {
+                    'success': True,
+                    'message': f'Opening {uproject.name} in Unreal Editor...'
+                }
+            })
+    except Exception as e:
+        log(f"Launch error: {e}")
+        send_message({
+            'type': 'build_error',
+            'data': {'error': str(e)}
+        })
 
 def main():
     log("Bridge started")
