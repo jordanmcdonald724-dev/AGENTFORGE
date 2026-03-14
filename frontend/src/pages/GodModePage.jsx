@@ -119,6 +119,15 @@ const GodModePage = () => {
     addLog('SYSTEM', 'Initializing God Mode...', 'system');
     addLog('SYSTEM', `Starting build with ${iteration.total} iterations`, 'system');
 
+    // Prepare build context with files
+    let buildContext = buildPrompt || project.description || 'Build the project';
+    if (attachedFiles.length > 0) {
+      buildContext += '\n\n**Reference Files:**\n';
+      attachedFiles.forEach(file => {
+        buildContext += `\n**${file.name}**:\n\`\`\`\n${file.content}\n\`\`\`\n`;
+      });
+    }
+
     try {
       const response = await fetch(`${API}/god-mode-v2/build/stream`, {
         method: 'POST',
@@ -128,7 +137,8 @@ const GodModePage = () => {
           iterations: iteration.total,
           auto_review: true,
           quality_target: 85,
-          enable_memory: true
+          enable_memory: true,
+          build_context: buildContext
         })
       });
 
@@ -288,10 +298,37 @@ const GodModePage = () => {
 
       {/* Main Content */}
       <main className="relative z-10 flex-1 max-w-6xl mx-auto w-full px-6 py-8">
+        {/* Build Prompt Input */}
+        {!isBuilding && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="bg-white/[0.02] border border-white/5 rounded-xl p-6">
+              <label className="text-sm font-medium text-zinc-400 mb-3 block">
+                Build Instructions (Optional - will use project description if empty)
+              </label>
+              <FileDropZone 
+                onFilesAdded={(files) => setAttachedFiles(prev => [...prev, ...files])}
+              >
+                <textarea
+                  value={buildPrompt}
+                  onChange={(e) => setBuildPrompt(e.target.value)}
+                  placeholder="Add specific instructions or drag files here... (Leave empty to use project description)"
+                  className="w-full min-h-[120px] bg-zinc-900/50 border border-white/10 rounded-lg p-4 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 resize-vertical"
+                  style={{ maxHeight: '300px' }}
+                />
+              </FileDropZone>
+            </div>
+          </motion.div>
+        )}
+
         {/* Build Control */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
           className="text-center mb-12"
         >
           <h2 className="text-2xl font-bold text-white mb-2">AI Software Factory</h2>
