@@ -1070,56 +1070,10 @@ const ProjectWorkspace = () => {
                 {showQuickActions && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b overflow-hidden" style={{ borderColor: 'var(--border-color)', background: 'linear-gradient(180deg, rgba(234,179,8,0.08) 0%, transparent 100%)' }}>
                     <div className="p-4">
-                      {/* God Mode Button */}
+                      {/* God Mode Button - Opens dedicated page */}
                       <button 
-                        onClick={async () => {
-                          setSending(true);
-                          try {
-                            const response = await fetch(`${API}/god-mode/build/stream`, {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ project_id: projectId })
-                            });
-                            
-                            const reader = response.body.getReader();
-                            const decoder = new TextDecoder();
-                            let fullContent = "";
-                            
-                            while (true) {
-                              const { done, value } = await reader.read();
-                              if (done) break;
-                              
-                              const text = decoder.decode(value);
-                              const lines = text.split('\n').filter(line => line.startsWith('data: '));
-                              
-                              for (const line of lines) {
-                                const data = JSON.parse(line.slice(6));
-                                if (data.type === 'god_mode_start') {
-                                  toast.info(`God Mode building ${data.project}...`);
-                                  setStreamingAgent({ name: 'GOD MODE', role: 'god' });
-                                } else if (data.type === 'content') {
-                                  fullContent += data.content;
-                                  setStreamingContent(fullContent);
-                                } else if (data.type === 'god_mode_complete') {
-                                  toast.success(`God Mode complete! Created ${data.files_created} files`);
-                                  setStreamingContent("");
-                                  setStreamingAgent(null);
-                                  // Refresh files
-                                  const filesRes = await axios.get(`${API}/files?project_id=${projectId}`);
-                                  setFiles(filesRes.data);
-                                  // Refresh messages
-                                  const msgRes = await axios.get(`${API}/messages?project_id=${projectId}`);
-                                  setMessages(msgRes.data);
-                                }
-                              }
-                            }
-                          } catch (error) {
-                            toast.error('God Mode failed: ' + error.message);
-                          }
-                          setSending(false);
-                        }}
-                        disabled={sending}
-                        className="w-full p-5 rounded-xl border-2 border-yellow-500/50 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 hover:border-yellow-400 transition-all flex items-center gap-4 disabled:opacity-50 group"
+                        onClick={() => navigate(`/god-mode/${projectId}`)}
+                        className="w-full p-5 rounded-xl border-2 border-yellow-500/50 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 hover:border-yellow-400 transition-all flex items-center gap-4 group"
                         data-testid="god-mode-btn"
                       >
                         <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
@@ -1128,15 +1082,11 @@ const ProjectWorkspace = () => {
                         <div className="text-left flex-1">
                           <h4 className="font-bold text-xl text-yellow-400 flex items-center gap-2">
                             GOD MODE
-                            <Badge className="bg-yellow-500/30 text-yellow-300 text-[10px]">AUTO BUILD</Badge>
+                            <Badge className="bg-yellow-500/30 text-yellow-300 text-[10px]">AAA BUILD</Badge>
                           </h4>
                           <p className="text-sm text-zinc-400">AI builds your ENTIRE project automatically. No questions. Best quality. One click.</p>
                         </div>
-                        {sending ? (
-                          <Loader2 className="w-6 h-6 text-yellow-400 animate-spin" />
-                        ) : (
-                          <ArrowRight className="w-6 h-6 text-yellow-400 group-hover:translate-x-1 transition-transform" />
-                        )}
+                        <ArrowRight className="w-6 h-6 text-yellow-400 group-hover:translate-x-1 transition-transform" />
                       </button>
                       
                       {/* Quick Actions Grid */}

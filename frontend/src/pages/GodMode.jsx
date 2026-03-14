@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -13,6 +13,18 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { API } from '@/App';
 import { toast } from 'sonner';
 import axios from 'axios';
+
+// Throttle function to prevent too many re-renders
+const throttle = (func, limit) => {
+  let inThrottle;
+  return function(...args) {
+    if (!inThrottle) {
+      func.apply(this, args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
+    }
+  };
+};
 
 const GodMode = () => {
   const { projectId } = useParams();
@@ -91,6 +103,8 @@ const GodMode = () => {
       const decoder = new TextDecoder();
       let fullContent = "";
       let currentPhaseIndex = 0;
+      let lastUpdateTime = 0;
+      const UPDATE_INTERVAL = 200; // Only update UI every 200ms
       
       while (true) {
         const { done, value } = await reader.read();
@@ -109,7 +123,13 @@ const GodMode = () => {
               setProgress(15);
             } else if (data.type === 'content') {
               fullContent += data.content;
-              setStreamContent(fullContent);
+              
+              // Throttle UI updates to prevent lag
+              const now = Date.now();
+              if (now - lastUpdateTime > UPDATE_INTERVAL) {
+                setStreamContent(fullContent.slice(-8000)); // Only show last 8000 chars
+                lastUpdateTime = now;
+              }
               
               // Update progress based on content markers
               if (fullContent.includes('```') && currentPhaseIndex < 2) {
