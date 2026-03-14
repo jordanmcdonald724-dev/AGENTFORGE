@@ -1,0 +1,127 @@
+# AgentForge Server Refactoring Plan
+
+## Current State
+- **File**: `/app/backend/server.py`
+- **Size**: 8,574 lines
+- **Route handlers**: 220 using `@api_router`
+- **Sections**: 29 distinct sections marked with `# ============`
+
+## Refactoring Strategy
+
+### Phase 1: Extract Standalone Features (Low Risk)
+These sections have minimal dependencies and can be extracted first:
+
+| Section | Lines | Target File | Priority |
+|---------|-------|-------------|----------|
+| Settings & Local Bridge | 8463-8557 | `routes/settings.py` | P1 ✅ |
+| Quick Actions | 2613-2672 | `routes/quick_actions.py` | P2 |
+| Custom Quick Actions | 3245-3325 | `routes/custom_actions.py` | P2 |
+| Project Duplication | 3326-3389 | `routes/duplicate.py` | P2 |
+
+### Phase 2: Extract Coupled Features (Medium Risk)
+These sections share helpers and models:
+
+| Section | Lines | Target File | Priority |
+|---------|-------|-------------|----------|
+| God Mode v1 | 2673-3032 | `routes/god_mode_v1.py` | P2 |
+| Autonomous Builds | 3766-4251 | `routes/autonomous.py` | P2 |
+| Playable Demo Generation | 4252-4580 | `routes/demo.py` | P3 |
+
+### Phase 3: Extract Core Features (Higher Risk)
+These need careful planning:
+
+| Section | Lines | Target File | Priority |
+|---------|-------|-------------|----------|
+| Agent Configuration | 1492-1643 | `core/agents.py` | P3 |
+| Open World Game Systems | 1328-1491 | `core/game_systems.py` | P3 |
+| API Routes | 1832-2316 | Already in routes/ | - |
+
+### Phase 4: Model Extraction
+All models should move to `/app/backend/models/`:
+
+| Model Group | Lines | Target File |
+|-------------|-------|-------------|
+| Base Models | 56-211 | `models/base.py` |
+| v2.3 Models | 212-278 | `models/v2.py` |
+| v3.0 Models | 279-371 | `models/v3.py` |
+| v3.3 Models | 372-489 | `models/collaboration.py` |
+| v3.4 Models | 490-1327 | `models/notifications.py` |
+
+## Extraction Template
+
+When extracting a section:
+
+1. **Create new route file** in `/app/backend/routes/`
+2. **Import shared dependencies**:
+   ```python
+   from fastapi import APIRouter, HTTPException
+   from core.database import db
+   from pydantic import BaseModel
+   ```
+3. **Create router**:
+   ```python
+   router = APIRouter(prefix="/feature", tags=["feature"])
+   ```
+4. **Move endpoint definitions** with `@router` decorator
+5. **Register in server.py**:
+   ```python
+   from routes.feature import router as feature_router
+   app.include_router(feature_router, prefix="/api", tags=["feature"])
+   ```
+6. **Test endpoints** before removing from server.py
+7. **Remove old code** from server.py
+
+## Shared Dependencies
+
+These are used across multiple sections and should stay in server.py or move to core/:
+
+- `llm_client` - LLM client for AI calls
+- `db` - MongoDB database connection
+- `extract_code_blocks()` - Code extraction helper
+- `get_or_create_agents()` - Agent management
+- Common Pydantic models
+
+## Already Modularized
+
+These routes are already in separate files:
+- `routes/pipeline.py` - AI Pipeline
+- `routes/god_mode_v2.py` - God Mode V2
+- `routes/build_memory.py` - Memory System
+- `routes/hardware.py` - Hardware Integration
+- `routes/research.py` - Research Mode
+- `routes/game_engine.py` - Game Engine
+- And 20+ more in `/app/backend/routes/`
+
+## Next Steps
+
+1. ✅ Document refactoring plan (this file)
+2. ✅ Extract Settings/Local Bridge section (proof of concept)
+3. ⏳ Extract God Mode v1 (after testing v2)
+4. ⏳ Extract remaining sections incrementally
+5. ⏳ Move models to `/app/backend/models/`
+6. ⏳ Final cleanup and testing
+
+## Risk Mitigation
+
+- **Always test** after each extraction
+- **Keep backups** of server.py before major changes
+- **Extract one section at a time**
+- **Run full test suite** after each extraction
+- **Document any shared dependencies** that need to be exposed
+
+## Estimated Effort
+
+| Phase | Sections | Lines | Estimated Time |
+|-------|----------|-------|----------------|
+| Phase 1 | 4 | ~400 | 1-2 hours |
+| Phase 2 | 3 | ~1500 | 3-4 hours |
+| Phase 3 | 3 | ~800 | 2-3 hours |
+| Phase 4 | 5 | ~1300 | 2-3 hours |
+| **Total** | **15** | **~4000** | **8-12 hours** |
+
+After completion, server.py should be reduced to ~4500 lines containing:
+- Core app setup
+- Database connection
+- Middleware
+- Router registration
+- Shared helpers

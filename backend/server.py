@@ -8449,6 +8449,8 @@ try:
     from routes.pipeline import router as pipeline_router
     from routes.god_mode_v2 import router as god_mode_v2_router
     from routes.build_memory import router as memory_router
+    from routes.settings import router as settings_router
+    from routes.settings import local_bridge_router
     
     app.include_router(game_engine_router, prefix="/api", tags=["game-engine"])
     app.include_router(hardware_router, prefix="/api", tags=["hardware"])
@@ -8456,7 +8458,9 @@ try:
     app.include_router(pipeline_router, prefix="/api", tags=["pipeline"])
     app.include_router(god_mode_v2_router, prefix="/api", tags=["god-mode-v2"])
     app.include_router(memory_router, prefix="/api", tags=["memory"])
-    logger.info("Successfully loaded new feature routers (game-engine, hardware, research, pipeline, god-mode-v2, memory)")
+    app.include_router(settings_router, prefix="/api", tags=["settings"])
+    app.include_router(local_bridge_router, prefix="/api", tags=["local-bridge"])
+    logger.info("Successfully loaded new feature routers (game-engine, hardware, research, pipeline, god-mode-v2, memory, settings)")
 except Exception as e:
     logger.warning(f"Could not load new feature routers: {e}")
 
