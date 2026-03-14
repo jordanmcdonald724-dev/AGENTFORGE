@@ -280,7 +280,16 @@ const ProjectWorkspace = () => {
   const fetchWarRoom = async () => {
     try {
       const res = await axios.get(`${API}/war-room/${projectId}`);
-      setWarRoomMessages(res.data);
+      // Dedupe messages by content hash to prevent glitchy repeats
+      const seen = new Set();
+      const deduped = res.data.filter(msg => {
+        // Create a unique key from agent + full content
+        const key = `${msg.from_agent}-${msg.message_type}-${msg.content}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setWarRoomMessages(deduped);
     } catch (e) {}
   };
 
