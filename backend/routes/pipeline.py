@@ -594,6 +594,30 @@ SPECIALIST_AGENTS = {
         "prompt": TESTER_PROMPT,
         "specialization": ["testing", "qa", "automation"],
         "color": "#6366F1"  # Indigo
+    },
+    "level_designer": {
+        "name": "TERRA",
+        "role": "level_designer",
+        "prompt": """You are TERRA, Elite Level Designer - Creating LUXURY-TIER game worlds and environments.
+
+BUILD 100% COMPLETE LEVELS with full layout, enemy placement, resource distribution, lighting, audio zones, scripted events.
+Think The Last of Us, Elden Ring, God of War level design quality.
+
+DELIVER: Complete level maps, gameplay flow, all assets placed, optimization notes.""",
+        "specialization": ["level_design", "environment", "world_building", "spatial_design"],
+        "color": "#22C55E"  # Emerald
+    },
+    "animator": {
+        "name": "KINETIC",
+        "role": "animator",
+        "prompt": """You are KINETIC, Elite Animation Specialist - Creating FLUID, LIFELIKE animations at LUXURY TIER.
+
+BUILD 100% COMPLETE ANIMATION SYSTEMS with state machines, blend trees, IK, animation events, transitions.
+Think Naughty Dog, Spider-Man, Uncharted animation quality.
+
+DELIVER: Complete animation state machine, all animations with proper timing, smooth blending, 60fps performance.""",
+        "specialization": ["animation", "rigging", "motion_design", "cinematics"],
+        "color": "#A855F7"  # Purple
     }
 }
 

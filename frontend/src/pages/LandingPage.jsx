@@ -30,6 +30,12 @@ const LandingPage = () => {
     { name: "SENTINEL", role: "Reviewer", icon: Shield, color: "#f97316" },
     { name: "PROBE", role: "Tester", icon: Zap, color: "#8b5cf6" },
     { name: "PRISM", role: "Artist", icon: Palette, color: "#ec4899" },
+    { name: "SONIC", role: "Audio", icon: Users, color: "#14b8a6" },
+    { name: "NEXUS", role: "Designer", icon: Gamepad2, color: "#f59e0b" },
+    { name: "CHRONICLE", role: "Writer", icon: Users, color: "#a855f7" },
+    { name: "VERTEX", role: "VFX", icon: Sparkles, color: "#22c55e" },
+    { name: "TERRA", role: "Level Design", icon: Globe, color: "#84cc16" },
+    { name: "KINETIC", role: "Animator", icon: Zap, color: "#06b6d4" },
   ];
 
   const capabilities = [
@@ -114,7 +120,7 @@ const LandingPage = () => {
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6">
               <span className="text-white">Your </span>
               <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
-                6-Agent
+                12-Agent
               </span>
               <br />
               <span className="text-white">Dev Team</span>
@@ -124,7 +130,7 @@ const LandingPage = () => {
             <p className="text-lg md:text-xl text-zinc-400 max-w-2xl mx-auto mb-12 leading-relaxed">
               Build AAA games, full-stack apps, and everything in between.
               <br className="hidden md:block" />
-              Six specialized AI agents. One unified workflow.
+              Twelve specialized AI agents. One unified workflow.
             </p>
             
             {/* CTA */}
