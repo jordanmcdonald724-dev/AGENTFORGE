@@ -8446,11 +8446,15 @@ try:
     from routes.game_engine import router as game_engine_router
     from routes.hardware import router as hardware_router
     from routes.research import router as research_router
+    from routes.pipeline import router as pipeline_router
+    from routes.god_mode_v2 import router as god_mode_v2_router
     
     app.include_router(game_engine_router, prefix="/api", tags=["game-engine"])
     app.include_router(hardware_router, prefix="/api", tags=["hardware"])
     app.include_router(research_router, prefix="/api", tags=["research"])
-    logger.info("Successfully loaded new feature routers (game-engine, hardware, research)")
+    app.include_router(pipeline_router, prefix="/api", tags=["pipeline"])
+    app.include_router(god_mode_v2_router, prefix="/api", tags=["god-mode-v2"])
+    logger.info("Successfully loaded new feature routers (game-engine, hardware, research, pipeline, god-mode-v2)")
 except Exception as e:
     logger.warning(f"Could not load new feature routers: {e}")
 
