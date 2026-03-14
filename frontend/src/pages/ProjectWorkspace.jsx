@@ -14,7 +14,7 @@ import {
   ArrowLeft, Send, Code2, Layers, Users, Shield, Zap, Loader2, FileCode, ListTodo, MessageSquare,
   Folder, FolderOpen, ChevronRight, ChevronDown, Download, Copy, Check, Image,
   Sparkles, Github, Play, Package, Volume2, Rocket, Brain, Terminal, Settings, 
-  PanelLeftClose, PanelLeft, Plus, MoreHorizontal, Palette, BookOpen, Gamepad2
+  PanelLeftClose, PanelLeft, Plus, MoreHorizontal, Palette, BookOpen, Gamepad2, Wifi, WifiOff
 } from "lucide-react";
 import { API } from "@/App";
 
@@ -92,9 +92,42 @@ const ProjectWorkspace = () => {
   const [activePanel, setActivePanel] = useState("chat");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [copiedCode, setCopiedCode] = useState(null);
+  const [bridgeConnected, setBridgeConnected] = useState(false);
 
   useEffect(() => { fetchProjectData(); }, [projectId]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingContent]);
+  
+  // Listen for bridge connection status
+  useEffect(() => {
+    const handleBridgeStatus = (event) => {
+      setBridgeConnected(event.detail?.connected || false);
+    };
+    
+    const handleFileSaved = (event) => {
+      toast.success(`File saved: ${event.detail?.filepath?.split('/').pop() || 'file'}`);
+    };
+    
+    const handleBuildStatus = (event) => {
+      const { status, data } = event.detail || {};
+      if (status === 'started') toast.info('Build started...');
+      else if (status === 'progress') toast.info(data?.message || 'Building...');
+      else if (status === 'complete') toast.success(data?.message || 'Build complete!');
+      else if (status === 'error') toast.error(data?.error || 'Build failed');
+    };
+    
+    window.addEventListener('agentforge-bridge-status', handleBridgeStatus);
+    window.addEventListener('agentforge-file-saved', handleFileSaved);
+    window.addEventListener('agentforge-build-status', handleBuildStatus);
+    
+    // Request current status
+    window.dispatchEvent(new CustomEvent('agentforge-get-status'));
+    
+    return () => {
+      window.removeEventListener('agentforge-bridge-status', handleBridgeStatus);
+      window.removeEventListener('agentforge-file-saved', handleFileSaved);
+      window.removeEventListener('agentforge-build-status', handleBuildStatus);
+    };
+  }, []);
 
   const fetchProjectData = async () => {
     try {
@@ -641,30 +674,96 @@ const ProjectWorkspace = () => {
                         </div>
                         <h3 className="font-medium text-white mb-2">Push to Local Engine</h3>
                         <p className="text-sm text-zinc-400 mb-4">
-                          Push generated code directly to your {project?.type === "unreal" ? "Unreal Engine" : project?.type === "unity" ? "Unity" : "Godot"} project folder
+                          Push generated code directly to your {project?.type === "unreal" ? "Unreal Engine" : project?.type === "unity" ? "Unity" : "Godot"} project folder and trigger a build.
                         </p>
-                        <div className="flex gap-2">
+                        
+                        {/* Connection status indicator */}
+                        <div className="flex items-center gap-2 mb-4 text-sm">
+                          <div className={`w-2 h-2 rounded-full ${bridgeConnected ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
+                          <span className={bridgeConnected ? 'text-emerald-400' : 'text-zinc-500'}>
+                            {bridgeConnected ? 'Bridge: Connected' : 'Bridge: Not connected'}
+                          </span>
+                          {bridgeConnected ? (
+                            <Wifi className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <WifiOff className="w-4 h-4 text-zinc-500" />
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {/* Push Files Only */}
                           <Button 
                             onClick={() => {
-                              window.dispatchEvent(new CustomEvent('agentforge-push-files', {
-                                detail: { projectId, files: files.map(f => ({ path: f.filepath, content: f.content })) }
+                              const fileData = files.map(f => ({ 
+                                filepath: f.filepath, 
+                                content: f.content 
                               }));
-                              toast.info("Pushing to local engine...");
+                              window.dispatchEvent(new CustomEvent('agentforge-push-files', {
+                                detail: { 
+                                  files: fileData, 
+                                  engine: project?.type,
+                                  projectId 
+                                }
+                              }));
+                              toast.info(`Pushing ${files.length} files to local ${project?.type} project...`);
                             }}
                             className="bg-orange-500 hover:bg-orange-600 text-black"
+                            disabled={files.length === 0}
                           >
                             <Rocket className="w-4 h-4 mr-2" />
-                            Push to Local
+                            Push Files ({files.length})
                           </Button>
+                          
+                          {/* Push & Build */}
+                          <Button 
+                            onClick={() => {
+                              const fileData = files.map(f => ({ 
+                                filepath: f.filepath, 
+                                content: f.content 
+                              }));
+                              // First push files
+                              window.dispatchEvent(new CustomEvent('agentforge-push-files', {
+                                detail: { 
+                                  files: fileData, 
+                                  engine: project?.type,
+                                  projectId 
+                                }
+                              }));
+                              // Then trigger build after a short delay
+                              setTimeout(() => {
+                                window.dispatchEvent(new CustomEvent('agentforge-trigger-build', {
+                                  detail: { 
+                                    engine: project?.type,
+                                    buildConfig: {
+                                      platform: 'Win64',
+                                      configuration: 'Development'
+                                    }
+                                  }
+                                }));
+                              }, 1000);
+                              toast.info(`Pushing files and triggering ${project?.type} build...`);
+                            }}
+                            className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-black font-medium"
+                            disabled={files.length === 0}
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            Push & Build
+                          </Button>
+                          
+                          {/* Configure */}
                           <Button 
                             variant="outline" 
                             onClick={() => navigate("/settings")}
                             className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
                           >
                             <Settings className="w-4 h-4 mr-2" />
-                            Configure Bridge
+                            Configure
                           </Button>
                         </div>
+                        
+                        <p className="text-xs text-zinc-600 mt-4">
+                          Requires: Browser Extension + Local Bridge installed on your Windows PC
+                        </p>
                       </div>
                     )}
 
