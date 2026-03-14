@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Scan, Bug, History, Lightbulb, Zap, Server, Users, Target, Brain, Radio, Rocket, Box
+  Zap, Scan, Bug, History, Lightbulb, Server, Users, Target, Brain, Radio, Rocket, Box
 } from "lucide-react";
+import GodModePanel from "./GodModePanel";
 import AutopsyPanel from "./AutopsyPanel";
 import DebugLoopPanel from "./DebugLoopPanel";
 import TimeMachinePanel from "./TimeMachinePanel";
@@ -16,18 +17,21 @@ import MissionControlPanel from "./MissionControlPanel";
 import RealityPipelinePanel from "./RealityPipelinePanel";
 import SystemVisualization3D from "./SystemVisualization3D";
 
-const CommandCenter = ({ projectId, projectName, onNavigate }) => {
-  const [activeTab, setActiveTab] = useState("mission");
+const CommandCenter = ({ projectId, projectName, onNavigate, onFilesGenerated }) => {
+  const [activeTab, setActiveTab] = useState("godmode");
 
   return (
     <div className="h-full flex flex-col bg-[#0a0a0c]" data-testid="command-center">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <TabsList className="flex-shrink-0 bg-transparent border-b border-zinc-800 rounded-none px-2 h-10 justify-start overflow-x-auto">
+          <TabsTrigger value="godmode" className="text-xs data-[state=active]:bg-yellow-500/20 data-[state=active]:text-yellow-400" data-testid="cmd-godmode-tab">
+            <Zap className="w-3 h-3 mr-1" />God Mode
+          </TabsTrigger>
           <TabsTrigger value="mission" className="text-xs data-[state=active]:bg-zinc-800" data-testid="cmd-mission-tab">
             <Radio className="w-3 h-3 mr-1" />Mission
           </TabsTrigger>
           <TabsTrigger value="goal" className="text-xs data-[state=active]:bg-zinc-800" data-testid="cmd-goal-tab">
-            <Target className="w-3 h-3 mr-1" />Goal Loop
+            <Target className="w-3 h-3 mr-1" />Goals
           </TabsTrigger>
           <TabsTrigger value="reality" className="text-xs data-[state=active]:bg-zinc-800" data-testid="cmd-reality-tab">
             <Rocket className="w-3 h-3 mr-1" />Idea→Reality
@@ -60,6 +64,10 @@ const CommandCenter = ({ projectId, projectName, onNavigate }) => {
             <Box className="w-3 h-3 mr-1" />3D Map
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="godmode" className="flex-1 m-0 overflow-hidden">
+          <GodModePanel projectId={projectId} projectName={projectName} onFilesGenerated={onFilesGenerated} />
+        </TabsContent>
 
         <TabsContent value="mission" className="flex-1 m-0 overflow-hidden">
           <MissionControlPanel projectId={projectId} />

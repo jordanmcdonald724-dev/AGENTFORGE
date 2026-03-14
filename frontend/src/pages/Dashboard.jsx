@@ -408,7 +408,7 @@ const Dashboard = () => {
                             variant="ghost" 
                             size="sm"
                             className="h-7 px-2 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
-                            onClick={(e) => { e.stopPropagation(); navigate(`/god-mode/${project.id}`); }}
+                            onClick={(e) => { e.stopPropagation(); navigate(`/project/${project.id}?tab=command`); }}
                             data-testid={`god-mode-${project.id}`}
                           >
                             <Zap className="w-3 h-3 mr-1" />

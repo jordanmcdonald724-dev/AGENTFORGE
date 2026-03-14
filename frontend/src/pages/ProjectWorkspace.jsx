@@ -170,7 +170,10 @@ const ProjectWorkspace = () => {
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const [expandedFolders, setExpandedFolders] = useState(new Set([""]));
   
-  const [activeTab, setActiveTab] = useState("chat");
+  // Check URL params for tab navigation
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialTab = urlParams.get('tab') || "chat";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [rightTab, setRightTab] = useState("code");
   const [copiedCode, setCopiedCode] = useState(null);
   const [showQuickActions, setShowQuickActions] = useState(true);
@@ -1070,9 +1073,9 @@ const ProjectWorkspace = () => {
                 {showQuickActions && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b overflow-hidden" style={{ borderColor: 'var(--border-color)', background: 'linear-gradient(180deg, rgba(234,179,8,0.08) 0%, transparent 100%)' }}>
                     <div className="p-4">
-                      {/* God Mode Button - Opens dedicated page */}
+                      {/* God Mode Button - Opens Command Center tab */}
                       <button 
-                        onClick={() => navigate(`/god-mode/${projectId}`)}
+                        onClick={() => setActiveTab('command')}
                         className="w-full p-5 rounded-xl border-2 border-yellow-500/50 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 hover:from-yellow-500/30 hover:to-orange-500/30 hover:border-yellow-400 transition-all flex items-center gap-4 group"
                         data-testid="god-mode-btn"
                       >
@@ -1267,7 +1270,7 @@ const ProjectWorkspace = () => {
 
                 {/* Other tabs use Tabs component */}
                 {activeTab !== "chat" && (
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
                 {/* War Room Tab */}
                 <TabsContent value="warroom" className="flex-1 flex flex-col m-0 overflow-hidden">
                   <div className="flex-shrink-0 p-3 border-b border-zinc-800 flex items-center justify-between bg-gradient-to-r from-cyan-500/10 to-transparent">
@@ -1433,8 +1436,8 @@ const ProjectWorkspace = () => {
                 </TabsContent>
 
                 {/* Command Center Tab */}
-                <TabsContent value="command" className="flex-1 m-0 overflow-hidden">
-                  <CommandCenter projectId={projectId} projectName={project?.name} onNavigate={(path) => window.location.href = path} />
+                <TabsContent value="command" className="flex-1 m-0 min-h-0">
+                  <CommandCenter projectId={projectId} projectName={project?.name} onNavigate={(path) => window.location.href = path} onFilesGenerated={fetchProjectData} />
                 </TabsContent>
 
                 {/* Deploy Tab */}
