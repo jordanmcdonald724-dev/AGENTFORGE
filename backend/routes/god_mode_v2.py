@@ -760,6 +760,7 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
                         )
                         
                         chunk_count = 0
+                        last_heartbeat = time.time()
                         for chunk in stream:
                             if chunk.choices and chunk.choices[0].delta.content:
                                 content = chunk.choices[0].delta.content
@@ -770,9 +771,11 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
                                 if chunk_count % 50 == 0:
                                     yield f"data: {json.dumps({'type': 'content', 'content': content[:100], 'chunk': chunk_count})}\n\n"
                                 
-                                # Heartbeat every 100 chunks
-                                if chunk_count % 100 == 0:
-                                    yield f"data: {json.dumps({'type': 'heartbeat', 'chunks': chunk_count})}\n\n"
+                                # Heartbeat every 30 chunks or every 10 seconds
+                                current_time = time.time()
+                                if chunk_count % 30 == 0 or (current_time - last_heartbeat) > 10:
+                                    yield f"data: {json.dumps({'type': 'heartbeat', 'chunks': chunk_count, 'time': int(current_time - module_start)})}\n\n"
+                                    last_heartbeat = current_time
                         
                         # Extract and save files
                         code_blocks = extract_code_blocks(full_content)
