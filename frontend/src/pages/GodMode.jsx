@@ -100,6 +100,18 @@ const GodMode = () => {
     addDebug('Checking bridge status...');
     window.dispatchEvent(new CustomEvent('agentforge-get-status'));
     
+    // Also check by looking for the injected indicator
+    setTimeout(() => {
+      const indicator = document.getElementById('af-bridge-dot');
+      if (indicator) {
+        const isGreen = indicator.style.background.includes('22c55e') || indicator.style.background === 'rgb(34, 197, 94)';
+        if (isGreen && !bridgeConnected) {
+          addDebug('Detected green dot - forcing connected state');
+          setBridgeConnected(true);
+        }
+      }
+    }, 1000);
+    
     return () => {
       window.removeEventListener('agentforge-bridge-status', handleBridgeStatus);
       window.removeEventListener('agentforge-file-saved', handleFileSaved);
