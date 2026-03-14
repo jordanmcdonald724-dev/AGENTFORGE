@@ -25,7 +25,7 @@ import ThemeSelector from "@/components/ThemeSelector";
 import { 
   ArrowLeft, Send, Bot, Code2, Layers, Users, Shield, Zap, Plus, Loader2, FileCode, ListTodo, MessageSquare,
   Folder, FolderOpen, ChevronRight, ChevronDown, Save, Download, Trash2, Palette, Copy, Check, X, Image,
-  Sparkles, ArrowRightCircle, Github, Play, Eye, Gamepad2, Package, Heart, Volume2, Layout, MessageCircle,
+  Sparkles, ArrowRightCircle, ArrowRight, Github, Play, Eye, Gamepad2, Package, Heart, Volume2, Layout, MessageCircle,
   Rocket, ChevronUp, RefreshCw, Brain, Wand2, CopyPlus, Search, Replace, Radio, AlertTriangle, Clock,
   Pause, Square, SkipForward, Swords, Mountain, Car, Sun, Map, Hammer, Coins, Ghost, Timer, Camera, Wifi,
   Joystick, Monitor, Globe, GitBranch, Calendar, Bell, Music, Terminal, Command, Settings, Moon, Menu
@@ -173,7 +173,7 @@ const ProjectWorkspace = () => {
   const [activeTab, setActiveTab] = useState("chat");
   const [rightTab, setRightTab] = useState("code");
   const [copiedCode, setCopiedCode] = useState(null);
-  const [showQuickActions, setShowQuickActions] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(true);
   
   // Dialog states
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
@@ -1065,16 +1065,20 @@ const ProjectWorkspace = () => {
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={55} minSize={35} maxSize={80}>
             <div className="h-full flex flex-col transition-colors duration-300 overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-              {/* Quick Actions */}
+              {/* Quick Actions - God Mode */}
               <AnimatePresence>
                 {showQuickActions && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b overflow-hidden transition-colors duration-300" style={{ borderColor: 'var(--border-color)' }}>
-                    <div className="p-3">
-                      <div className="flex items-center justify-between mb-3">
-                        <h3 className="font-rajdhani font-bold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><Rocket className="w-4 h-4" style={{ color: 'var(--accent)' }} />Quick Actions</h3>
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-b overflow-hidden" style={{ borderColor: 'var(--border-color)', background: 'linear-gradient(180deg, rgba(59,130,246,0.05) 0%, transparent 100%)' }}>
+                    <div className="p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-rajdhani font-bold text-base flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                          <Zap className="w-5 h-5 text-yellow-400" />
+                          <span>God Mode</span>
+                          <Badge className="bg-yellow-500/20 text-yellow-400 text-[10px]">AI Auto-Build</Badge>
+                        </h3>
                         <div className="flex gap-2">
                           <Dialog open={customActionDialog} onOpenChange={setCustomActionDialog}>
-                            <DialogTrigger asChild><Button variant="ghost" size="icon" className="h-6 w-6"><Plus className="w-4 h-4" /></Button></DialogTrigger>
+                            <DialogTrigger asChild><Button variant="ghost" size="sm" className="h-7"><Plus className="w-4 h-4 mr-1" />Custom</Button></DialogTrigger>
                             <DialogContent className="border" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>
                               <DialogHeader><DialogTitle className="font-rajdhani" style={{ color: 'var(--text-primary)' }}>Create Custom Action</DialogTitle></DialogHeader>
                               <div className="space-y-3 py-4">
@@ -1086,11 +1090,32 @@ const ProjectWorkspace = () => {
                               <DialogFooter><Button onClick={createCustomAction} className="bg-blue-500 hover:bg-blue-600">Create Action</Button></DialogFooter>
                             </DialogContent>
                           </Dialog>
-                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowQuickActions(false)}><ChevronUp className="w-4 h-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setShowQuickActions(false)}><ChevronUp className="w-4 h-4" /></Button>
                         </div>
                       </div>
+                      
+                      {/* Featured Action - Landing Page */}
+                      {allActions.find(a => a.id === 'landing_page') && (
+                        <button 
+                          onClick={() => executeQuickAction('landing_page', false)} 
+                          disabled={sending}
+                          className="w-full mb-4 p-4 rounded-xl border-2 border-dashed border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20 hover:border-blue-500 transition-all flex items-center gap-4 disabled:opacity-50"
+                          data-testid="landing-page-action"
+                        >
+                          <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                            <Layout className="w-6 h-6 text-blue-400" />
+                          </div>
+                          <div className="text-left flex-1">
+                            <h4 className="font-bold text-blue-400">Landing Page</h4>
+                            <p className="text-xs text-zinc-400">Generate a complete React landing page with hero, features, and contact form - NO questions asked!</p>
+                          </div>
+                          <ArrowRight className="w-5 h-5 text-blue-400" />
+                        </button>
+                      )}
+                      
+                      {/* Other Quick Actions */}
                       <div className="grid grid-cols-4 gap-2">
-                        {allActions.slice(0, 8).map((action) => {
+                        {allActions.filter(a => a.id !== 'landing_page').slice(0, 8).map((action) => {
                           const Icon = QUICK_ACTION_ICONS[action.icon] || Sparkles;
                           return (
                             <TooltipProvider key={action.id}><Tooltip><TooltipTrigger asChild>
@@ -1107,7 +1132,7 @@ const ProjectWorkspace = () => {
                   </motion.div>
                 )}
               </AnimatePresence>
-              {!showQuickActions && <Button variant="ghost" size="sm" className="mx-3 mt-2 text-xs" style={{ color: 'var(--text-muted)' }} onClick={() => setShowQuickActions(true)}><ChevronDown className="w-3 h-3 mr-1" />Show Quick Actions</Button>}
+              {!showQuickActions && <Button variant="ghost" size="sm" className="mx-3 mt-2 text-xs" style={{ color: 'var(--text-muted)' }} onClick={() => setShowQuickActions(true)}><Zap className="w-3 h-3 mr-1 text-yellow-400" />God Mode</Button>}
               {chainProgress && <div className="px-4 py-2 border-b" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /><span className="text-xs" style={{ color: 'var(--accent)' }}>Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
 
               <div className="flex-1 flex flex-col overflow-hidden">
