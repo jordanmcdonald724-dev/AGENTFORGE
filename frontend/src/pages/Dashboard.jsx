@@ -431,12 +431,6 @@ const Dashboard = () => {
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate(`/project/${project.id}/god-mode`);
-                        }}
-                        className="flex-1 text-xs h-8 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-medium"
-                      >
-                        <Zap className="w-3 h-3 mr-1" />
-                        God Mode
                       </Button>
                     </div>
                   </motion.div>

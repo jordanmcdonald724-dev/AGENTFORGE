@@ -814,15 +814,11 @@ const ProjectWorkspace = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* God Mode Button - Goes to separate page */}
             <Button 
-              onClick={() => navigate(`/project/${projectId}/god-mode`)}
               size="sm" 
               className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-black font-medium"
-              data-testid="god-mode-btn"
             >
               <Zap className="w-4 h-4 mr-1" />
-              God Mode
             </Button>
             
             {/* Simulation Mode Button */}
