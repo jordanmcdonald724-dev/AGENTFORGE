@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Zap, ArrowLeft, Loader2, CheckCircle, Code, FileCode, Rocket, 
   Brain, Search, GitBranch, Box, Layers, Sparkles, Terminal,
-  ChevronRight, Play, Pause, RotateCcw, Upload, Settings, Hammer
+  ChevronRight, Play, Pause, RotateCcw, Upload, Settings, Hammer, Download
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -353,6 +353,24 @@ const GodMode = () => {
     }));
   };
 
+  // Download all files as ZIP - simple, no extension needed
+  const downloadFilesAsZip = async () => {
+    if (files.length === 0) {
+      toast.error('No files to download');
+      return;
+    }
+    
+    toast.info('Preparing download...');
+    
+    try {
+      // Trigger download from backend
+      window.open(`${API}/god-mode/download/${projectId}`, '_blank');
+      toast.success('Download started!');
+    } catch (error) {
+      toast.error('Download failed');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#09090b] text-white">
       {/* Header */}
@@ -413,8 +431,20 @@ const GodMode = () => {
               </>
             )}
             
-            {/* Local Bridge Buttons */}
+            {/* Download & Local Bridge Buttons */}
             <div className="flex items-center gap-2 ml-2 pl-2 border-l border-zinc-700">
+              {files.length > 0 && (
+                <Button
+                  onClick={downloadFilesAsZip}
+                  className="bg-green-600 hover:bg-green-500"
+                  title="Download all files as ZIP"
+                  data-testid="download-files-btn"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  DOWNLOAD FILES
+                </Button>
+              )}
+              
               <Button
                 variant="outline"
                 size="icon"

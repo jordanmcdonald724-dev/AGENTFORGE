@@ -3032,6 +3032,46 @@ async def resume_god_mode_build(request: GodModeResumeRequest):
     return await god_mode_build_stream(god_request)
 
 
+# Download all project files as ZIP
+@api_router.get("/god-mode/download/{project_id}")
+async def download_project_files(project_id: str):
+    """Download all generated files as a ZIP - ready to extract into your project folder"""
+    import io
+    
+    project = await db.projects.find_one({"id": project_id}, {"_id": 0})
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
+    
+    if not files:
+        raise HTTPException(status_code=404, detail="No files found for this project")
+    
+    project_name = project.get('name', 'Project').replace(' ', '_')
+    
+    # Create ZIP in memory
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for file in files:
+            filepath = file.get('filepath', file.get('filename', 'unknown.txt'))
+            content = file.get('content', '')
+            
+            # Write file to ZIP
+            zf.writestr(filepath, content)
+    
+    zip_buffer.seek(0)
+    
+    return StreamingResponse(
+        zip_buffer,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{project_name}_Files.zip"'
+        }
+    )
+
+
+
 # ============ LIVE PREVIEW ============
 
 @api_router.get("/projects/{project_id}/preview")
