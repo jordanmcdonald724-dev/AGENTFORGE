@@ -256,14 +256,34 @@ Generate ALL the code now. Include FULL file contents with ```javascript:filepat
         "name": "Player Controller",
         "description": "Generate a complete player movement system",
         "icon": "gamepad",
-        "chain": ["COMMANDER", "FORGE"],
-        "prompt": """Create a complete player controller system with:
-- WASD movement with variable speed
-- Sprint (Shift) and crouch (Ctrl)
-- Jump with coyote time
-- Camera controller with mouse look
-- Ground detection and physics
-Include all necessary files for {engine_type}."""
+        "chain": ["FORGE"],
+        "prompt": """Generate a COMPLETE player controller system for {engine_type} {engine_version}. DO NOT ask questions, just build it with sensible defaults.
+
+Create ALL these files with full implementations:
+
+For Unreal Engine:
+1. Source/[Project]/Player/MyPlayerController.h - Player controller header
+2. Source/[Project]/Player/MyPlayerController.cpp - Full implementation
+3. Source/[Project]/Player/MyCharacterMovement.h - Enhanced movement component
+4. Source/[Project]/Player/MyCharacterMovement.cpp - Movement with sprint, crouch, coyote time
+5. Source/[Project]/Player/MyCameraManager.h - Camera controller
+6. Source/[Project]/Player/MyCameraManager.cpp - Mouse look, smooth follow
+
+Features to include:
+- WASD movement with variable speed (300-600 units/s)
+- Sprint (Shift key, 1.5x speed multiplier)
+- Crouch (Ctrl key, 0.5x speed, reduced capsule)
+- Jump with 0.15s coyote time
+- Smooth camera with 45-degree pitch clamp
+- Ground detection using line traces
+
+Use UE5 best practices:
+- UPROPERTY/UFUNCTION macros
+- BlueprintCallable functions
+- Replicated for multiplayer
+- Input action bindings
+
+Generate ALL code now with ```cpp:filepath syntax."""
     },
     "inventory_system": {
         "id": "inventory_system", 

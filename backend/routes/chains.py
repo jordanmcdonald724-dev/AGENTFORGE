@@ -51,14 +51,27 @@ Generate ALL the code now. Include FULL file contents with ```javascript:filepat
         "name": "Player Controller",
         "description": "Generate a complete player movement system",
         "icon": "gamepad",
-        "chain": ["COMMANDER", "FORGE"],
-        "prompt": """Create a complete player controller system with:
-- WASD movement with variable speed
-- Sprint (Shift) and crouch (Ctrl)
-- Jump with coyote time
-- Camera controller with mouse look
-- Ground detection and physics
-Include all necessary files for {engine_type}."""
+        "chain": ["FORGE"],
+        "prompt": """Generate a COMPLETE player controller system for Unreal Engine 5. DO NOT ask questions, just build with these defaults.
+
+Create ALL these files with full implementations:
+
+1. Source/OceanCivilizationSimulator/Player/OCSPlayerController.h
+2. Source/OceanCivilizationSimulator/Player/OCSPlayerController.cpp  
+3. Source/OceanCivilizationSimulator/Player/OCSCharacterMovement.h
+4. Source/OceanCivilizationSimulator/Player/OCSCharacterMovement.cpp
+
+Include:
+- WASD movement (walk: 300, run: 500, sprint: 700 units/s)
+- Sprint (Shift key, 1.4x multiplier)
+- Crouch (Ctrl key, 0.5x speed, reduced capsule to 44,48)
+- Jump velocity 500, coyote time 0.15s
+- Mouse look with 45 pitch clamp
+- Ground detection with line traces
+
+Use UPROPERTY/UFUNCTION macros, make BlueprintCallable.
+
+Output with ```cpp:filepath format NOW."""
     },
     "inventory_system": {
         "id": "inventory_system",
