@@ -439,6 +439,18 @@ const Dashboard = () => {
                       >
                         Open
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/project/${project.id}/god-mode`);
+                        }}
+                        className="flex-1 text-xs h-8 hover:bg-amber-500/10 text-amber-400 hover:text-amber-300"
+                      >
+                        <Zap className="w-3 h-3 mr-1" />
+                        God Mode
+                      </Button>
                     </div>
                   </motion.div>
                 );

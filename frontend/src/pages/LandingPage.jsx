@@ -71,7 +71,11 @@ const LandingPage = () => {
               Studio
             </Button>
             <Button
-              onClick={() => navigate("/god-mode")}
+              onClick={() => {
+                // God Mode needs a project - go to studio to select one
+                toast.info("Select a project first to use God Mode");
+                navigate("/studio");
+              }}
               variant="ghost"
               className="w-full justify-start text-white hover:bg-white/10"
             >
