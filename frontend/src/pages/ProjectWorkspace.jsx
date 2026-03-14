@@ -14,7 +14,7 @@ import {
   ArrowLeft, Send, Code2, Layers, Users, Shield, Zap, Loader2, FileCode, ListTodo, MessageSquare,
   Folder, FolderOpen, ChevronRight, ChevronDown, Download, Copy, Check, Image,
   Sparkles, Github, Play, Package, Volume2, Rocket, Brain, Terminal, Settings, 
-  PanelLeftClose, PanelLeft, Plus, MoreHorizontal, Palette, BookOpen
+  PanelLeftClose, PanelLeft, Plus, MoreHorizontal, Palette, BookOpen, Gamepad2
 } from "lucide-react";
 import { API } from "@/App";
 
@@ -632,6 +632,43 @@ const ProjectWorkspace = () => {
                 <div className="max-w-3xl mx-auto">
                   <h2 className="text-lg font-semibold text-white mb-4">Deploy</h2>
                   <div className="grid gap-4">
+                    {/* Push to Local - For Game Engine Projects */}
+                    {(project?.type === "unreal" || project?.type === "unity" || project?.type === "godot") && (
+                      <div className="p-6 rounded-xl bg-gradient-to-br from-orange-500/10 to-amber-500/5 border border-orange-500/20">
+                        <div className="flex items-center gap-3 mb-4">
+                          <Gamepad2 className="w-8 h-8 text-orange-400" />
+                          <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">Game Engine</Badge>
+                        </div>
+                        <h3 className="font-medium text-white mb-2">Push to Local Engine</h3>
+                        <p className="text-sm text-zinc-400 mb-4">
+                          Push generated code directly to your {project?.type === "unreal" ? "Unreal Engine" : project?.type === "unity" ? "Unity" : "Godot"} project folder
+                        </p>
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={() => {
+                              window.dispatchEvent(new CustomEvent('agentforge-push-files', {
+                                detail: { projectId, files: files.map(f => ({ path: f.filepath, content: f.content })) }
+                              }));
+                              toast.info("Pushing to local engine...");
+                            }}
+                            className="bg-orange-500 hover:bg-orange-600 text-black"
+                          >
+                            <Rocket className="w-4 h-4 mr-2" />
+                            Push to Local
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => navigate("/settings")}
+                            className="border-orange-500/30 text-orange-400 hover:bg-orange-500/10"
+                          >
+                            <Settings className="w-4 h-4 mr-2" />
+                            Configure Bridge
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Download ZIP */}
                     <div className="p-6 rounded-xl bg-white/[0.02] border border-white/5">
                       <Download className="w-8 h-8 text-blue-400 mb-4" />
                       <h3 className="font-medium text-white mb-2">Download as ZIP</h3>
