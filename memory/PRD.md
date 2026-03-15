@@ -7,7 +7,27 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 15, 2026) - REFACTOR DIALOG + WAR ROOM LOG ✅
+### Latest Update (March 15, 2026) - CODE CLEANUP + E2E PIPELINE VERIFIED ✅
+
+**Dead code removed (Phase 1 + 2):**
+- ✅ `SYSTEM_ICONS` constant removed from ProjectWorkspace.jsx (duplicate — lives in WorkspaceDialogs.jsx only)
+- ✅ `warRoomEndRef` + dead useEffect removed from ProjectWorkspace.jsx
+- ✅ `buildDialog`/`setBuildDialog` state removed from ProjectWorkspace.jsx
+- ✅ `server.py` dead stub `@api_router.get("/systems/open-world")` removed (served by `build_operations.py`)
+- ProjectWorkspace.jsx: **1628 → 1519 lines total** (−109 lines from all cleanup sessions)
+
+**E2E pipeline test:**
+- ✅ COMMANDER responded in 19s to "build me a sci-fi space station survival game"
+- ✅ COMMANDER dispatched to all 11 agents automatically
+- ✅ Phase 1 (NEXUS) auto-started after COMMANDER
+- ✅ War Room API verified: POST + GET working, messages persist after page refresh (badge=6)
+- ✅ `executeDelegationSilent` correctly posts war-room messages after each parallel agent
+
+**Testing (iteration_28): 100% backend ✅ | All cleanup verified ✅ | E2E pipeline confirmed ✅**
+
+---
+
+### Previous Update (March 15, 2026) - REFACTOR DIALOG + WAR ROOM LOG ✅
 
 **Task 1 & 2 — Refactor dialog fully restored:**
 - ✅ `refactorData` + `refactorPreview` state variables restored
