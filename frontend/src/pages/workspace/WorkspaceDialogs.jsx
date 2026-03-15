@@ -500,7 +500,7 @@ export default function WorkspaceDialogs({
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" className="border-zinc-700" onClick={() => { setRefactorDialog(false); setRefactorPreview(null); }}>Cancel</Button>
+            <Button variant="outline" className="border-zinc-700" onClick={() => { setRefactorDialog(false); setRefactorPreview(null); setRefactorData({ type: "find_replace", target: "", new_value: "" }); }}>Cancel</Button>
             <Button
               onClick={applyRefactor}
               disabled={!refactorPreview || refactorPreview.files_affected === 0}

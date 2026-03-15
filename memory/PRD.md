@@ -7,7 +7,38 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 15, 2026) - DIALOG CLEANUP + PARALLEL PIPELINE VERIFIED ✅
+### Latest Update (March 15, 2026) - REFACTOR DIALOG + WAR ROOM LOG ✅
+
+**Task 1 & 2 — Refactor dialog fully restored:**
+- ✅ `refactorData` + `refactorPreview` state variables restored
+- ✅ `previewRefactor()` + `applyRefactor()` real implementations (not stubs)
+- ✅ Find & Replace dialog in `WorkspaceDialogs.jsx`:
+  - Type selector: Find & Replace / Rename Symbol
+  - Target + New Value inputs (side by side)
+  - "Preview Changes" → shows files affected, before/after diff in red/green panels
+  - "Apply to N File(s)" button — disabled until preview has matches
+  - Cancel resets all state
+- ✅ "Find & Replace" added to Settings dropdown (7 items total)
+- **Backend bug fixed (by testing agent)**: `routes/refactor.py` had duplicate `/preview` + `/apply` endpoints shadowing `build_operations.py` — removed the conflicting ones
+
+**Task 3 — War Room build log:**
+- ✅ `executeDelegationSilent` now posts a war room message after each parallel agent completes
+- ✅ Message shows file count: "Completed parallel task — generated 3 file(s): ..."  
+- ✅ War Room is refreshed immediately after each post
+- War Room tab now shows persistent build log of which agents ran and what they produced
+
+**Testing (iteration_27): 100% backend ✅ | 95% frontend ✅**
+- Find & Replace dialog: Preview returns 3 files affected / 5 scanned with real diffs
+- War Room API: POST + GET both verified working
+
+**Files Changed:**
+- `frontend/src/pages/workspace/WorkspaceDialogs.jsx` — Added Find & Replace dialog
+- `frontend/src/pages/ProjectWorkspace.jsx` — Refactor state/functions restored, war room logging in executeDelegationSilent
+- `backend/routes/refactor.py` — Duplicate route conflict removed (testing agent fix)
+
+---
+
+### Previous Update (March 15, 2026) - DIALOG CLEANUP + PARALLEL PIPELINE VERIFIED ✅
 
 **Task 1 — Clean up orphaned state:**
 - ✅ `refactorData`, `refactorPreview` state removed (no UI trigger, no dialog)
