@@ -313,21 +313,11 @@ const WarRoomPanel = ({
       <div className="space-y-3">
         {messages.length === 0 ? (
           <div className="text-center py-16">
-            <motion.div
-              animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <Radio className="w-16 h-16 mx-auto mb-4 text-cyan-400/30" />
-            </motion.div>
+            <Radio className="w-16 h-16 mx-auto mb-4 text-cyan-400/30" />
             <h3 className="font-rajdhani text-xl text-white mb-2">War Room Standing By</h3>
-            <p className="text-sm text-zinc-500 mb-6 max-w-md mx-auto">
-              Start a build to watch your AI team collaborate in real-time. 
-              Each agent will discuss, delegate, and create together.
+            <p className="text-sm text-zinc-500 max-w-md mx-auto">
+              Agents will communicate here when a build is in progress.
             </p>
-            <Button onClick={onSimulate} className="bg-cyan-500 hover:bg-cyan-600">
-              <Radio className="w-4 h-4 mr-2" />
-              Start Simulation
-            </Button>
           </div>
         ) : (
           <>
