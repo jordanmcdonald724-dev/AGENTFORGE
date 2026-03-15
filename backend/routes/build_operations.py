@@ -284,6 +284,79 @@ async def get_build_stages(engine: str):
     return stages
 
 
+@router.post("/simulate")
+async def run_simulation(request: dict):
+    """Dry-run build simulation — estimates time, file count, and feasibility"""
+    project_id = request.get("project_id")
+    target_engine = request.get("target_engine", "unreal")
+    include_systems = request.get("include_systems", [])
+
+    OPEN_WORLD_SYSTEMS, _, _ = get_systems()
+    warnings = []
+    total_files = 0
+    total_minutes = 0
+
+    selected = [OPEN_WORLD_SYSTEMS[s] for s in include_systems if s in OPEN_WORLD_SYSTEMS]
+
+    for system in selected:
+        total_files += system.get("files_estimate", 10)
+        total_minutes += system.get("time_estimate_minutes", 30)
+
+        # Dependency warnings
+        for dep in system.get("dependencies", []):
+            dep_included = dep in include_systems
+            if not dep_included:
+                warnings.append({
+                    "severity": "medium",
+                    "message": f"{system['name']} depends on {dep} which is not selected",
+                    "suggestion": f"Consider adding {dep} to ensure full functionality"
+                })
+
+    # Engine-specific warnings
+    if target_engine == "unreal" and total_files > 100:
+        warnings.append({
+            "severity": "low",
+            "message": "Large project: consider enabling Incredibuild or distributed compilation",
+            "suggestion": "Enable parallel compilation in Build.cs files"
+        })
+    if len(include_systems) == 0:
+        warnings.append({
+            "severity": "high",
+            "message": "No systems selected",
+            "suggestion": "Select at least one game system to simulate"
+        })
+
+    # Build time estimate (hours and minutes)
+    hours = total_minutes // 60
+    mins = total_minutes % 60
+    time_str = f"{hours}h {mins}m" if hours > 0 else f"{mins}m"
+
+    # Feasibility score (0-100)
+    critical_warnings = [w for w in warnings if w["severity"] == "high"]
+    feasibility = max(0, 100 - len(critical_warnings) * 30 - len(warnings) * 5)
+
+    # Architecture summary
+    system_names = [s["name"] for s in selected]
+    arch_summary = (
+        f"{'Unreal Engine 5' if target_engine == 'unreal' else 'Unity'} project with "
+        f"{len(selected)} integrated systems: {', '.join(system_names) or 'none selected'}. "
+        f"Estimated {total_files} source files across all subsystems."
+    )
+
+    return {
+        "project_id": project_id,
+        "target_engine": target_engine,
+        "systems_selected": include_systems,
+        "estimated_build_time": time_str,
+        "file_count": total_files,
+        "total_size_kb": total_files * 12,  # rough estimate: ~12KB per file
+        "feasibility_score": feasibility,
+        "warnings": warnings,
+        "architecture_summary": arch_summary,
+        "ready_to_build": len(critical_warnings) == 0 and len(selected) > 0
+    }
+
+
 # ============ PLAYABLE DEMOS ============
 
 @router.get("/demos/{project_id}")

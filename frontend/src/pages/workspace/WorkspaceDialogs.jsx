@@ -7,7 +7,7 @@ import { Loader2, Radio, Sparkles, FileCode, Clock, AlertTriangle, Rocket,
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { Mountain, Users, Map, Car, Sun, Swords, Hammer, Coins, Ghost,
   Timer, Camera, Wifi } from "lucide-react";
@@ -37,13 +37,8 @@ export default function WorkspaceDialogs({
 }) {
   return (
     <>
-      {/* ── Simulation Dialog ──────────────────────────────────────── */}
+      {/* ── Simulation Dialog (controlled — opened via Settings dropdown) ───── */}
       <Dialog open={simulationDialog} onOpenChange={setSimulationDialog}>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="border-cyan-700 text-cyan-400 hover:bg-cyan-500/10" data-testid="simulation-btn">
-            <Radio className="w-4 h-4 mr-1" />Simulate
-          </Button>
-        </DialogTrigger>
         <DialogContent className="bg-[#18181b] border-zinc-700 max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-rajdhani text-white flex items-center gap-2">

@@ -7,7 +7,37 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 15, 2026) - AUDIO + REFACTOR + E2E TEST ✅
+### Latest Update (March 15, 2026) - DIALOGS REFACTOR + AUTO-EXPAND + PARALLEL PIPELINE ✅
+
+**Task 1 — WorkspaceDialogs.jsx extracted:**
+- ✅ Simulation dialog + Demo dialog + Build status chips → `WorkspaceDialogs.jsx`
+- ✅ Dialog triggers removed (opened via Settings dropdown = single entry point)
+- ✅ `display: contents` wrapper prevents full-width layout bleed
+- ✅ Missing `POST /api/simulate` endpoint added to `routes/build_operations.py`
+- ProjectWorkspace.jsx: **1628 → 1473 lines** total (−155 lines across all extractions)
+
+**Task 2 — Auto-expand file tree:**
+- ✅ `useEffect` on `files` state: whenever files change, all parent paths are added to `expandedFolders`
+- ✅ Deep paths like `AbyssalShores/Source/AbyssalShores/Player/CppClasses/file.h` open automatically
+- ✅ No manual folder-clicking needed after build completes
+
+**Task 3 — Parallel agent pipeline:**
+- ✅ `runPipelinePhased()` splits COMMANDER's delegations into 3 phases:
+  - Phase 1 (sequential+streaming): NEXUS, ATLAS (design/architecture first)  
+  - Phase 2 (parallel, batches of 4): FORGE, TERRA, PRISM, KINETIC, SONIC, VERTEX, CHRONICLE
+  - Phase 3 (sequential+streaming): SENTINEL, PROBE (review/test last)
+- ✅ `executeDelegationSilent()` — uses streaming endpoint but doesn't update UI (no conflicts)
+- ✅ Pipeline progress bar shows per-agent status (pending/working/done/error) during parallel phase
+- Estimated time savings: ~4x for the builder phase (7 agents × 45s → max(45s) in parallel)
+
+**Files Changed:**
+- `frontend/src/pages/workspace/WorkspaceDialogs.jsx` — NEW: simulation + demo dialogs
+- `frontend/src/pages/ProjectWorkspace.jsx` — auto-expand, parallel pipeline, dialog wrapper
+- `backend/routes/build_operations.py` — added `POST /simulate` endpoint
+
+---
+
+### Previous Update (March 15, 2026) - AUDIO + REFACTOR + E2E TEST ✅
 
 **Task 1 — War Room Audio Feedback:**
 - ✅ Web Audio API (no external deps, zero latency, works offline)

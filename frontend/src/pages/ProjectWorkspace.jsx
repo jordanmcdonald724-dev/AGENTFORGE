@@ -1160,22 +1160,24 @@ const ProjectWorkspace = () => {
         </div>
       </header>
 
-      {/* Dialogs — extracted to WorkspaceDialogs component */}
-      <WorkspaceDialogs
-        simulationDialog={simulationDialog} setSimulationDialog={setSimulationDialog}
-        openWorldSystems={openWorldSystems} targetEngine={targetEngine} setTargetEngine={setTargetEngine}
-        selectedSystems={selectedSystems} toggleSystem={toggleSystem} simulating={simulating}
-        simulationResult={simulationResult} runSimulation={runSimulation}
-        scheduleBuild={scheduleBuild} setScheduleBuild={setScheduleBuild}
-        scheduleTime={scheduleTime} setScheduleTime={setScheduleTime}
-        buildRunning={buildRunning} startAutonomousBuild={startAutonomousBuild}
-        currentBuild={currentBuild} startScheduledBuildNow={startScheduledBuildNow}
-        cancelBuild={cancelBuild} pauseBuild={pauseBuild}
-        demoDialogOpen={demoDialogOpen} setDemoDialogOpen={setDemoDialogOpen}
-        currentDemo={currentDemo} openWebDemo={openWebDemo} files={files}
-        setRightTab={setRightTab} setSelectedFile={setSelectedFile} setEditorContent={setEditorContent}
-        regenerateDemo={regenerateDemo} regeneratingDemo={regeneratingDemo}
-      />
+      {/* Dialogs — extracted to WorkspaceDialogs component (rendered hidden, opened via dropdowns) */}
+      <div style={{ display: 'contents' }}>
+        <WorkspaceDialogs
+          simulationDialog={simulationDialog} setSimulationDialog={setSimulationDialog}
+          openWorldSystems={openWorldSystems} targetEngine={targetEngine} setTargetEngine={setTargetEngine}
+          selectedSystems={selectedSystems} toggleSystem={toggleSystem} simulating={simulating}
+          simulationResult={simulationResult} runSimulation={runSimulation}
+          scheduleBuild={scheduleBuild} setScheduleBuild={setScheduleBuild}
+          scheduleTime={scheduleTime} setScheduleTime={setScheduleTime}
+          buildRunning={buildRunning} startAutonomousBuild={startAutonomousBuild}
+          currentBuild={currentBuild} startScheduledBuildNow={startScheduledBuildNow}
+          cancelBuild={cancelBuild} pauseBuild={pauseBuild}
+          demoDialogOpen={demoDialogOpen} setDemoDialogOpen={setDemoDialogOpen}
+          currentDemo={currentDemo} openWebDemo={openWebDemo} files={files}
+          setRightTab={setRightTab} setSelectedFile={setSelectedFile} setEditorContent={setEditorContent}
+          regenerateDemo={regenerateDemo} regeneratingDemo={regeneratingDemo}
+        />
+      </div>
 
       {/* Main - Fully Resizable Layout */}
       <div className="flex-1 overflow-hidden min-h-0">
