@@ -5769,6 +5769,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def recover_interrupted_pipelines():
+    """On server start: mark any pipeline_runs that were still 'running' as 'interrupted'.
+    FastAPI BackgroundTasks don't survive restarts, so those pipelines are dead.
+    The frontend polling useEffect detects 'interrupted' and stops cleanly.
+    """
+    try:
+        result = await db.pipeline_runs.update_many(
+            {"status": "running"},
+            {"$set": {
+                "status": "interrupted",
+                "error": "Server restarted while pipeline was running",
+                "completed_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+        if result.modified_count:
+            logger.info(f"Marked {result.modified_count} interrupted pipeline run(s) on startup")
+    except Exception as e:
+        logger.warning(f"Pipeline recovery on startup failed: {e}")
+
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()

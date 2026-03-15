@@ -800,6 +800,11 @@ async def _run_one_agent(run_id: str, project_id: str, delegation: dict, agents:
     from core.helpers import call_agent, extract_code_blocks, build_project_context
     from models import Message, WarRoomMessage
 
+    # Bail out early if pipeline was cancelled or interrupted
+    run_check = await db.pipeline_runs.find_one({"id": run_id}, {"_id": 0, "status": 1})
+    if run_check and run_check.get("status") != "running":
+        return
+
     agent_name = delegation['agent'].upper()
     task_text  = delegation['task']
 
@@ -891,7 +896,7 @@ async def _run_one_agent(run_id: str, project_id: str, delegation: dict, agents:
              "$inc": {"completed_agents": 1}}
         )
 
-    except Exception as e:
+    except Exception:
         await db.pipeline_runs.update_one(
             {"id": run_id},
             {"$set": {f"agent_status.{agent_name}": "error"},
@@ -926,8 +931,11 @@ async def _execute_server_pipeline(run_id: str, project_id: str, delegations: li
         for d in phase3:
             await _run_one_agent(run_id, project_id, d, agents)
 
+        # Atomic conditional update: only mark completed if status is STILL 'running'.
+        # Using filter {"status": "running"} avoids the TOCTOU race where a cancel
+        # sets status='cancelled' between the find_one read and the update_one write.
         await db.pipeline_runs.update_one(
-            {"id": run_id},
+            {"id": run_id, "status": "running"},
             {"$set": {"status": "completed",
                       "completed_at": datetime.now(timezone.utc).isoformat()}}
         )
@@ -997,3 +1005,23 @@ async def get_pipeline_run(run_id: str):
     if not run:
         raise HTTPException(status_code=404, detail="Pipeline run not found")
     return run
+
+
+@router.post("/run/{run_id}/cancel")
+async def cancel_pipeline_run(run_id: str):
+    """Cancel a running pipeline. In-flight agent calls finish; no new ones start."""
+    run = await db.pipeline_runs.find_one({"id": run_id}, {"_id": 0, "status": 1})
+    if not run:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+    if run.get("status") != "running":
+        raise HTTPException(status_code=400,
+                            detail=f"Pipeline is not running (status: {run['status']})")
+
+    await db.pipeline_runs.update_one(
+        {"id": run_id},
+        {"$set": {
+            "status": "cancelled",
+            "completed_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return {"success": True, "run_id": run_id, "status": "cancelled"}

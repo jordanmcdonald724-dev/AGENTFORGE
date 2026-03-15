@@ -266,14 +266,17 @@ const ProjectWorkspace = () => {
         setFiles(filesRes.data);
         // Update progress bar from server status
         if (run.agent_status) setPipelineAgentStatus(run.agent_status);
-        // Stop polling when done
-        if (run.status === 'completed' || run.status === 'failed') {
+        // Stop polling on any terminal status
+        const terminal = ['completed', 'failed', 'cancelled', 'interrupted'];
+        if (terminal.includes(run.status)) {
           setActivePipelineId(null);
           setPipelineAgentStatus({});
           setSending(false);
-          if (run.status === 'completed') toast.success('Pipeline complete');
+          if (run.status === 'completed')    toast.success('Pipeline complete');
+          else if (run.status === 'cancelled')  toast.info('Pipeline cancelled');
+          else if (run.status === 'interrupted') toast.warning('Pipeline was interrupted (server restarted). You can re-run the build.');
           else toast.error(`Pipeline failed: ${run.error || 'unknown error'}`);
-          await fetchWarRoom(); // show final war room messages
+          await fetchWarRoom();
         }
       } catch (e) { /* polling errors are non-fatal */ }
     }, 4000);
@@ -322,8 +325,12 @@ const ProjectWorkspace = () => {
         const pipelineRes = await axios.get(`${API}/pipeline/run/project/${projectId}/latest`);
         const latestRun = pipelineRes.data;
         if (latestRun?.status === 'running') {
-          setActivePipelineId(latestRun.run_id);
+          // API returns 'id' field on GET (not 'run_id' which is only in POST response)
+          const resumeId = latestRun.run_id || latestRun.id;
+          setActivePipelineId(resumeId);
           setPipelineRunStatus(latestRun);
+          // Populate agent status bar immediately (polling will refresh every 4s)
+          if (latestRun.agent_status) setPipelineAgentStatus(latestRun.agent_status);
           toast.info('Resuming pipeline from previous session...');
         }
       } catch (e) { /* no previous pipeline — that's fine */ }
@@ -755,6 +762,21 @@ const ProjectWorkspace = () => {
     }
   };
 
+  // Cancel a running server-side pipeline
+  const cancelPipeline = async () => {
+    if (!activePipelineId) return;
+    try {
+      await axios.post(`${API}/pipeline/run/${activePipelineId}/cancel`);
+      setActivePipelineId(null);
+      setPipelineAgentStatus({});
+      setPipelineRunStatus(null);
+      setSending(false);
+      toast.info('Pipeline cancelled');
+    } catch (e) {
+      toast.error('Could not cancel pipeline');
+    }
+  };
+
   // Phased pipeline: prefers server-side execution (pipeline persists after browser close).
   // Falls back to browser-side execution if server endpoint fails.
   const DESIGN_AGENTS = new Set(['NEXUS', 'ATLAS']);
@@ -768,7 +790,10 @@ const ProjectWorkspace = () => {
         delegations
       });
       setActivePipelineId(res.data.run_id);
-      setPipelineRunStatus({ ...res.data, agent_status: Object.fromEntries(delegations.map(d => [d.agent.toUpperCase(), 'pending'])) });
+      // Initialize agent status bar immediately so Cancel button is visible without waiting for first poll
+      const initialStatus = Object.fromEntries(delegations.map(d => [d.agent.toUpperCase(), 'pending']));
+      setPipelineAgentStatus(initialStatus);
+      setPipelineRunStatus({ ...res.data, agent_status: initialStatus });
       setSending(true); // keep input locked while pipeline runs
       toast.info(`Pipeline running on server (${delegations.length} agents)...`);
       return; // polling useEffect takes over from here
@@ -1375,6 +1400,16 @@ const ProjectWorkspace = () => {
                             {agent}
                           </div>
                         ))}
+                        {/* Cancel button — only for server-side runs */}
+                        {activePipelineId && (
+                          <button
+                            onClick={cancelPipeline}
+                            className="ml-auto px-2 py-0.5 rounded text-[10px] font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                            data-testid="cancel-pipeline-btn"
+                          >
+                            ✕ Cancel
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

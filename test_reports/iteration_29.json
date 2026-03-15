@@ -1,0 +1,100 @@
+{
+  "summary": "Iteration 29 — Cancel Pipeline + Startup Recovery testing. Backend 11/11 tests pass. Found and fixed TOCTOU race condition bug in pipeline.py. Found and fixed 3 frontend bugs (auto-resume field mismatch, missing pipelineAgentStatus init). Cancel button visible and clickable. Interrupted/cancelled toasts working. One minor double-toast race condition remains.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "background task _execute_server_pipeline",
+        "issue": "TOCTOU race condition: find_one → if status==running → update_one pattern could overwrite a 'cancelled' status if cancel API ran between the read and write. FIXED with atomic: update_one({id, status:'running'}, {$set:{status:'completed'}}).",
+        "priority": "FIXED - was HIGH"
+      }
+    ]
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "ProjectWorkspace auto-resume",
+        "issue": "latestRun.run_id used but GET /api/pipeline/run/project/latest returns 'id' field (not 'run_id'). Cancel button never appeared on page reload. FIXED: latestRun.run_id || latestRun.id",
+        "selector": "auto-resume logic line 328",
+        "priority": "FIXED - was HIGH"
+      },
+      {
+        "component": "ProjectWorkspace auto-resume",
+        "issue": "Missing setPipelineAgentStatus(latestRun.agent_status) on auto-resume. Progress bar and cancel button wouldn't show until first poll (4s delay). FIXED.",
+        "selector": "auto-resume logic line 329",
+        "priority": "FIXED - was MEDIUM"
+      },
+      {
+        "component": "ProjectWorkspace runPipelinePhased",
+        "issue": "Server-side pipeline start (line 788) didn't call setPipelineAgentStatus. Cancel button showed only after first poll (4s). FIXED: setPipelineAgentStatus(initialStatus) now called immediately.",
+        "selector": "runPipelinePhased server path line 789",
+        "priority": "FIXED - was MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Cancel pipeline - stale badges after cancel",
+        "issue": "After cancel, if a poll was in-flight, setPipelineAgentStatus from the in-flight poll may re-populate agent badges. activePipelineId is cleared (cancel btn gone) but badges appear without cancel btn. Minor cosmetic issue.",
+        "affected_selectors": [".bg-zinc-900/80 agent status badges"]
+      },
+      {
+        "flow": "Interrupted status double toast",
+        "issue": "When polling detects 'interrupted' terminal status, occasionally fires twice (an in-flight poll completes just before interval is cleared), showing duplicate 'Pipeline was interrupted' warning toasts. Minor UX issue.",
+        "affected_selectors": [".Toastify__toast"]
+      }
+    ],
+    "design_issues": []
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_v52_cancel_pipeline.py",
+    "/app/test_reports/pytest/pytest_v52_cancel.xml"
+  ],
+
+  "action_items": [
+    "MINOR: Fix double-toast race condition in polling: when terminal status detected, add clearInterval(interval) INSIDE the callback before calling state setters, to prevent in-flight duplicate poll from also detecting terminal status.",
+    "MINOR: After cancelPipeline(), setPipelineAgentStatus({}) is called but an in-flight poll might restore it. Consider using a useRef cancel flag inside the polling useEffect to guard against stale updates.",
+    "INFO: Startup handler verified running (server starts cleanly, health check OK). 0 interrupted pipelines in DB because test pipelines complete in ~4s - no pipeline was 'running' during any server restart. Code logic is correct."
+  ],
+
+  "critical_code_review_comments": [
+    "FIXED: TOCTOU race in _execute_server_pipeline - now uses atomic conditional update_one({id, status:'running'}) instead of find_one + if running + update_one.",
+    "FIXED: Frontend auto-resume had wrong field name (run_id vs id). API GET returns 'id' but POST returns 'run_id'. Auto-resume now uses run_id || id.",
+    "FIXED: pipelineAgentStatus not initialized on auto-resume or server-side pipeline start - both now set it immediately so cancel button shows without waiting for first poll.",
+    "NOTE: Cancel endpoint correctly returns {success:true, run_id, status:'cancelled'} with HTTP 200.",
+    "NOTE: Cancel on non-running pipeline correctly returns 400 with detail message.",
+    "NOTE: startup handler in server.py correctly marks 'running' → 'interrupted' with update_many on startup.",
+    "NOTE: Frontend polling correctly handles all 4 terminal statuses: completed/failed/cancelled/interrupted with appropriate toasts."
+  ],
+
+  "updated_files": [
+    "/app/backend/routes/pipeline.py - atomic conditional update fix for _execute_server_pipeline",
+    "/app/frontend/src/pages/ProjectWorkspace.jsx - auto-resume run_id→id fix + pipelineAgentStatus init",
+    "/app/backend/tests/test_v52_cancel_pipeline.py - new test file"
+  ],
+
+  "success_rate": {
+    "backend": "100% (11/11 tests pass)",
+    "frontend": "90% (cancel button visible/clickable, toasts working; 2 minor race conditions remain)"
+  },
+
+  "test_credentials": "No auth needed. Project: 878a623f-111e-45df-a837-7821bace9c1a",
+  "seed_data_creation": "Multiple TEST_CANCEL pipeline runs created during backend tests (all cancelled/completed, none in 'running' state).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Cancel pipeline fully tested and working. 3 frontend bugs fixed (auto-resume run_id→id, missing setPipelineAgentStatus on resume + pipeline start). Backend TOCTOU race fixed. 2 minor remaining: (1) double toast for interrupted if poll in-flight; (2) stale agent badges after cancel if poll in-flight. These can be fixed by adding clearInterval inside the polling callback when terminal status detected, and/or using a useRef cancel flag.",
+  "rca_of_issues": {
+    "backend_toctou": {
+      "bug": "Final status check in _execute_server_pipeline used find_one + (if running) + update_one, creating a window where cancel API could set status='cancelled' between the read and write, then the stale 'running' read would cause update_one to set 'completed' (overwriting 'cancelled').",
+      "fix": "Replaced with atomic update_one({id, status:'running'}, {$set:{status:'completed'}}) - only updates if STILL running at write time.",
+      "file": "/app/backend/routes/pipeline.py line 937"
+    },
+    "frontend_auto_resume": {
+      "bug": "GET /api/pipeline/run/project/{id}/latest returns the DB document which has field 'id'. The POST /api/pipeline/run response has 'run_id'. Auto-resume code used latestRun.run_id (undefined on GET response), so activePipelineId was set to undefined → no polling → no cancel button.",
+      "fix": "latestRun.run_id || latestRun.id",
+      "file": "/app/frontend/src/pages/ProjectWorkspace.jsx line 328"
+    }
+  }
+}
