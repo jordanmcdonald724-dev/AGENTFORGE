@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -46,38 +46,39 @@ const SettingsPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [extensionId, setExtensionId] = useState(null);
   const [configCopied, setConfigCopied] = useState(false);
+  const prevConnectedRef = useRef(null); // tracks last known state to avoid repeat toasts
 
   useEffect(() => {
-    // Check bridge connection status
+    // Single status check on mount
     checkBridgeStatus();
-    
-    // Listen for bridge status events
+
+    // Only toast and update state when connection status CHANGES
     const handleBridgeStatus = (e) => {
-      console.log('Bridge status event:', e.detail);
-      setBridgeConnected(e.detail.connected);
-      if (e.detail.connected) {
-        toast.success('Local Bridge Connected!');
+      const nowConnected = e.detail.connected;
+      if (nowConnected !== prevConnectedRef.current) {
+        prevConnectedRef.current = nowConnected;
+        setBridgeConnected(nowConnected);
+        if (nowConnected) toast.success('Local Bridge Connected!');
+        // Don't toast on disconnect — it fires on every page load when no extension
       }
     };
-    
+
     // Listen for extension ID from content script
     const handleMessage = (event) => {
       if (event.data?.type === 'AGENTFORGE_EXTENSION_ID') {
         setExtensionId(event.data.extensionId);
-        // Re-check connection status when extension is detected
         setTimeout(checkBridgeStatus, 500);
       }
     };
-    
+
     window.addEventListener('agentforge-bridge-status', handleBridgeStatus);
     window.addEventListener('message', handleMessage);
-    
-    // Load saved settings
+
     loadSettings();
-    
-    // Periodic check for connection status
-    const interval = setInterval(checkBridgeStatus, 3000);
-    
+
+    // Poll every 15s — just enough to detect reconnect, not enough to spam
+    const interval = setInterval(checkBridgeStatus, 15000);
+
     return () => {
       window.removeEventListener('agentforge-bridge-status', handleBridgeStatus);
       window.removeEventListener('message', handleMessage);
