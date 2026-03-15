@@ -7,7 +7,33 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 15, 2026) - PIPELINE AUTO-DELEGATION FIX ✅
+### Latest Update (March 15, 2026) - FULL 12-AGENT PIPELINE COMPLETE ✅
+
+**Complete 12-Agent Pipeline Now Functional:**
+- ✅ **COMMANDER** knows all 12 agents with smart project-type routing:
+  - GAME project → deploys all 11 specialists (NEXUS+ATLAS+FORGE+TERRA+PRISM+KINETIC+SONIC+VERTEX+CHRONICLE+SENTINEL+PROBE)
+  - WEB/APP project → deploys targeted team (ATLAS+FORGE+PRISM+SENTINEL+PROBE)
+  - Single feature → deploys 2-3 relevant agents
+- ✅ **All 12 agent configs** updated with luxury-tier system prompts in `core/agents.py`
+- ✅ **`/api/agents/reset`** endpoint — syncs DB from config (no more stale agent state)
+- ✅ **`PATCH /api/agents/{id}`** endpoint — update individual agent prompts
+- ✅ **Dashboard** updated to show all 12/12 agents dynamically
+- ✅ **Pipeline streaming** (from previous fix): `/api/delegate/stream` prevents timeouts
+- ✅ **Message delegations** persisted to DB (`Message` model has `delegations` field)
+
+**Testing Results (iteration_23): 27/27 backend tests ✅ | 100% frontend ✅**
+- GAME task: COMMANDER routed to all 11 agents automatically
+- WEB task: COMMANDER routed to 5 agents (correctly excluded TERRA/KINETIC/SONIC)
+- Studio shows 12/12 Available
+
+**Files Changed:**
+- `backend/core/agents.py` — Complete rewrite: all 12 agents with luxury prompts
+- `backend/server.py` — Added `/api/agents/reset` + `PATCH /api/agents/{id}` endpoints
+- `frontend/src/pages/Dashboard.jsx` — All 12 agents in agentList, dynamic badge
+
+---
+
+### Previous Update (March 15, 2026) - PIPELINE AUTO-DELEGATION FIX ✅
 
 **Core AI Pipeline Fixed — Autonomous Chain Now Works:**
 - ✅ **Backend `/api/delegate/stream`** - New streaming SSE endpoint for delegation (prevents 60s proxy timeout)
