@@ -7,7 +7,35 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 15, 2026) - DIALOGS REFACTOR + AUTO-EXPAND + PARALLEL PIPELINE ✅
+### Latest Update (March 15, 2026) - DIALOG CLEANUP + PARALLEL PIPELINE VERIFIED ✅
+
+**Task 1 — Clean up orphaned state:**
+- ✅ `refactorData`, `refactorPreview` state removed (no UI trigger, no dialog)
+- ✅ `previewRefactor`, `applyRefactor` replaced with stubs (kept for future re-add)
+- Settings dropdown now fully functional: all 6 items trigger real dialogs
+
+**Task 2 — 4 missing dialogs restored:**
+- ✅ **GitHub Push** — token input, repo name, create-new checkbox, push button
+- ✅ **Image Generation** — prompt textarea, category selector (6 types), generate button
+- ✅ **Memory Viewer** — lists all memories with agent/category badges, Extract+Delete
+- ✅ **Duplicate Project** — name input pre-filled with "Project Copy", one-click duplicate
+- All 4 dialogs verified by testing agent (dialogs_verified: all PASS)
+
+**Task 3 — Parallel pipeline test:**
+- ✅ COMMANDER delegated to all 11 agents (NEXUS→ATLAS→FORGE→TERRA→PRISM→KINETIC→SONIC→VERTEX→CHRONICLE→SENTINEL→PROBE)
+- ✅ New files generated (3→5 files in test project)
+- ✅ 3-phase pipeline: Design sequential → Builders parallel → Review sequential
+- ✅ Pipeline progress bar code verified correct (transient during phase 2)
+
+**Testing: 95%+ (all dialogs, pipeline, refactor cleanup verified) | /api/simulate working ✅**
+
+**Files Changed:**
+- `frontend/src/pages/workspace/WorkspaceDialogs.jsx` — Added GitHub, Image, Memory, Duplicate dialogs
+- `frontend/src/pages/ProjectWorkspace.jsx` — Dead state removed, new dialog props, Duplicate in Settings
+
+---
+
+### Previous Update (March 15, 2026) - DIALOGS REFACTOR + AUTO-EXPAND + PARALLEL PIPELINE ✅
 
 **Task 1 — WorkspaceDialogs.jsx extracted:**
 - ✅ Simulation dialog + Demo dialog + Build status chips → `WorkspaceDialogs.jsx`
