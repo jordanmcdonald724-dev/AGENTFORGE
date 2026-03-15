@@ -3,13 +3,15 @@
 
 (function() {
   'use strict';
-  
+
   let isConnected = false;
-  
+  let statusDebounceTimer = null;        // debounce for the indicator widget
+  let lastBroadcastedStatus = null;      // prevent duplicate event dispatches
+
   // Inject status indicator into AgentForge pages
   function injectStatusIndicator() {
     if (document.getElementById('agentforge-bridge-indicator')) return;
-    
+
     const indicator = document.createElement('div');
     indicator.id = 'agentforge-bridge-indicator';
     indicator.innerHTML = `
@@ -31,58 +33,55 @@
         backdrop-filter: blur(10px);
         box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
       ">
         <div id="af-bridge-dot" style="
           width: 10px;
           height: 10px;
           border-radius: 50%;
           background: #ef4444;
-          animation: pulse 2s infinite;
         "></div>
         <span id="af-bridge-text">Local Bridge: Disconnected</span>
       </div>
-      <style>
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        #af-bridge-status:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 25px rgba(0,0,0,0.4);
-        }
-      </style>
     `;
     document.body.appendChild(indicator);
-    
+
     // Click to toggle connection
     document.getElementById('af-bridge-status').addEventListener('click', () => {
       chrome.runtime.sendMessage({ type: 'CONNECT' });
     });
   }
-  
-  // Update status indicator
+
+  // Update status indicator — debounced so rapid on/off doesn't cause visual flicker
   function updateStatusIndicator(connected) {
-    isConnected = connected;
-    const dot = document.getElementById('af-bridge-dot');
-    const text = document.getElementById('af-bridge-text');
-    
-    if (dot && text) {
-      dot.style.background = connected ? '#22c55e' : '#ef4444';
-      dot.style.animation = connected ? 'none' : 'pulse 2s infinite';
-      text.textContent = connected ? 'Local Bridge: Connected' : 'Local Bridge: Disconnected';
-    }
+    clearTimeout(statusDebounceTimer);
+    statusDebounceTimer = setTimeout(() => {
+      isConnected = connected;
+      const dot  = document.getElementById('af-bridge-dot');
+      const text = document.getElementById('af-bridge-text');
+      if (dot && text) {
+        dot.style.background   = connected ? '#22c55e' : '#ef4444';
+        dot.style.animation    = 'none';
+        text.textContent       = connected ? 'Local Bridge: Connected' : 'Local Bridge: Disconnected';
+      }
+
+      // Only dispatch the event to the page app if status actually changed
+      if (connected !== lastBroadcastedStatus) {
+        lastBroadcastedStatus = connected;
+        window.dispatchEvent(new CustomEvent('agentforge-bridge-status', {
+          detail: { connected }
+        }));
+      }
+    }, 800); // 800ms debounce — absorbs rapid connect/disconnect flicker
   }
   
   // Listen for messages from background script
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.type) {
       case 'CONNECTION_STATUS':
+        // updateStatusIndicator handles the debounce + dispatching agentforge-bridge-status
+        // DON'T dispatch the event directly here — the debounced function does it
         updateStatusIndicator(message.connected);
-        // Dispatch custom event for the web app
-        window.dispatchEvent(new CustomEvent('agentforge-bridge-status', {
-          detail: { connected: message.connected }
-        }));
         break;
         
       case 'FILE_SAVED':
@@ -174,17 +173,13 @@
     }
   });
   
-  // Request connection status from web page
+  // Request connection status from web page — route through debounced updateStatusIndicator
   window.addEventListener('agentforge-get-status', async () => {
     try {
       const response = await chrome.runtime.sendMessage({ type: 'GET_STATUS' });
-      window.dispatchEvent(new CustomEvent('agentforge-bridge-status', {
-        detail: { connected: response.connected }
-      }));
+      updateStatusIndicator(response.connected); // debounced — prevents spaz from polling
     } catch (error) {
-      window.dispatchEvent(new CustomEvent('agentforge-bridge-status', {
-        detail: { connected: false }
-      }));
+      updateStatusIndicator(false);
     }
   });
   

@@ -46,21 +46,26 @@ const SettingsPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [extensionId, setExtensionId] = useState(null);
   const [configCopied, setConfigCopied] = useState(false);
-  const prevConnectedRef = useRef(null); // tracks last known state to avoid repeat toasts
+  const prevConnectedRef = useRef(null);   // tracks last known state to avoid repeat toasts
+  const statusDebounceRef = useRef(null);  // debounce rapid connect/disconnect events
 
   useEffect(() => {
     // Single status check on mount
     checkBridgeStatus();
 
-    // Only toast and update state when connection status CHANGES
+    // Debounced handler — only update UI once status is STABLE for 1.5 seconds.
+    // This prevents the old extension's rapid connect/disconnect loop from spazzing the UI.
     const handleBridgeStatus = (e) => {
       const nowConnected = e.detail.connected;
-      if (nowConnected !== prevConnectedRef.current) {
-        prevConnectedRef.current = nowConnected;
-        setBridgeConnected(nowConnected);
-        if (nowConnected) toast.success('Local Bridge Connected!');
-        // Don't toast on disconnect — it fires on every page load when no extension
-      }
+      clearTimeout(statusDebounceRef.current);
+      statusDebounceRef.current = setTimeout(() => {
+        if (nowConnected !== prevConnectedRef.current) {
+          prevConnectedRef.current = nowConnected;
+          setBridgeConnected(nowConnected);
+          if (nowConnected) toast.success('Local Bridge Connected!');
+          else if (prevConnectedRef.current !== null) toast.info('Local Bridge disconnected');
+        }
+      }, 1500); // wait 1.5s of stable status before updating UI
     };
 
     // Listen for extension ID from content script
@@ -76,10 +81,11 @@ const SettingsPage = () => {
 
     loadSettings();
 
-    // Poll every 15s — just enough to detect reconnect, not enough to spam
-    const interval = setInterval(checkBridgeStatus, 15000);
+    // Poll every 20s — slow enough to not spam, fast enough to detect reconnect
+    const interval = setInterval(checkBridgeStatus, 20000);
 
     return () => {
+      clearTimeout(statusDebounceRef.current);
       window.removeEventListener('agentforge-bridge-status', handleBridgeStatus);
       window.removeEventListener('message', handleMessage);
       clearInterval(interval);
