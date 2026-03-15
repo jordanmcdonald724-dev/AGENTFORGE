@@ -1,0 +1,105 @@
+{
+  "summary": "AgentForge v47 Pipeline Streaming Fix - Testing delegation pipeline auto-chain with new /api/delegate/stream endpoint. Backend 12/12 passed. Frontend pipeline verified end-to-end: COMMANDER auto-delegates to ATLAS and FORGE, send button stays disabled throughout, files saved after code generation.",
+
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/messages",
+        "issue": "Message model missing 'delegations' List field - delegation history not persisted to DB (delegations always=0 in all stored messages). After page refresh, COMMANDER's 'Delegated to ATLAS/FORGE' Execute blocks don't re-appear because delegations are not saved.",
+        "affected_file": "/app/backend/models/base.py - class Message needs delegations: List[Dict] = [] field",
+        "priority": "MEDIUM"
+      }
+    ]
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Delegation blocks after page refresh",
+        "issue": "COMMANDER's delegation blocks ('Delegated to ATLAS', 'Delegated to FORGE' with Execute buttons) disappear after page refresh because delegations are not persisted in DB. The Execute button for manual re-triggering only works during the current session, not after reload.",
+        "affected_selectors": ["button:has-text('Execute')"],
+        "priority": "MEDIUM - consequence of missing delegations field in Message model"
+      }
+    ],
+    "design_issues": []
+  },
+
+  "passed_tests": [
+    "✅ /api/delegate validates delegate_to requirement (400)",
+    "✅ /api/delegate returns 404 for unknown agent",
+    "✅ /api/delegate now returns 'delegations' field (the fix - was missing before)",
+    "✅ /api/delegate/stream exists and returns SSE text/event-stream content-type (new endpoint)",
+    "✅ /api/delegate/stream validates missing delegate_to (400)",
+    "✅ /api/delegate/stream returns 404 for unknown agent",
+    "✅ /api/delegate/stream emits 'start' event with agent info (id, name, role, avatar)",
+    "✅ /api/delegate/stream emits 'content' events during LLM generation",
+    "✅ /api/delegate/stream 'done' event has 'code_blocks' array",
+    "✅ /api/delegate/stream 'done' event has 'delegations' array",
+    "✅ /api/delegate/stream full sequence correct: start → content... → done",
+    "✅ /api/pipeline/agents available (12 agents in config)",
+    "✅ /api/chat/stream exists and returns SSE",
+    "✅ Home page loads, Studio shows projects, Project workspace accessible",
+    "✅ Chat input (data-testid='chat-input') works - accepts text input",
+    "✅ Send button (data-testid='send-btn') disabled when empty, enabled when text present",
+    "✅ COMMANDER responds via streaming in chat after message sent",
+    "✅ COMMANDER delegation blocks ('Delegated to ATLAS', 'Delegated to FORGE') appeared in chat with Execute buttons",
+    "✅ ATLAS auto-ran after COMMANDER (no manual Execute click needed) - PIPELINE FIX VERIFIED",
+    "✅ FORGE auto-ran after ATLAS delegation (chain auto-execution working)",
+    "✅ Console: '[Pipeline] COMMANDER issued delegations: [ATLAS, FORGE]' confirmed",
+    "✅ Console: '[Pipeline] → ATLAS' and '[Pipeline] → FORGE' confirmed in sequence",
+    "✅ Send button stayed disabled throughout entire COMMANDER→ATLAS→FORGE pipeline (no ping-pong)",
+    "✅ Files saved after FORGE code generation: 3 C++ files (AS_PlayerCharacter.h, HealthComponent.h, HealthComponent.cpp)",
+    "✅ isChainCall=true prevents setSending ping-pong mid-pipeline"
+  ],
+
+  "test_report_links": [
+    "/app/backend/tests/test_v47_pipeline_streaming.py",
+    "/app/test_reports/pytest/pytest_v47_pipeline.xml"
+  ],
+
+  "action_items": [
+    "Add 'delegations: List[Dict] = []' field to Message model in /app/backend/models/base.py",
+    "In /api/chat/stream (lines 779-790), pass delegations=delegations when creating Message object to persist delegation history",
+    "In /api/delegate/stream (lines 903-915), pass delegations=delegations when creating Message object",
+    "This ensures COMMANDER's delegation blocks re-appear after page refresh and Execute buttons work for re-triggering"
+  ],
+
+  "critical_code_review_comments": [
+    "MEDIUM: Message model missing 'delegations' field - `/app/backend/models/base.py` class Message needs `delegations: List[Dict] = []` - without this, delegation history is lost on page refresh and Execute re-trigger buttons don't show",
+    "INFO: /api/pipeline/agents returns dict keyed by role (not list) - frontend should handle both formats",
+    "INFO: The streaming fix works correctly - SSE prevents proxy timeouts on LLM calls over 30s",
+    "INFO: isChainCall=true pattern in executeDelegation correctly prevents send button flicker during pipeline"
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_v47_pipeline_streaming.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (12/12 tests passed)",
+    "frontend": "95% - Core pipeline working, minor issue with delegation persistence after refresh"
+  },
+
+  "test_environment": {
+    "frontend_url": "https://premium-os.preview.emergentagent.com",
+    "backend_url": "https://premium-os.preview.emergentagent.com/api",
+    "test_project_id": "878a623f-111e-45df-a837-7821bace9c1a",
+    "test_project_name": "OceanMapSurvivalGame"
+  },
+
+  "seed_data_creation": "Tested with existing project 'OceanMapSurvivalGame' (878a623f-111e-45df-a837-7821bace9c1a). 3 new files added: AbyssalShores/Source/AbyssalShores/Player/CppClasses/AS_PlayerCharacter.h, HealthComponent.h, HealthComponent.cpp",
+
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Pipeline streaming fix v47 verified working. COMMANDER → ATLAS → FORGE auto-chain confirmed. The one outstanding issue is Message model missing 'delegations' field which prevents delegation block persistence after page refresh. Test file: /app/backend/tests/test_v47_pipeline_streaming.py (12 tests). Project ID for testing: 878a623f-111e-45df-a837-7821bace9c1a",
+
+  "rca_of_issue": {
+    "issue": "Delegation blocks disappear after page refresh",
+    "root_cause": "Message model in /app/backend/models/base.py does not have a 'delegations' field. When the Message is saved to MongoDB, delegation info is dropped. Frontend reads delegations from SSE done event (live session only) but not from DB (no persistence).",
+    "reproduction": "1. Send a message that triggers COMMANDER delegating to ATLAS/FORGE. 2. See delegation blocks with Execute buttons appear. 3. Refresh the page. 4. COMMANDER's message no longer shows 'Delegated to ATLAS' blocks.",
+    "mitigation": "Add `delegations: List[Dict] = []` to Message class in models/base.py, and pass `delegations=delegations` when constructing Message objects in both /api/chat/stream and /api/delegate/stream endpoints"
+  }
+}

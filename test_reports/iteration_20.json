@@ -69,8 +69,8 @@
   "context_for_next_testing_agent": "Testing of God Mode V2 enhancements complete. Key features verified: 1) Build status endpoint returns proper status (not_found, not_started, complete), 2) Memory system integration (stats, recommendations, agent performance), 3) All 10 specialist agents (DIRECTOR, ATLAS, PIXEL, NEXUS, TITAN, SYNAPSE, DEPLOY, SENTINEL, PHOENIX, PROBE) properly configured, 4) Command Center UI shows all required sections and buttons based on build state. The retry logic with exponential backoff is implemented in call_llm_with_retry(). Memory recording happens after build completion.",
 
   "test_environment": {
-    "frontend_url": "https://premium-os-ui.preview.emergentagent.com",
-    "backend_url": "https://premium-os-ui.preview.emergentagent.com/api",
+    "frontend_url": "https://premium-os.preview.emergentagent.com",
+    "backend_url": "https://premium-os.preview.emergentagent.com/api",
     "test_project_id": "334166ac-9ea3-45d8-b4d2-3c81e7ef19c1",
     "viewport": "1920x1080 (Desktop)"
   },

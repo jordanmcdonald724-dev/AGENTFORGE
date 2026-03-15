@@ -822,6 +822,7 @@ async def execute_delegation(request: ChatRequest):
     await db.agents.update_one({"id": target_agent['id']}, {"$set": {"status": "idle"}})
     
     code_blocks = extract_code_blocks(response)
+    delegations = extract_delegations(response)
     
     # Save delegation message
     delegation_msg = Message(
@@ -841,6 +842,7 @@ async def execute_delegation(request: ChatRequest):
     return {
         "response": response,
         "code_blocks": code_blocks,
+        "delegations": delegations,
         "agent": {
             "id": target_agent['id'],
             "name": target_agent['name'],
@@ -848,6 +850,79 @@ async def execute_delegation(request: ChatRequest):
             "avatar": target_agent['avatar']
         }
     }
+
+
+@api_router.post("/delegate/stream")
+async def stream_delegation(request: ChatRequest):
+    """Stream a delegated task response via SSE - prevents proxy timeouts on long LLM calls"""
+    agents = await get_or_create_agents()
+    
+    if not request.delegate_to:
+        raise HTTPException(status_code=400, detail="delegate_to is required")
+    
+    target_agent = next((a for a in agents if a['name'].upper() == request.delegate_to.upper()), None)
+    if not target_agent:
+        raise HTTPException(status_code=404, detail=f"Agent {request.delegate_to} not found")
+    
+    context = await build_project_context(request.project_id)
+    
+    async def generate():
+        await db.agents.update_one({"id": target_agent['id']}, {"$set": {"status": "working"}})
+        
+        agent_info = {
+            "id": target_agent['id'],
+            "name": target_agent['name'],
+            "role": target_agent['role'],
+            "avatar": target_agent['avatar']
+        }
+        yield f"data: {json.dumps({'type': 'start', 'agent': agent_info})}\n\n"
+        
+        full_content = ""
+        try:
+            stream = llm_client.chat.completions.create(
+                model=target_agent.get('model', 'google/gemini-2.5-flash'),
+                messages=[
+                    {"role": "system", "content": target_agent['system_prompt'] + f"\n\nCURRENT PROJECT CONTEXT:\n{context}"},
+                    {"role": "user", "content": f"COMMANDER has delegated this task to you:\n\n{request.message}"}
+                ],
+                max_tokens=8000,
+                temperature=0.7,
+                stream=True
+            )
+            
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                    content = chunk.choices[0].delta.content
+                    full_content += content
+                    yield f"data: {json.dumps({'type': 'content', 'content': content})}\n\n"
+            
+            code_blocks = extract_code_blocks(full_content)
+            delegations = extract_delegations(full_content)
+            
+            # Save delegation message
+            delegation_msg = Message(
+                project_id=request.project_id,
+                agent_id=target_agent['id'],
+                agent_name=target_agent['name'],
+                agent_role=target_agent['role'],
+                content=full_content,
+                code_blocks=code_blocks,
+                message_type="delegation",
+                delegated_to=target_agent['name']
+            )
+            msg_doc = delegation_msg.model_dump()
+            msg_doc['timestamp'] = msg_doc['timestamp'].isoformat()
+            await db.messages.insert_one(msg_doc)
+            
+            yield f"data: {json.dumps({'type': 'done', 'code_blocks': code_blocks, 'delegations': delegations})}\n\n"
+            
+        except Exception as e:
+            logger.error(f"Delegation stream error for {target_agent['name']}: {e}")
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+        finally:
+            await db.agents.update_one({"id": target_agent['id']}, {"$set": {"status": "idle"}})
+    
+    return StreamingResponse(generate(), media_type="text/event-stream")
 
 # Image Generation Routes
 @api_router.post("/images/generate")

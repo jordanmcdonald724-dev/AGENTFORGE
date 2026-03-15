@@ -449,12 +449,18 @@ const ProjectWorkspace = () => {
                   setProject(prev => ({ ...prev, phase: data.new_phase }));
                   toast.success(`Project advanced to ${data.new_phase} phase`);
                 }
-                // Auto-execute delegations from COMMANDER
-                if (data.delegations?.length > 0) {
+                // Auto-execute delegations from COMMANDER — isChainCall=true keeps sending=true throughout
+                if (data.delegations && data.delegations.length > 0) {
+                  console.log('[Pipeline] COMMANDER issued delegations:', data.delegations.map(d => d.agent));
                   for (const delegation of data.delegations) {
                     toast.info(`Delegating to ${delegation.agent}...`);
-                    await executeDelegation(delegation.agent, delegation.task);
+                    try {
+                      await executeDelegation(delegation.agent, delegation.task, true);
+                    } catch (e) {
+                      console.error('[Pipeline] Delegation chain error:', e);
+                    }
                   }
+                  toast.success('Pipeline complete');
                 }
                 setAgents(prev => prev.map(a => ({ ...a, status: "idle" })));
               }
@@ -508,21 +514,105 @@ const ProjectWorkspace = () => {
     } catch (error) {}
   };
 
-  const executeDelegation = async (agentName, task) => {
+  // executeDelegation uses streaming to avoid proxy timeouts and provide real-time feedback
+  // isChainCall=true means it's called mid-pipeline; don't toggle the global sending state
+  const executeDelegation = async (agentName, task, isChainCall = false) => {
+    console.log(`[Pipeline] → ${agentName}`);
+    if (!isChainCall) setSending(true);
+    
     try {
-      const res = await axios.post(`${API}/delegate`, { project_id: projectId, message: task, delegate_to: agentName });
-      setMessages(prev => [...prev, { id: `delegate-${Date.now()}`, project_id: projectId, agent_id: res.data.agent.id, agent_name: res.data.agent.name, agent_role: res.data.agent.role, content: res.data.response, code_blocks: res.data.code_blocks || [], delegations: res.data.delegations || [], timestamp: new Date().toISOString() }]);
-      if (res.data.code_blocks?.length > 0) await saveCodeBlocks(res.data.code_blocks, res.data.agent);
-      toast.success(`${agentName} completed`);
+      const response = await fetch(`${API}/delegate/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: projectId, message: task, delegate_to: agentName })
+      });
       
-      // Chain delegations - continue the pipeline
-      if (res.data.delegations?.length > 0) {
-        for (const delegation of res.data.delegations) {
-          toast.info(`${agentName} delegating to ${delegation.agent}...`);
-          await executeDelegation(delegation.agent, delegation.task);
+      if (!response.ok) {
+        throw new Error(`${agentName} returned ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = "";
+      let currentAgent = null;
+
+      // Show streaming for this delegate agent
+      setStreamingAgent({ name: agentName, role: 'delegation' });
+      setStreamingContent("");
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'start') {
+              currentAgent = data.agent;
+              setStreamingAgent(data.agent);
+              setAgents(prev => prev.map(a => a.id === data.agent.id ? { ...a, status: "working" } : a));
+            } else if (data.type === 'content') {
+              fullContent += data.content;
+              setStreamingContent(fullContent);
+            } else if (data.type === 'done') {
+              setStreamingContent("");
+              setStreamingAgent(null);
+
+              // Extract delegations from response text as fallback if backend didn't find them
+              const delegationRegex = /\[DELEGATE:(\w+)\]([\s\S]*?)\[\/DELEGATE\]/g;
+              const parsedDelegations = [];
+              let m;
+              while ((m = delegationRegex.exec(fullContent)) !== null) {
+                parsedDelegations.push({ agent: m[1].toUpperCase(), task: m[2].trim() });
+              }
+              const chainDelegations = data.delegations?.length > 0 ? data.delegations : parsedDelegations;
+
+              const newMsg = {
+                id: `delegate-${Date.now()}`,
+                project_id: projectId,
+                agent_id: currentAgent?.id,
+                agent_name: currentAgent?.name || agentName,
+                agent_role: currentAgent?.role,
+                content: fullContent,
+                code_blocks: data.code_blocks || [],
+                delegations: chainDelegations,
+                timestamp: new Date().toISOString()
+              };
+              setMessages(prev => [...prev, newMsg]);
+              setAgents(prev => prev.map(a => ({ ...a, status: "idle" })));
+
+              if (data.code_blocks?.length > 0) {
+                await saveCodeBlocks(data.code_blocks, currentAgent);
+                const filesRes = await axios.get(`${API}/files?project_id=${projectId}`);
+                setFiles(filesRes.data);
+              }
+
+              // Auto-chain: continue pipeline if this agent issued more delegations
+              if (chainDelegations.length > 0) {
+                for (const delegation of chainDelegations) {
+                  toast.info(`${agentName} → ${delegation.agent}`);
+                  await executeDelegation(delegation.agent, delegation.task, true);
+                }
+              }
+            } else if (data.type === 'error') {
+              setStreamingContent("");
+              setStreamingAgent(null);
+              throw new Error(data.error);
+            }
+          } catch (parseErr) {
+            // Silently skip malformed SSE lines
+          }
         }
       }
-    } catch (error) { toast.error(`Delegation failed`); }
+    } catch (error) {
+      console.error(`[Pipeline] ${agentName} error:`, error);
+      setStreamingContent("");
+      setStreamingAgent(null);
+      toast.error(`${agentName} failed: ${error.message}`);
+    } finally {
+      if (!isChainCall) setSending(false);
+    }
   };
 
   // ========== SIMULATION MODE ==========
