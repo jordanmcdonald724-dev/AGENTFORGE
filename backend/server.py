@@ -783,6 +783,7 @@ async def stream_chat(request: ChatRequest):
                 agent_role=target_agent['role'],
                 content=full_content,
                 code_blocks=code_blocks,
+                delegations=delegations,
                 phase=request.phase
             )
             agent_doc = agent_msg.model_dump()
@@ -907,6 +908,7 @@ async def stream_delegation(request: ChatRequest):
                 agent_role=target_agent['role'],
                 content=full_content,
                 code_blocks=code_blocks,
+                delegations=delegations,
                 message_type="delegation",
                 delegated_to=target_agent['name']
             )

@@ -60,6 +60,7 @@ class Message(BaseModel):
     content: str
     message_type: str = "chat"
     code_blocks: List[Dict[str, str]] = []
+    delegations: List[Dict[str, str]] = []
     images: List[Dict[str, str]] = []
     delegated_to: Optional[str] = None
     phase: Optional[str] = None

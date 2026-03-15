@@ -1,4 +1,4 @@
-# AgentForge v4.5 - AI Development Studio
+# AgentForge v4.7 - AI Development Studio
 
 ## Original Problem Statement
 Build a web application called "AgentForge" that functions as an "AI agent dev team" backed by fal.ai. A "Ubisoft studio style" platform for building full web pages, applications, and AAA-quality games with specialized AI agents.
@@ -7,7 +7,31 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 14, 2026) - WAR ROOM IMMERSIVE REDESIGN
+### Latest Update (March 15, 2026) - PIPELINE AUTO-DELEGATION FIX ✅
+
+**Core AI Pipeline Fixed — Autonomous Chain Now Works:**
+- ✅ **Backend `/api/delegate/stream`** - New streaming SSE endpoint for delegation (prevents 60s proxy timeout)
+- ✅ **Backend `/api/delegate`** - Fixed: now returns `delegations` field (was previously missing, broke recursive chaining)
+- ✅ **Frontend `executeDelegation`** - Rewritten to consume SSE stream from `/api/delegate/stream`
+- ✅ **`isChainCall` flag** - Prevents `setSending` state ping-pong mid-pipeline (chat stays locked throughout)
+- ✅ **Delegation persistence** - `Message` model now has `delegations: List[Dict]` field; delegation blocks survive page refresh
+- ✅ **Fallback delegation parsing** - Frontend extracts `[DELEGATE:...]` tags from response text if backend misses them
+- ✅ **End-to-end verified**: COMMANDER → ATLAS → FORGE pipeline runs automatically (100% backend, 95% frontend tests)
+
+**Testing Results (iteration_22):**
+- Backend 12/12 passed  
+- COMMANDER auto-delegated to ATLAS and FORGE without any manual intervention
+- Send button stayed disabled throughout entire pipeline
+- 3 C++ files auto-saved after FORGE completed
+
+**Files Changed:**
+- `backend/server.py` - Fixed `/api/delegate` + added `/api/delegate/stream` 
+- `backend/models/base.py` - Added `delegations: List[Dict] = []` to Message model
+- `frontend/src/pages/ProjectWorkspace.jsx` - Rewrote `executeDelegation` with streaming + chain state fix
+
+---
+
+### Previous Update (March 14, 2026) - WAR ROOM IMMERSIVE REDESIGN
 
 **War Room Overhaul - "See the Team Build":**
 - ✅ **New WarRoomPanel component** (`/pages/workspace/WarRoomPanel.jsx`)
