@@ -80,12 +80,7 @@ const QUICK_ACTION_ICONS = {
   "message-square": MessageCircle, layout: Layout, "volume-2": Volume2, sparkles: Sparkles
 };
 
-const SYSTEM_ICONS = {
-  terrain: Mountain, npc_population: Users, quest_system: Map, vehicle_system: Car,
-  day_night_cycle: Sun, combat_system: Swords, crafting_system: Hammer, economy_system: Coins,
-  stealth_system: Ghost, mount_system: Gamepad2, building_system: Layers, skill_tree: Sparkles,
-  fast_travel: Timer, photo_mode: Camera, multiplayer: Wifi
-};
+// SYSTEM_ICONS lives in WorkspaceDialogs.jsx where it's actually used
 
 // Panel configuration for grouped dropdown navigation
 const PANEL_GROUPS = {
@@ -141,7 +136,6 @@ const ProjectWorkspace = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const chatEndRef = useRef(null);
-  const warRoomEndRef = useRef(null);
   
   const [project, setProject] = useState(null);
   const [agents, setAgents] = useState([]);
@@ -210,7 +204,6 @@ const ProjectWorkspace = () => {
   const [selectedSystems, setSelectedSystems] = useState([]);
   const [targetEngine, setTargetEngine] = useState("unreal");
   const [simulating, setSimulating] = useState(false);
-  const [buildDialog, setBuildDialog] = useState(false);
   const [buildRunning, setBuildRunning] = useState(false);
   const [scheduleBuild, setScheduleBuild] = useState(false);
   const [scheduleTime, setScheduleTime] = useState("");
@@ -226,7 +219,6 @@ const ProjectWorkspace = () => {
 
   useEffect(() => { fetchProjectData(); }, [projectId]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingContent]);
-  useEffect(() => { warRoomEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [warRoomMessages]);
 
   // Auto-expand file tree: whenever files change, expand all parent paths so nested
   // files (e.g. AbyssalShores/Source/.../file.h) are visible without manual clicking
@@ -808,7 +800,6 @@ const ProjectWorkspace = () => {
       
       const res = await axios.post(`${API}/builds/start`, buildData);
       setCurrentBuild(res.data);
-      setBuildDialog(false);
       setSimulationDialog(false);
       setActiveTab("warroom");
       

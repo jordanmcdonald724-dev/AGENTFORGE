@@ -1520,18 +1520,7 @@ async def get_current_build(project_id: str):
         raise HTTPException(status_code=404, detail="No builds found for this project")
     return build
 
-# Open world systems endpoint (stub for frontend compatibility)
-@api_router.get("/systems/open-world")
-async def get_open_world_systems():
-    """Get open world game systems templates"""
-    return {
-        "systems": [
-            {"id": "npc", "name": "NPC System", "description": "AI-driven NPCs with schedules and behaviors"},
-            {"id": "weather", "name": "Weather System", "description": "Dynamic weather and day/night cycles"},
-            {"id": "economy", "name": "Economy System", "description": "Trading, shops, and resource management"},
-            {"id": "quest", "name": "Quest System", "description": "Dynamic quest generation and tracking"}
-        ]
-    }
+# /systems/open-world and /build-stages are served by routes/build_operations.py
 
 # - POST /api/builds/{build_id}/stage/{index}/execute
 
