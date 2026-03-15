@@ -1,14 +1,19 @@
 /**
- * WorkspaceDialogs — Simulation + Demo dialogs extracted from ProjectWorkspace
+ * WorkspaceDialogs — All workspace modal dialogs extracted from ProjectWorkspace
  * Pure presentation — all state and handlers passed as props.
+ * Dialogs: Simulation, Demo, GitHub Push, Image Gen, Memory Viewer, Duplicate Project
  */
 import { Loader2, Radio, Sparkles, FileCode, Clock, AlertTriangle, Rocket,
-  Gamepad2, Globe, Monitor, Play, RefreshCw, Package } from "lucide-react";
+  Gamepad2, Globe, Monitor, Play, RefreshCw, Package, Github, Image,
+  Brain, CopyPlus, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Mountain, Users, Map, Car, Sun, Swords, Hammer, Coins, Ghost,
   Timer, Camera, Wifi } from "lucide-react";
 
@@ -21,23 +26,40 @@ const SYSTEM_ICONS = {
 };
 
 export default function WorkspaceDialogs({
-  // Simulation
+  // ── Simulation ────────────────────────────────────────────────────────
   simulationDialog, setSimulationDialog,
   openWorldSystems, targetEngine, setTargetEngine,
   selectedSystems, toggleSystem, simulating, simulationResult,
   runSimulation, scheduleBuild, setScheduleBuild,
   scheduleTime, setScheduleTime, buildRunning, startAutonomousBuild,
-  // Build status
+  // ── Build status chips ────────────────────────────────────────────────
   currentBuild, startScheduledBuildNow, cancelBuild, pauseBuild,
-  // Demo
+  // ── Demo ──────────────────────────────────────────────────────────────
   demoDialogOpen, setDemoDialogOpen,
   currentDemo, openWebDemo, files,
   setRightTab, setSelectedFile, setEditorContent,
   regenerateDemo, regeneratingDemo,
+  // ── GitHub push ───────────────────────────────────────────────────────
+  githubDialogOpen, setGithubDialogOpen,
+  githubToken, setGithubToken,
+  githubRepoName, setGithubRepoName,
+  githubCreateNew, setGithubCreateNew,
+  pushing, pushToGithub, projectRepoUrl,
+  // ── Image generation ──────────────────────────────────────────────────
+  imageDialogOpen, setImageDialogOpen,
+  imagePrompt, setImagePrompt,
+  imageCategory, setImageCategory,
+  generatingImage, generateImage,
+  // ── Memory viewer ─────────────────────────────────────────────────────
+  memoryDialog, setMemoryDialog,
+  memories, extractMemories, deleteMemory,
+  // ── Duplicate project ─────────────────────────────────────────────────
+  duplicateDialog, setDuplicateDialog,
+  duplicateName, setDuplicateName, duplicateProject,
 }) {
   return (
     <>
-      {/* ── Simulation Dialog (controlled — opened via Settings dropdown) ───── */}
+      {/* ── Simulation Dialog ─────────────────────────────────────────── */}
       <Dialog open={simulationDialog} onOpenChange={setSimulationDialog}>
         <DialogContent className="bg-[#18181b] border-zinc-700 max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -46,17 +68,10 @@ export default function WorkspaceDialogs({
             </DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
-            {/* Engine Selection */}
             <div className="flex gap-4">
-              <Button variant={targetEngine === "unreal" ? "default" : "outline"}
-                className={targetEngine === "unreal" ? "bg-blue-500" : "border-zinc-700"}
-                onClick={() => setTargetEngine("unreal")}>Unreal Engine 5</Button>
-              <Button variant={targetEngine === "unity" ? "default" : "outline"}
-                className={targetEngine === "unity" ? "bg-blue-500" : "border-zinc-700"}
-                onClick={() => setTargetEngine("unity")}>Unity</Button>
+              <Button variant={targetEngine === "unreal" ? "default" : "outline"} className={targetEngine === "unreal" ? "bg-blue-500" : "border-zinc-700"} onClick={() => setTargetEngine("unreal")}>Unreal Engine 5</Button>
+              <Button variant={targetEngine === "unity" ? "default" : "outline"} className={targetEngine === "unity" ? "bg-blue-500" : "border-zinc-700"} onClick={() => setTargetEngine("unity")}>Unity</Button>
             </div>
-
-            {/* System Selection */}
             <div>
               <h4 className="text-sm font-medium text-white mb-3">Select Game Systems</h4>
               <div className="grid grid-cols-3 gap-2">
@@ -81,43 +96,29 @@ export default function WorkspaceDialogs({
               </div>
               <p className="text-xs text-zinc-500 mt-2">{selectedSystems.length} systems selected</p>
             </div>
-
-            <Button onClick={runSimulation} disabled={simulating || selectedSystems.length === 0}
-              className="w-full bg-cyan-500 hover:bg-cyan-600">
+            <Button onClick={runSimulation} disabled={simulating || selectedSystems.length === 0} className="w-full bg-cyan-500 hover:bg-cyan-600">
               {simulating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Simulating...</> : <><Radio className="w-4 h-4 mr-2" />Run Simulation</>}
             </Button>
-
             {simulationResult && (
               <div className="space-y-4 border-t border-zinc-700 pt-4">
                 <h4 className="font-rajdhani font-bold text-white">Simulation Results</h4>
                 <div className="grid grid-cols-4 gap-3">
-                  <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
-                    <Clock className="w-5 h-5 text-blue-400 mb-1" />
-                    <p className="text-lg font-bold text-white">{simulationResult.estimated_build_time}</p>
-                    <p className="text-[10px] text-zinc-500">Build Time</p>
-                  </div>
-                  <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
-                    <FileCode className="w-5 h-5 text-emerald-400 mb-1" />
-                    <p className="text-lg font-bold text-white">{simulationResult.file_count}</p>
-                    <p className="text-[10px] text-zinc-500">Files</p>
-                  </div>
-                  <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
-                    <Package className="w-5 h-5 text-amber-400 mb-1" />
-                    <p className="text-lg font-bold text-white">{simulationResult.total_size_kb}KB</p>
-                    <p className="text-[10px] text-zinc-500">Total Size</p>
-                  </div>
-                  <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
-                    <Sparkles className="w-5 h-5 text-purple-400 mb-1" />
-                    <p className="text-lg font-bold text-white">{simulationResult.feasibility_score}%</p>
-                    <p className="text-[10px] text-zinc-500">Feasibility</p>
-                  </div>
+                  {[
+                    { icon: Clock, color: "text-blue-400", value: simulationResult.estimated_build_time, label: "Build Time" },
+                    { icon: FileCode, color: "text-emerald-400", value: simulationResult.file_count, label: "Files" },
+                    { icon: Package, color: "text-amber-400", value: `${simulationResult.total_size_kb}KB`, label: "Total Size" },
+                    { icon: Sparkles, color: "text-purple-400", value: `${simulationResult.feasibility_score}%`, label: "Feasibility" },
+                  ].map(({ icon: Icon, color, value, label }) => (
+                    <div key={label} className="p-3 rounded bg-zinc-900 border border-zinc-800">
+                      <Icon className={`w-5 h-5 ${color} mb-1`} />
+                      <p className="text-lg font-bold text-white">{value}</p>
+                      <p className="text-[10px] text-zinc-500">{label}</p>
+                    </div>
+                  ))}
                 </div>
-
                 {simulationResult.warnings?.length > 0 && (
                   <div className="space-y-2">
-                    <h5 className="text-sm font-medium text-amber-400 flex items-center gap-2">
-                      <AlertTriangle className="w-4 h-4" />Warnings ({simulationResult.warnings.length})
-                    </h5>
+                    <h5 className="text-sm font-medium text-amber-400 flex items-center gap-2"><AlertTriangle className="w-4 h-4" />Warnings ({simulationResult.warnings.length})</h5>
                     {simulationResult.warnings.map((w, i) => (
                       <div key={i} className={`p-3 rounded border ${w.severity === 'high' ? 'bg-red-500/10 border-red-500/30' : w.severity === 'medium' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-zinc-800 border-zinc-700'}`}>
                         <p className="text-sm text-zinc-200">{w.message}</p>
@@ -126,90 +127,62 @@ export default function WorkspaceDialogs({
                     ))}
                   </div>
                 )}
-
                 <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
                   <h5 className="text-sm font-medium text-white mb-2">Architecture Summary</h5>
                   <p className="text-xs text-zinc-400">{simulationResult.architecture_summary}</p>
                 </div>
-
                 {simulationResult.ready_to_build && (
                   <div className="p-4 rounded-lg bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30">
                     <div className="flex items-center gap-2 mb-3">
-                      <input type="checkbox" id="schedule-build" checked={scheduleBuild}
-                        onChange={(e) => setScheduleBuild(e.target.checked)} className="rounded" />
-                      <label htmlFor="schedule-build" className="text-sm text-white flex items-center gap-2">
+                      <Checkbox id="schedule-build" checked={scheduleBuild} onCheckedChange={setScheduleBuild} />
+                      <label htmlFor="schedule-build" className="text-sm text-white flex items-center gap-2 cursor-pointer">
                         <Clock className="w-4 h-4 text-purple-400" />Schedule for tonight (12+ hour build)
                       </label>
                     </div>
                     {scheduleBuild && (
                       <div className="mt-3">
                         <label className="text-xs text-zinc-400 mb-2 block">Start build at:</label>
-                        <Input type="datetime-local" value={scheduleTime}
-                          onChange={(e) => setScheduleTime(e.target.value)}
-                          className="bg-zinc-900 border-zinc-700" data-testid="schedule-time-input" />
+                        <Input type="datetime-local" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} className="bg-zinc-900 border-zinc-700" data-testid="schedule-time-input" />
                         <p className="text-[10px] text-zinc-500 mt-2">Set it before bed and wake up to a complete project!</p>
                       </div>
                     )}
                   </div>
                 )}
-
-                <div className="flex gap-2">
-                  {scheduleBuild ? (
-                    <Button onClick={() => startAutonomousBuild(true)}
-                      disabled={!simulationResult.ready_to_build || buildRunning || !scheduleTime}
-                      className={`flex-1 ${simulationResult.ready_to_build && scheduleTime ? 'bg-purple-500 hover:bg-purple-600' : 'bg-zinc-700 cursor-not-allowed'}`}>
-                      {buildRunning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scheduling...</> : <><Clock className="w-4 h-4 mr-2" />Schedule Overnight Build</>}
-                    </Button>
-                  ) : (
-                    <Button onClick={() => startAutonomousBuild(false)}
-                      disabled={!simulationResult.ready_to_build || buildRunning}
-                      className={`flex-1 ${simulationResult.ready_to_build ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-zinc-700 cursor-not-allowed'}`}>
-                      {buildRunning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting...</> :
-                        simulationResult.ready_to_build ? <><Rocket className="w-4 h-4 mr-2" />Start Build Now</> :
-                        <><AlertTriangle className="w-4 h-4 mr-2" />Resolve Warnings First</>}
-                    </Button>
-                  )}
-                </div>
+                <Button
+                  onClick={() => startAutonomousBuild(scheduleBuild)}
+                  disabled={!simulationResult.ready_to_build || buildRunning || (scheduleBuild && !scheduleTime)}
+                  className={`w-full ${simulationResult.ready_to_build ? (scheduleBuild ? 'bg-purple-500 hover:bg-purple-600' : 'bg-emerald-500 hover:bg-emerald-600') : 'bg-zinc-700 cursor-not-allowed'}`}>
+                  {buildRunning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting...</> :
+                    !simulationResult.ready_to_build ? <><AlertTriangle className="w-4 h-4 mr-2" />Resolve Warnings First</> :
+                    scheduleBuild ? <><Clock className="w-4 h-4 mr-2" />Schedule Overnight Build</> :
+                    <><Rocket className="w-4 h-4 mr-2" />Start Build Now</>}
+                </Button>
               </div>
             )}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* ── Build Status Badges ────────────────────────────────────── */}
+      {/* ── Build Status Chips ────────────────────────────────────────── */}
       {currentBuild?.status === "scheduled" && (
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/50">
           <Clock className="w-4 h-4 text-purple-400" />
-          <span className="text-xs text-purple-400">
-            Scheduled {currentBuild.scheduled_at ? new Date(currentBuild.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-          </span>
-          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={startScheduledBuildNow} title="Start Now">
-            <Play className="w-3 h-3" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={cancelBuild} title="Cancel">
-            <span className="text-red-400">✕</span>
-          </Button>
+          <span className="text-xs text-purple-400">Scheduled {currentBuild.scheduled_at ? new Date(currentBuild.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={startScheduledBuildNow}><Play className="w-3 h-3" /></Button>
+          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={cancelBuild}><span className="text-red-400 text-xs">✕</span></Button>
         </div>
       )}
       {currentBuild?.status === "running" && (
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/50">
           <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
           <span className="text-xs text-blue-400">Building {currentBuild.progress_percent}%</span>
-          <Progress value={currentBuild.progress_percent || 0} className="w-16 h-1.5" />
-          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={pauseBuild}>
-            <span className="text-blue-400">⏸</span>
-          </Button>
+          <Button variant="ghost" size="icon" className="h-5 w-5" onClick={pauseBuild}><span className="text-blue-400 text-xs">⏸</span></Button>
         </div>
       )}
 
-      {/* ── Demo Dialog ────────────────────────────────────────────── */}
+      {/* ── Demo Dialog ───────────────────────────────────────────────── */}
       {currentDemo?.status === "ready" && (
         <Dialog open={demoDialogOpen} onOpenChange={setDemoDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="border-emerald-700 text-emerald-400 hover:bg-emerald-500/10" data-testid="demo-btn">
-              <Gamepad2 className="w-4 h-4 mr-1" />Play Demo
-            </Button>
-          </DialogTrigger>
           <DialogContent className="bg-[#18181b] border-zinc-700 max-w-2xl">
             <DialogHeader>
               <DialogTitle className="font-rajdhani text-white flex items-center gap-2">
@@ -219,49 +192,30 @@ export default function WorkspaceDialogs({
             <div className="py-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Globe className="w-6 h-6 text-blue-400" />
-                    <h4 className="font-rajdhani font-bold text-white">Web Demo</h4>
-                  </div>
+                  <div className="flex items-center gap-2 mb-3"><Globe className="w-6 h-6 text-blue-400" /><h4 className="font-rajdhani font-bold text-white">Web Demo</h4></div>
                   <p className="text-xs text-zinc-400 mb-4">Play instantly in your browser.</p>
-                  <Button onClick={openWebDemo} className="w-full bg-blue-500 hover:bg-blue-600">
-                    <Play className="w-4 h-4 mr-2" />Play in Browser
-                  </Button>
+                  <Button onClick={openWebDemo} className="w-full bg-blue-500 hover:bg-blue-600"><Play className="w-4 h-4 mr-2" />Play in Browser</Button>
                 </div>
                 <div className="p-4 rounded-lg bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Monitor className="w-6 h-6 text-purple-400" />
-                    <h4 className="font-rajdhani font-bold text-white">Executable</h4>
-                  </div>
+                  <div className="flex items-center gap-2 mb-3"><Monitor className="w-6 h-6 text-purple-400" /><h4 className="font-rajdhani font-bold text-white">Executable</h4></div>
                   <p className="text-xs text-zinc-400 mb-4">Build configs for {currentDemo.target_engine?.toUpperCase() || 'UE5'}.</p>
-                  <Button variant="outline" className="w-full border-purple-500 text-purple-400" onClick={() => {
-                    setRightTab("code"); setDemoDialogOpen(false);
-                    const f = files.find(f => f.filepath?.includes("demo/"));
-                    if (f) { setSelectedFile(f); setEditorContent(f.content); }
-                  }}>
+                  <Button variant="outline" className="w-full border-purple-500 text-purple-400" onClick={() => { setRightTab("code"); setDemoDialogOpen(false); const f = files.find(f => f.filepath?.includes("demo/")); if (f) { setSelectedFile(f); setEditorContent(f.content); } }}>
                     <FileCode className="w-4 h-4 mr-2" />View Demo Files
                   </Button>
                 </div>
               </div>
-
               {currentDemo.demo_features?.length > 0 && (
                 <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
                   <h5 className="text-sm font-medium text-white mb-2">Demo Features</h5>
-                  <div className="flex flex-wrap gap-2">
-                    {currentDemo.demo_features.map((f, i) => (
-                      <Badge key={i} variant="outline" className="text-xs border-zinc-700 text-zinc-400">{f}</Badge>
-                    ))}
-                  </div>
+                  <div className="flex flex-wrap gap-2">{currentDemo.demo_features.map((f, i) => <Badge key={i} variant="outline" className="text-xs border-zinc-700 text-zinc-400">{f}</Badge>)}</div>
                 </div>
               )}
-
               {currentDemo.controls_guide && (
                 <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
                   <h5 className="text-sm font-medium text-white mb-2">Controls</h5>
                   <pre className="text-xs text-zinc-400 whitespace-pre-wrap max-h-32 overflow-y-auto">{currentDemo.controls_guide.slice(0, 500)}</pre>
                 </div>
               )}
-
               <Button variant="outline" className="w-full border-zinc-700" onClick={regenerateDemo} disabled={regeneratingDemo}>
                 {regeneratingDemo ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Regenerating...</> : <><RefreshCw className="w-4 h-4 mr-2" />Regenerate Demo</>}
               </Button>
@@ -269,6 +223,178 @@ export default function WorkspaceDialogs({
           </DialogContent>
         </Dialog>
       )}
+
+      {/* ── GitHub Push Dialog ────────────────────────────────────────── */}
+      <Dialog open={githubDialogOpen} onOpenChange={setGithubDialogOpen}>
+        <DialogContent className="bg-[#18181b] border-zinc-700 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-rajdhani text-white flex items-center gap-2">
+              <Github className="w-5 h-5" />Push to GitHub
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {projectRepoUrl && (
+              <div className="flex items-center gap-2 p-3 rounded bg-emerald-500/10 border border-emerald-500/30">
+                <Github className="w-4 h-4 text-emerald-400" />
+                <a href={projectRepoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-400 hover:underline truncate">{projectRepoUrl}</a>
+              </div>
+            )}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 block">GitHub Personal Access Token</label>
+                <Input
+                  type="password"
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                  value={githubToken}
+                  onChange={(e) => setGithubToken(e.target.value)}
+                  className="bg-zinc-900 border-zinc-700"
+                  data-testid="github-token-input"
+                />
+                <p className="text-[10px] text-zinc-600 mt-1">Create at github.com → Settings → Developer settings → Personal access tokens</p>
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 block">Repository Name</label>
+                <Input
+                  placeholder="my-game-project"
+                  value={githubRepoName}
+                  onChange={(e) => setGithubRepoName(e.target.value)}
+                  className="bg-zinc-900 border-zinc-700"
+                  data-testid="github-repo-input"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Checkbox id="create-new-repo" checked={githubCreateNew} onCheckedChange={setGithubCreateNew} />
+                <label htmlFor="create-new-repo" className="text-sm text-zinc-300 cursor-pointer">Create new repository (if it doesn't exist)</label>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-zinc-700" onClick={() => setGithubDialogOpen(false)}>Cancel</Button>
+            <Button onClick={pushToGithub} disabled={pushing || !githubToken || !githubRepoName} className="bg-zinc-100 text-zinc-900 hover:bg-white" data-testid="github-push-btn">
+              {pushing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Pushing...</> : <><Github className="w-4 h-4 mr-2" />Push Files</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Image Generation Dialog ───────────────────────────────────── */}
+      <Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+        <DialogContent className="bg-[#18181b] border-zinc-700 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-rajdhani text-white flex items-center gap-2">
+              <Image className="w-5 h-5 text-pink-400" />Generate Asset Image
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div>
+              <label className="text-xs text-zinc-400 mb-1.5 block">Image Prompt</label>
+              <Textarea
+                placeholder="Describe the image: 'dark fantasy warrior character concept art, highly detailed, cinematic lighting'"
+                value={imagePrompt}
+                onChange={(e) => setImagePrompt(e.target.value)}
+                className="bg-zinc-900 border-zinc-700 min-h-[100px]"
+                data-testid="image-prompt-input"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-zinc-400 mb-1.5 block">Category</label>
+              <Select value={imageCategory} onValueChange={setImageCategory}>
+                <SelectTrigger className="bg-zinc-900 border-zinc-700">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-700">
+                  {['concept', 'character', 'environment', 'ui', 'texture', 'icon'].map(c => (
+                    <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-zinc-700" onClick={() => setImageDialogOpen(false)}>Cancel</Button>
+            <Button onClick={generateImage} disabled={generatingImage || !imagePrompt.trim()} className="bg-pink-500 hover:bg-pink-600" data-testid="generate-image-btn">
+              {generatingImage ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generating...</> : <><Sparkles className="w-4 h-4 mr-2" />Generate</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Memory Viewer Dialog ──────────────────────────────────────── */}
+      <Dialog open={memoryDialog} onOpenChange={setMemoryDialog}>
+        <DialogContent className="bg-[#18181b] border-zinc-700 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-rajdhani text-white flex items-center gap-2">
+              <Brain className="w-5 h-5 text-purple-400" />Agent Memories
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-zinc-400">{memories?.length || 0} memories stored</p>
+              <Button size="sm" variant="outline" className="border-purple-500/30 text-purple-400" onClick={extractMemories}>
+                <Brain className="w-3.5 h-3.5 mr-1.5" />Extract from Chat
+              </Button>
+            </div>
+            <ScrollArea className="h-80">
+              {!memories?.length ? (
+                <div className="text-center py-12">
+                  <Brain className="w-12 h-12 mx-auto mb-3 text-zinc-700" />
+                  <p className="text-sm text-zinc-500">No memories yet. Use "Extract from Chat" to create them.</p>
+                </div>
+              ) : (
+                <div className="space-y-2 pr-2">
+                  {memories.map((mem) => (
+                    <div key={mem.id} className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 group flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-purple-400">{mem.agent_name || 'SYSTEM'}</span>
+                          <Badge variant="outline" className="text-[10px] border-zinc-600 text-zinc-500">{mem.category || 'general'}</Badge>
+                        </div>
+                        <p className="text-sm text-zinc-300 leading-relaxed">{mem.content}</p>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100 flex-shrink-0" onClick={() => deleteMemory(mem.id)}>
+                        <Trash2 className="w-3 h-3 text-red-400" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-zinc-700" onClick={() => setMemoryDialog(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Duplicate Project Dialog ──────────────────────────────────── */}
+      <Dialog open={duplicateDialog} onOpenChange={setDuplicateDialog}>
+        <DialogContent className="bg-[#18181b] border-zinc-700 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-rajdhani text-white flex items-center gap-2">
+              <CopyPlus className="w-5 h-5 text-blue-400" />Duplicate Project
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <p className="text-sm text-zinc-400">Creates a copy of this project with all files included.</p>
+            <div>
+              <label className="text-xs text-zinc-400 mb-1.5 block">New Project Name</label>
+              <Input
+                placeholder="My Project Copy"
+                value={duplicateName}
+                onChange={(e) => setDuplicateName(e.target.value)}
+                className="bg-zinc-900 border-zinc-700"
+                data-testid="duplicate-name-input"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-zinc-700" onClick={() => setDuplicateDialog(false)}>Cancel</Button>
+            <Button onClick={duplicateProject} disabled={!duplicateName.trim()} className="bg-blue-500 hover:bg-blue-600" data-testid="duplicate-project-btn">
+              <CopyPlus className="w-4 h-4 mr-2" />Duplicate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

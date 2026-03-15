@@ -199,8 +199,7 @@ const ProjectWorkspace = () => {
   const [customActionDialog, setCustomActionDialog] = useState(false);
   const [newCustomAction, setNewCustomAction] = useState({ name: "", description: "", prompt: "", chain: ["COMMANDER", "FORGE"], icon: "sparkles", is_global: false });
   const [refactorDialog, setRefactorDialog] = useState(false);
-  const [refactorData, setRefactorData] = useState({ type: "find_replace", target: "", new_value: "" });
-  const [refactorPreview, setRefactorPreview] = useState(null);
+  // refactorData and refactorPreview removed — refactor dialog is now via Quick Actions chain
   const [memoryDialog, setMemoryDialog] = useState(false);
   const [duplicateDialog, setDuplicateDialog] = useState(false);
   const [duplicateName, setDuplicateName] = useState("");
@@ -850,23 +849,8 @@ const ProjectWorkspace = () => {
     setCustomActions(customActions.filter(a => a.id !== id));
   };
 
-  const previewRefactor = async () => {
-    if (!refactorData.target) { toast.error("Target required"); return; }
-    try {
-      const res = await axios.post(`${API}/refactor/preview`, { project_id: projectId, refactor_type: refactorData.type, target: refactorData.target, new_value: refactorData.new_value });
-      setRefactorPreview(res.data);
-    } catch (error) { toast.error("Preview failed"); }
-  };
-
-  const applyRefactor = async () => {
-    try {
-      const res = await axios.post(`${API}/refactor/apply`, { project_id: projectId, refactor_type: refactorData.type, target: refactorData.target, new_value: refactorData.new_value });
-      toast.success(`Refactored ${res.data.files_updated} files`);
-      setRefactorDialog(false);
-      setRefactorPreview(null);
-      fetchProjectData();
-    } catch (error) { toast.error("Refactor failed"); }
-  };
+  const previewRefactor = async () => {}; // kept for future use
+  const applyRefactor = async () => {};   // kept for future use
 
   const extractMemories = async () => {
     try {
@@ -1149,6 +1133,10 @@ const ProjectWorkspace = () => {
                   <Image className="w-4 h-4 mr-2" />
                   Generate Asset
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDuplicateDialog(true)}>
+                  <CopyPlus className="w-4 h-4 mr-2 text-blue-400" />
+                  Duplicate Project
+                </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-zinc-700" />
                 <DropdownMenuItem onClick={exportProject}>
                   <Download className="w-4 h-4 mr-2" />
@@ -1176,6 +1164,19 @@ const ProjectWorkspace = () => {
           currentDemo={currentDemo} openWebDemo={openWebDemo} files={files}
           setRightTab={setRightTab} setSelectedFile={setSelectedFile} setEditorContent={setEditorContent}
           regenerateDemo={regenerateDemo} regeneratingDemo={regeneratingDemo}
+          githubDialogOpen={githubDialogOpen} setGithubDialogOpen={setGithubDialogOpen}
+          githubToken={githubToken} setGithubToken={setGithubToken}
+          githubRepoName={githubRepoName} setGithubRepoName={setGithubRepoName}
+          githubCreateNew={githubCreateNew} setGithubCreateNew={setGithubCreateNew}
+          pushing={pushing} pushToGithub={pushToGithub} projectRepoUrl={project?.repo_url}
+          imageDialogOpen={imageDialogOpen} setImageDialogOpen={setImageDialogOpen}
+          imagePrompt={imagePrompt} setImagePrompt={setImagePrompt}
+          imageCategory={imageCategory} setImageCategory={setImageCategory}
+          generatingImage={generatingImage} generateImage={generateImage}
+          memoryDialog={memoryDialog} setMemoryDialog={setMemoryDialog}
+          memories={memories} extractMemories={extractMemories} deleteMemory={deleteMemory}
+          duplicateDialog={duplicateDialog} setDuplicateDialog={setDuplicateDialog}
+          duplicateName={duplicateName} setDuplicateName={setDuplicateName} duplicateProject={duplicateProject}
         />
       </div>
 
