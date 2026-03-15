@@ -8,7 +8,7 @@ import {
   Brain, Code, Shield, Rocket, Users, Activity, CheckCircle,
   XCircle, Clock, Cpu, Layers, Eye, ChevronRight, Loader2,
   Terminal, FileCode, Sparkles, Download, RefreshCw, Timer,
-  Database, TrendingUp, GitBranch, X
+  Database, TrendingUp, GitBranch, X, Gamepad2, Globe, Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,26 +17,35 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { API } from '@/App';
 import FileDropZone from '@/components/FileDropZone';
 
-// Agent Configuration
+// Agent display config — matches the 12-agent system
 const AGENTS = {
-  DIRECTOR: { icon: Users, color: '#fbbf24', label: 'Director' },
-  ATLAS: { icon: Layers, color: '#3b82f6', label: 'Architect' },
-  PIXEL: { icon: Eye, color: '#10b981', label: 'Frontend' },
-  NEXUS: { icon: GitBranch, color: '#8b5cf6', label: 'Backend' },
-  TITAN: { icon: Cpu, color: '#f97316', label: 'Engine' },
-  SYNAPSE: { icon: Brain, color: '#ec4899', label: 'AI/ML' },
-  DEPLOY: { icon: Rocket, color: '#14b8a6', label: 'DevOps' },
-  SENTINEL: { icon: Shield, color: '#ef4444', label: 'Reviewer' },
-  PHOENIX: { icon: TrendingUp, color: '#f59e0b', label: 'Refactor' },
-  PROBE: { icon: Activity, color: '#6366f1', label: 'QA' }
+  COMMANDER: { icon: Users,     color: '#fbbf24', label: 'Director' },
+  ATLAS:     { icon: Layers,    color: '#3b82f6', label: 'Architect' },
+  FORGE:     { icon: Code,      color: '#10b981', label: 'Developer' },
+  PRISM:     { icon: Palette,   color: '#a855f7', label: 'UI/Visual' },
+  TERRA:     { icon: Globe,     color: '#22c55e', label: 'Level Design' },
+  NEXUS:     { icon: GitBranch, color: '#8b5cf6', label: 'Game Designer' },
+  KINETIC:   { icon: Gamepad2,  color: '#f97316', label: 'Animator' },
+  SONIC:     { icon: Brain,     color: '#0ea5e9', label: 'Audio' },
+  VERTEX:    { icon: Sparkles,  color: '#14b8a6', label: 'VFX' },
+  CHRONICLE: { icon: FileCode,  color: '#eab308', label: 'Narrative' },
+  SENTINEL:  { icon: Shield,    color: '#ef4444', label: 'Reviewer' },
+  PROBE:     { icon: Activity,  color: '#6366f1', label: 'QA' },
+  // Legacy names from god-mode-v2 backend (maps to display)
+  DIRECTOR:  { icon: Users,     color: '#fbbf24', label: 'Director' },
+  TITAN:     { icon: Cpu,       color: '#f97316', label: 'Engine' },
+  PIXEL:     { icon: Eye,       color: '#10b981', label: 'Frontend' },
+  SYNAPSE:   { icon: Brain,     color: '#ec4899', label: 'AI/ML' },
+  DEPLOY:    { icon: Rocket,    color: '#14b8a6', label: 'DevOps' },
+  PHOENIX:   { icon: TrendingUp,color: '#f59e0b', label: 'Refactor' },
 };
 
 const PIPELINE_STEPS = [
-  { id: 'director', label: 'Director', agent: 'DIRECTOR' },
+  { id: 'director',  label: 'Director',  agent: 'COMMANDER' },
   { id: 'architect', label: 'Architect', agent: 'ATLAS' },
-  { id: 'build', label: 'Build', agent: 'TITAN' },
-  { id: 'review', label: 'Review', agent: 'SENTINEL' },
-  { id: 'complete', label: 'Complete', agent: null }
+  { id: 'build',     label: 'Build',     agent: 'FORGE' },
+  { id: 'review',    label: 'Review',    agent: 'SENTINEL' },
+  { id: 'complete',  label: 'Complete',  agent: null }
 ];
 
 const GodModePage = () => {
@@ -44,6 +53,8 @@ const GodModePage = () => {
   const navigate = useNavigate();
   
   const [project, setProject] = useState(null);
+  const [projects, setProjects] = useState([]);       // for project picker
+  const [loadingProjects, setLoadingProjects] = useState(!projectId);
   const [isBuilding, setIsBuilding] = useState(false);
   const [buildPhase, setBuildPhase] = useState('idle');
   const [currentAgent, setCurrentAgent] = useState(null);
@@ -67,11 +78,28 @@ const GodModePage = () => {
   const timerRef = useRef(null);
 
   useEffect(() => {
-    fetchProject();
+    if (projectId) {
+      fetchProject();
+    } else {
+      // No project in URL — load project list for the picker
+      fetchAllProjects();
+    }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [projectId]);
+
+  const fetchAllProjects = async () => {
+    setLoadingProjects(true);
+    try {
+      const res = await axios.get(`${API}/projects`);
+      setProjects(res.data || []);
+    } catch (e) {
+      toast.error('Failed to load projects');
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -92,7 +120,7 @@ const GodModePage = () => {
       }
     } catch (error) {
       toast.error('Failed to load project');
-      navigate('/studio');
+      navigate('/studio'); // /studio is valid (aliased to /dashboard in App.js)
     }
   };
 
@@ -261,9 +289,83 @@ const GodModePage = () => {
   };
 
   if (!project) {
+    // ── No projectId: show project picker ──────────────────────────────────
+    if (!projectId) {
+      return (
+        <div className="min-h-screen bg-[#09090b] flex flex-col">
+          <header className="border-b border-white/5 bg-[#09090b]/80 backdrop-blur-xl">
+            <div className="max-w-5xl mx-auto px-6 py-4 flex items-center gap-4">
+              <button onClick={() => navigate('/')} className="p-2 rounded-lg hover:bg-white/5 transition-colors">
+                <ArrowLeft className="w-5 h-5 text-zinc-400" />
+              </button>
+              <div className="flex items-center gap-3">
+                <Zap className="w-5 h-5 text-amber-400" />
+                <h1 className="text-lg font-semibold text-white">God Mode</h1>
+                <Badge variant="outline" className="border-amber-500/30 text-amber-400 text-xs">Select Project</Badge>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 max-w-5xl mx-auto w-full px-6 py-12">
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 mb-4">
+                <Zap className="w-8 h-8 text-amber-400" />
+              </div>
+              <h2 className="text-3xl font-bold text-white mb-2">AI Software Factory</h2>
+              <p className="text-zinc-400 max-w-md mx-auto">
+                God Mode runs a full recursive multi-agent build — up to 4 quality iterations.<br />
+                Select a project to activate it.
+              </p>
+            </div>
+
+            {loadingProjects ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+              </div>
+            ) : projects.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-zinc-500 mb-4">No projects found. Create one first.</p>
+                <Button onClick={() => navigate('/studio')} className="bg-amber-500 hover:bg-amber-400 text-black font-semibold">
+                  Go to Studio
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {projects.map(p => (
+                  <motion.button
+                    key={p.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    onClick={() => navigate(`/project/${p.id}/god-mode`)}
+                    className="text-left p-5 rounded-xl bg-white/[0.03] border border-white/8 hover:border-amber-500/40 hover:bg-amber-500/5 transition-all group"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                        <Zap className="w-5 h-5 text-amber-400" />
+                      </div>
+                      <Badge variant="outline" className="text-[10px] border-zinc-700 text-zinc-500 capitalize">
+                        {p.type?.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <h3 className="font-semibold text-white group-hover:text-amber-400 transition-colors mb-1">{p.name}</h3>
+                    <p className="text-xs text-zinc-500 line-clamp-2">{p.description || 'No description'}</p>
+                    <div className="mt-3 flex items-center gap-1 text-xs text-amber-500/60 group-hover:text-amber-400 transition-colors">
+                      <span>Open in God Mode</span>
+                      <ChevronRight className="w-3 h-3" />
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
+            )}
+          </main>
+        </div>
+      );
+    }
+
+    // ── Has projectId but still loading ────────────────────────────────────
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
       </div>
     );
   }
