@@ -449,6 +449,13 @@ const ProjectWorkspace = () => {
                   setProject(prev => ({ ...prev, phase: data.new_phase }));
                   toast.success(`Project advanced to ${data.new_phase} phase`);
                 }
+                // Auto-execute delegations from COMMANDER
+                if (data.delegations?.length > 0) {
+                  for (const delegation of data.delegations) {
+                    toast.info(`Delegating to ${delegation.agent}...`);
+                    await executeDelegation(delegation.agent, delegation.task);
+                  }
+                }
                 setAgents(prev => prev.map(a => ({ ...a, status: "idle" })));
               }
             } catch (e) {}
