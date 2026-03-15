@@ -216,6 +216,9 @@ const ProjectWorkspace = () => {
 
   // Pipeline parallel status: { FORGE: 'working', ATLAS: 'done', ... }
   const [pipelineAgentStatus, setPipelineAgentStatus] = useState({});
+  // Server-side pipeline run (persists after browser close)
+  const [activePipelineId, setActivePipelineId] = useState(null);
+  const [pipelineRunStatus, setPipelineRunStatus] = useState(null);
 
   useEffect(() => { fetchProjectData(); }, [projectId]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingContent]);
@@ -246,6 +249,36 @@ const ProjectWorkspace = () => {
       return () => clearInterval(interval);
     }
   }, [activeTab, currentBuild?.status]);
+
+  // Poll server-side pipeline run: refresh messages + files + status every 4s
+  useEffect(() => {
+    if (!activePipelineId) return;
+    const interval = setInterval(async () => {
+      try {
+        const [runRes, msgRes, filesRes] = await Promise.all([
+          axios.get(`${API}/pipeline/run/${activePipelineId}`),
+          axios.get(`${API}/messages?project_id=${projectId}&limit=500`),
+          axios.get(`${API}/files?project_id=${projectId}&limit=500`)
+        ]);
+        const run = runRes.data;
+        setPipelineRunStatus(run);
+        setMessages(msgRes.data);
+        setFiles(filesRes.data);
+        // Update progress bar from server status
+        if (run.agent_status) setPipelineAgentStatus(run.agent_status);
+        // Stop polling when done
+        if (run.status === 'completed' || run.status === 'failed') {
+          setActivePipelineId(null);
+          setPipelineAgentStatus({});
+          setSending(false);
+          if (run.status === 'completed') toast.success('Pipeline complete');
+          else toast.error(`Pipeline failed: ${run.error || 'unknown error'}`);
+          await fetchWarRoom(); // show final war room messages
+        }
+      } catch (e) { /* polling errors are non-fatal */ }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [activePipelineId, projectId]);
 
   const fetchProjectData = async () => {
     try {
@@ -283,6 +316,17 @@ const ProjectWorkspace = () => {
       await fetchLatestDemo();
       await fetchBlueprints();
       await fetchBlueprintTemplates();
+
+      // Auto-resume: check for an active server-side pipeline from a previous session
+      try {
+        const pipelineRes = await axios.get(`${API}/pipeline/run/project/${projectId}/latest`);
+        const latestRun = pipelineRes.data;
+        if (latestRun?.status === 'running') {
+          setActivePipelineId(latestRun.run_id);
+          setPipelineRunStatus(latestRun);
+          toast.info('Resuming pipeline from previous session...');
+        }
+      } catch (e) { /* no previous pipeline — that's fine */ }
     } catch (error) {
       toast.error("Failed to load project");
       navigate("/dashboard");
@@ -711,22 +755,36 @@ const ProjectWorkspace = () => {
     }
   };
 
-  // Phased pipeline: NEXUS/ATLAS first (sequential+streaming), builders in parallel,
-  // SENTINEL/PROBE last (sequential+streaming)
+  // Phased pipeline: prefers server-side execution (pipeline persists after browser close).
+  // Falls back to browser-side execution if server endpoint fails.
   const DESIGN_AGENTS = new Set(['NEXUS', 'ATLAS']);
   const REVIEW_AGENTS = new Set(['SENTINEL', 'PROBE']);
 
   const runPipelinePhased = async (delegations) => {
+    // Try server-side first
+    try {
+      const res = await axios.post(`${API}/pipeline/run`, {
+        project_id: projectId,
+        delegations
+      });
+      setActivePipelineId(res.data.run_id);
+      setPipelineRunStatus({ ...res.data, agent_status: Object.fromEntries(delegations.map(d => [d.agent.toUpperCase(), 'pending'])) });
+      setSending(true); // keep input locked while pipeline runs
+      toast.info(`Pipeline running on server (${delegations.length} agents)...`);
+      return; // polling useEffect takes over from here
+    } catch (serverErr) {
+      console.warn('[Pipeline] Server-side start failed, falling back to browser:', serverErr.message);
+    }
+
+    // Browser-side fallback (original phased approach)
     const phase1 = delegations.filter(d => DESIGN_AGENTS.has(d.agent.toUpperCase()));
     const phase3 = delegations.filter(d => REVIEW_AGENTS.has(d.agent.toUpperCase()));
     const phase2 = delegations.filter(d =>
       !DESIGN_AGENTS.has(d.agent.toUpperCase()) && !REVIEW_AGENTS.has(d.agent.toUpperCase())
     );
 
-    // Phase 1: Design (sequential with streaming)
     for (const d of phase1) await executeDelegation(d.agent, d.task, true);
 
-    // Phase 2: Builders in parallel (batches of 4 to respect rate limits)
     if (phase2.length > 0) {
       const status = {};
       phase2.forEach(d => { status[d.agent] = 'pending'; });
@@ -736,13 +794,11 @@ const ProjectWorkspace = () => {
       for (let i = 0; i < phase2.length; i += BATCH) {
         await Promise.all(phase2.slice(i, i + BATCH).map(d => executeDelegationSilent(d.agent, d.task)));
       }
-      // Final file refresh after all parallel agents complete
       const filesRes = await axios.get(`${API}/files?project_id=${projectId}&limit=500`);
       setFiles(filesRes.data);
       setPipelineAgentStatus({});
     }
 
-    // Phase 3: Review (sequential with streaming)
     for (const d of phase3) await executeDelegation(d.agent, d.task, true);
   };
 
@@ -1294,11 +1350,18 @@ const ProjectWorkspace = () => {
                 <div className="h-full flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
                   {chainProgress && <div className="px-4 py-2 border-b flex-shrink-0" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /><span className="text-xs" style={{ color: 'var(--accent)' }}>Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
 
-                  {/* Parallel pipeline progress bar */}
+                  {/* Pipeline progress bar — shows for both server-side and browser-side runs */}
                   {Object.keys(pipelineAgentStatus).length > 0 && (
                     <div className="px-4 py-2 border-b flex-shrink-0 bg-zinc-900/80">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[10px] text-zinc-500 mr-1">Parallel:</span>
+                        <span className="text-[10px] text-zinc-500 mr-1">
+                          {activePipelineId ? 'Server pipeline:' : 'Parallel:'}
+                        </span>
+                        {pipelineRunStatus && activePipelineId && (
+                          <span className="text-[10px] text-zinc-600 mr-1">
+                            {pipelineRunStatus.completed_agents || 0}/{pipelineRunStatus.total_agents || 0}
+                          </span>
+                        )}
                         {Object.entries(pipelineAgentStatus).map(([agent, status]) => (
                           <div key={agent} className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
                             status === 'done'    ? 'bg-emerald-500/20 text-emerald-400' :

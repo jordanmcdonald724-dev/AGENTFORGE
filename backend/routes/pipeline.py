@@ -10,13 +10,14 @@ Multi-agent AI development system with:
 - Project memory/learning
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from core.database import db
 import uuid
 import json
+import asyncio
 
 router = APIRouter(prefix="/pipeline", tags=["pipeline"])
 
@@ -780,3 +781,219 @@ ARCHITECTURE:
         "prompt": context,
         "specialization": agent["specialization"]
     }
+
+
+
+# ============================================================
+# SERVER-SIDE PIPELINE RUNNER
+# Runs all COMMANDER delegations on the server so the pipeline
+# persists even if the user closes the browser tab.
+# ============================================================
+
+_DESIGN_AGENTS  = {'NEXUS', 'ATLAS'}
+_REVIEW_AGENTS  = {'SENTINEL', 'PROBE'}
+_PARALLEL_BATCH = 4   # max concurrent LLM calls
+
+
+async def _run_one_agent(run_id: str, project_id: str, delegation: dict, agents: list):
+    """Execute a single agent delegation and persist the result."""
+    from core.helpers import call_agent, extract_code_blocks, build_project_context
+    from models import Message, WarRoomMessage
+
+    agent_name = delegation['agent'].upper()
+    task_text  = delegation['task']
+
+    agent = next((a for a in agents if a['name'].upper() == agent_name), None)
+    if not agent:
+        await db.pipeline_runs.update_one(
+            {"id": run_id},
+            {"$set": {f"agent_status.{agent_name}": "error"},
+             "$inc": {"completed_agents": 1}}
+        )
+        return
+
+    # Mark working
+    await db.pipeline_runs.update_one(
+        {"id": run_id},
+        {"$set": {f"agent_status.{agent_name}": "working"}}
+    )
+
+    try:
+        context  = await build_project_context(project_id)
+        messages = [{"role": "user",
+                     "content": f"COMMANDER has delegated this task to you:\n\n{task_text}"}]
+        response = await call_agent(agent, messages, context)
+        code_blocks = extract_code_blocks(response)
+
+        # Persist chat message
+        msg_obj = Message(
+            project_id=project_id,
+            agent_id=agent['id'], agent_name=agent['name'],
+            agent_role=agent['role'],
+            content=response, code_blocks=code_blocks,
+            message_type="delegation", delegated_to=agent['name']
+        )
+        msg_doc = msg_obj.model_dump()
+        msg_doc['timestamp'] = msg_doc['timestamp'].isoformat()
+        await db.messages.insert_one(msg_doc)
+
+        # Persist generated code files
+        for block in code_blocks:
+            if not block.get('filepath'):
+                continue
+            existing = await db.files.find_one(
+                {"project_id": project_id, "filepath": block['filepath']}
+            )
+            if existing:
+                await db.files.update_one(
+                    {"id": existing['id']},
+                    {"$set": {
+                        "content": block.get("content", ""),
+                        "version": existing.get('version', 1) + 1,
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+            else:
+                await db.files.insert_one({
+                    "id": str(uuid.uuid4()),
+                    "project_id": project_id,
+                    "filename": block.get("filename", ""),
+                    "filepath": block['filepath'],
+                    "content": block.get("content", ""),
+                    "language": block.get("language", "text"),
+                    "version": 1,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                })
+
+        # Post War Room build log
+        file_count = len(code_blocks)
+        summary = (
+            f"Completed — generated {file_count} file(s): "
+            + ", ".join(b['filepath'].split('/')[-1] for b in code_blocks[:3] if b.get('filepath'))
+            + (f" +{file_count - 3} more" if file_count > 3 else "")
+        ) if file_count else f"Completed: {task_text[:80]}"
+
+        wr = WarRoomMessage(
+            project_id=project_id,
+            from_agent=agent_name,
+            message_type="progress",
+            content=summary
+        )
+        wr_doc = wr.model_dump()
+        wr_doc['timestamp'] = wr_doc['timestamp'].isoformat()
+        await db.war_room.insert_one(wr_doc)
+
+        # Mark done (atomic increment)
+        await db.pipeline_runs.update_one(
+            {"id": run_id},
+            {"$set": {f"agent_status.{agent_name}": "done"},
+             "$inc": {"completed_agents": 1}}
+        )
+
+    except Exception as e:
+        await db.pipeline_runs.update_one(
+            {"id": run_id},
+            {"$set": {f"agent_status.{agent_name}": "error"},
+             "$inc": {"completed_agents": 1}}
+        )
+
+
+async def _execute_server_pipeline(run_id: str, project_id: str, delegations: list):
+    """Phase-aware pipeline: Design → Parallel builders → Review."""
+    from core.helpers import get_or_create_agents
+    try:
+        agents = await get_or_create_agents()
+
+        phase1 = [d for d in delegations if d['agent'].upper() in _DESIGN_AGENTS]
+        phase3 = [d for d in delegations if d['agent'].upper() in _REVIEW_AGENTS]
+        phase2 = [d for d in delegations
+                  if d['agent'].upper() not in _DESIGN_AGENTS
+                  and d['agent'].upper() not in _REVIEW_AGENTS]
+
+        # Phase 1 — sequential (architecture first)
+        for d in phase1:
+            await _run_one_agent(run_id, project_id, d, agents)
+
+        # Phase 2 — parallel in batches of 4
+        for i in range(0, len(phase2), _PARALLEL_BATCH):
+            batch = phase2[i:i + _PARALLEL_BATCH]
+            await asyncio.gather(
+                *[_run_one_agent(run_id, project_id, d, agents) for d in batch]
+            )
+
+        # Phase 3 — sequential (review/test last)
+        for d in phase3:
+            await _run_one_agent(run_id, project_id, d, agents)
+
+        await db.pipeline_runs.update_one(
+            {"id": run_id},
+            {"$set": {"status": "completed",
+                      "completed_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    except Exception as exc:
+        await db.pipeline_runs.update_one(
+            {"id": run_id},
+            {"$set": {"status": "failed", "error": str(exc),
+                      "completed_at": datetime.now(timezone.utc).isoformat()}}
+        )
+
+
+# ── HTTP endpoints ───────────────────────────────────────────────────────────
+
+@router.post("/run")
+async def start_pipeline_run(request: dict, background_tasks: BackgroundTasks):
+    """Start a server-side pipeline — runs even if browser is closed."""
+    project_id  = request.get("project_id")
+    delegations = request.get("delegations", [])
+
+    if not project_id or not delegations:
+        raise HTTPException(status_code=400,
+                            detail="project_id and delegations are required")
+
+    agent_status = {d['agent'].upper(): 'pending' for d in delegations}
+
+    run_doc = {
+        "id":               str(uuid.uuid4()),
+        "project_id":       project_id,
+        "status":           "running",
+        "total_agents":     len(delegations),
+        "completed_agents": 0,
+        "agent_status":     agent_status,
+        "delegations":      delegations,
+        "created_at":       datetime.now(timezone.utc).isoformat(),
+        "completed_at":     None,
+        "error":            None
+    }
+
+    await db.pipeline_runs.insert_one(run_doc)
+    background_tasks.add_task(
+        _execute_server_pipeline, run_doc["id"], project_id, delegations
+    )
+
+    return {
+        "run_id":       run_doc["id"],
+        "status":       "running",
+        "total_agents": len(delegations)
+    }
+
+
+@router.get("/run/project/{project_id}/latest")
+async def get_latest_pipeline_run(project_id: str):
+    """Get most recent pipeline run for a project (used for auto-resume)."""
+    runs = await db.pipeline_runs.find(
+        {"project_id": project_id}, {"_id": 0}
+    ).sort("created_at", -1).limit(1).to_list(1)
+
+    if not runs:
+        raise HTTPException(status_code=404, detail="No pipeline runs found")
+    return runs[0]
+
+
+@router.get("/run/{run_id}")
+async def get_pipeline_run(run_id: str):
+    """Poll pipeline run status and per-agent completion state."""
+    run = await db.pipeline_runs.find_one({"id": run_id}, {"_id": 0})
+    if not run:
+        raise HTTPException(status_code=404, detail="Pipeline run not found")
+    return run

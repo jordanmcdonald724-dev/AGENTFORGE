@@ -7,7 +7,35 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 15, 2026) - CODE CLEANUP + E2E PIPELINE VERIFIED ✅
+### Latest Update (March 15, 2026) - SERVER-SIDE PIPELINE + REFACTOR CLEANUP ✅
+
+**Task 1 — Server-side pipeline persistence:**
+- ✅ `POST /api/pipeline/run` — submits all COMMANDER delegations to the server, returns `run_id`
+- ✅ Backend runs pipeline in FastAPI `BackgroundTasks` — 3-phase (Design→Parallel→Review), survives browser close
+- ✅ Each agent's response saved to `messages` collection, code files saved to `files`, War Room log entry posted
+- ✅ `GET /api/pipeline/run/{id}` — polls status + per-agent completion state
+- ✅ `GET /api/pipeline/run/project/{project_id}/latest` — auto-resume on reconnect
+- ✅ Frontend: `runPipelinePhased` now tries server-side first, falls back to browser-side if unavailable
+- ✅ Polling useEffect: refreshes messages + files + agent status every 4s while pipeline active
+- ✅ Auto-resume: on project load, checks for in-progress pipeline and resumes polling
+- ✅ Progress bar updated: shows "Server pipeline: N/M" with per-agent status
+
+**Tested:** Pipeline started → ATLAS + SENTINEL completed server-side in ~1 min → messages saved (79 total) → status=completed
+
+**Task 2 — Refactor.py cleanup:**
+- ✅ Removed dead `/systems/open-world` + `/build-stages` routes (at `/refactor/...` prefix, never called)
+- ✅ `/ai-suggest` kept but cleaned up — now also detects TODO/FIXME density
+- ✅ `routes/refactor.py` reduced from 109 → 55 lines
+- ✅ Note in header clarifies that `/preview` + `/apply` live in `build_operations.py`
+
+**Files Changed:**
+- `backend/routes/pipeline.py` — Added server-side pipeline runner section (~180 lines)
+- `backend/routes/refactor.py` — Cleaned, removed duplicate dead routes
+- `frontend/src/pages/ProjectWorkspace.jsx` — Server-side pipeline trigger, polling, auto-resume, updated progress bar
+
+---
+
+### Previous Update (March 15, 2026) - CODE CLEANUP + E2E PIPELINE VERIFIED ✅
 
 **Dead code removed (Phase 1 + 2):**
 - ✅ `SYSTEM_ICONS` constant removed from ProjectWorkspace.jsx (duplicate — lives in WorkspaceDialogs.jsx only)
