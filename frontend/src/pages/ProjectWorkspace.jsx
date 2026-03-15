@@ -253,34 +253,38 @@ const ProjectWorkspace = () => {
   // Poll server-side pipeline run: refresh messages + files + status every 4s
   useEffect(() => {
     if (!activePipelineId) return;
+    let stopped = false; // guard against stale callbacks after clearInterval
     const interval = setInterval(async () => {
+      if (stopped) return;
       try {
         const [runRes, msgRes, filesRes] = await Promise.all([
           axios.get(`${API}/pipeline/run/${activePipelineId}`),
           axios.get(`${API}/messages?project_id=${projectId}&limit=500`),
           axios.get(`${API}/files?project_id=${projectId}&limit=500`)
         ]);
+        if (stopped) return; // in-flight poll finished after cancel — discard
         const run = runRes.data;
         setPipelineRunStatus(run);
         setMessages(msgRes.data);
         setFiles(filesRes.data);
-        // Update progress bar from server status
         if (run.agent_status) setPipelineAgentStatus(run.agent_status);
         // Stop polling on any terminal status
         const terminal = ['completed', 'failed', 'cancelled', 'interrupted'];
         if (terminal.includes(run.status)) {
+          stopped = true;
+          clearInterval(interval); // stop immediately — prevents duplicate callbacks
           setActivePipelineId(null);
           setPipelineAgentStatus({});
           setSending(false);
-          if (run.status === 'completed')    toast.success('Pipeline complete');
-          else if (run.status === 'cancelled')  toast.info('Pipeline cancelled');
-          else if (run.status === 'interrupted') toast.warning('Pipeline was interrupted (server restarted). You can re-run the build.');
+          if (run.status === 'completed')     toast.success('Pipeline complete');
+          else if (run.status === 'cancelled') toast.info('Pipeline cancelled');
+          else if (run.status === 'interrupted') toast.warning('Pipeline was interrupted (server restarted). Re-run the build to continue.');
           else toast.error(`Pipeline failed: ${run.error || 'unknown error'}`);
           await fetchWarRoom();
         }
       } catch (e) { /* polling errors are non-fatal */ }
     }, 4000);
-    return () => clearInterval(interval);
+    return () => { stopped = true; clearInterval(interval); };
   }, [activePipelineId, projectId]);
 
   const fetchProjectData = async () => {
@@ -765,12 +769,14 @@ const ProjectWorkspace = () => {
   // Cancel a running server-side pipeline
   const cancelPipeline = async () => {
     if (!activePipelineId) return;
+    // Clear UI immediately so no stale poll can restore badges
+    const idToCancel = activePipelineId;
+    setActivePipelineId(null);
+    setPipelineAgentStatus({});
+    setPipelineRunStatus(null);
+    setSending(false);
     try {
-      await axios.post(`${API}/pipeline/run/${activePipelineId}/cancel`);
-      setActivePipelineId(null);
-      setPipelineAgentStatus({});
-      setPipelineRunStatus(null);
-      setSending(false);
+      await axios.post(`${API}/pipeline/run/${idToCancel}/cancel`);
       toast.info('Pipeline cancelled');
     } catch (e) {
       toast.error('Could not cancel pipeline');

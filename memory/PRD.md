@@ -7,7 +7,30 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 15, 2026) - SERVER-SIDE PIPELINE + REFACTOR CLEANUP ✅
+### Latest Update (March 15, 2026) - CANCEL PIPELINE + STARTUP RECOVERY ✅
+
+**Cancel pipeline:**
+- ✅ `POST /api/pipeline/run/{id}/cancel` — marks pipeline cancelled; returns 400 if not running
+- ✅ Background task checks cancellation BEFORE each agent (in-flight calls finish, new ones skip)
+- ✅ Atomic `update_one({status:'running'})` final update — TOCTOU race condition fixed
+- ✅ Frontend "✕ Cancel" button in pipeline progress bar (`data-testid='cancel-pipeline-btn'`)
+- ✅ Cancel clears UI immediately — prevents stale poll restoring agent badges
+
+**Startup recovery:**
+- ✅ `@app.on_event("startup")` marks all "running" pipelines as "interrupted" on server start
+- ✅ Frontend handles all 4 terminal statuses with distinct toasts: completed/failed/cancelled/interrupted
+- ✅ `stopped` guard flag + `clearInterval` inside callback prevents double-toast race
+
+**Bugs fixed (by testing agent + follow-up):**
+- Auto-resume field mismatch (`run_id` vs `id` from GET response) 
+- Missing `setPipelineAgentStatus` on auto-resume and server-side pipeline start
+
+**Testing (iteration_29): 100% backend ✅ | All cancel/interrupt flows verified ✅**
+**App is ready for full game build test in preview mode**
+
+---
+
+### Previous Update (March 15, 2026) - SERVER-SIDE PIPELINE + REFACTOR CLEANUP ✅
 
 **Task 1 — Server-side pipeline persistence:**
 - ✅ `POST /api/pipeline/run` — submits all COMMANDER delegations to the server, returns `run_id`
