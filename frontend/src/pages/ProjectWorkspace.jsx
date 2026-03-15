@@ -511,9 +511,17 @@ const ProjectWorkspace = () => {
   const executeDelegation = async (agentName, task) => {
     try {
       const res = await axios.post(`${API}/delegate`, { project_id: projectId, message: task, delegate_to: agentName });
-      setMessages(prev => [...prev, { id: `delegate-${Date.now()}`, project_id: projectId, agent_id: res.data.agent.id, agent_name: res.data.agent.name, agent_role: res.data.agent.role, content: res.data.response, code_blocks: res.data.code_blocks || [], timestamp: new Date().toISOString() }]);
+      setMessages(prev => [...prev, { id: `delegate-${Date.now()}`, project_id: projectId, agent_id: res.data.agent.id, agent_name: res.data.agent.name, agent_role: res.data.agent.role, content: res.data.response, code_blocks: res.data.code_blocks || [], delegations: res.data.delegations || [], timestamp: new Date().toISOString() }]);
       if (res.data.code_blocks?.length > 0) await saveCodeBlocks(res.data.code_blocks, res.data.agent);
       toast.success(`${agentName} completed`);
+      
+      // Chain delegations - continue the pipeline
+      if (res.data.delegations?.length > 0) {
+        for (const delegation of res.data.delegations) {
+          toast.info(`${agentName} delegating to ${delegation.agent}...`);
+          await executeDelegation(delegation.agent, delegation.task);
+        }
+      }
     } catch (error) { toast.error(`Delegation failed`); }
   };
 
