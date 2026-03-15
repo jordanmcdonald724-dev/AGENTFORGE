@@ -1221,17 +1221,6 @@ const ProjectWorkspace = () => {
           
           {/* Right: Actions */}
           <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="h-7 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-              onClick={() => navigate(`/project/${projectId}/god-mode`)}
-              data-testid="god-mode-btn"
-            >
-              <Zap className="w-3.5 h-3.5 mr-1" />
-              God Mode
-            </Button>
-            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="h-7 text-xs border-zinc-700">
