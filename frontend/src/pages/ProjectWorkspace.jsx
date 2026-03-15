@@ -47,6 +47,7 @@ import FileDropZone from "@/components/FileDropZone";
 import WarRoomPanel from "@/pages/workspace/WarRoomPanel";
 import WorkspaceChatPanel from "@/pages/workspace/WorkspaceChatPanel";
 import WorkspaceCodeEditor from "@/pages/workspace/WorkspaceCodeEditor";
+import WorkspaceDialogs from "@/pages/workspace/WorkspaceDialogs";
 
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
@@ -220,9 +221,28 @@ const ProjectWorkspace = () => {
   const [blueprintTemplates, setBlueprintTemplates] = useState({});
   const [currentUser] = useState({ id: `user_${Date.now()}`, username: "Developer" }); // Mock user for collab
 
+  // Pipeline parallel status: { FORGE: 'working', ATLAS: 'done', ... }
+  const [pipelineAgentStatus, setPipelineAgentStatus] = useState({});
+
   useEffect(() => { fetchProjectData(); }, [projectId]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, streamingContent]);
   useEffect(() => { warRoomEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [warRoomMessages]);
+
+  // Auto-expand file tree: whenever files change, expand all parent paths so nested
+  // files (e.g. AbyssalShores/Source/.../file.h) are visible without manual clicking
+  useEffect(() => {
+    if (files.length === 0) return;
+    setExpandedFolders(prev => {
+      const next = new Set(prev);
+      files.forEach(f => {
+        const parts = f.filepath.split('/').filter(Boolean);
+        for (let i = 1; i < parts.length; i++) {
+          next.add(parts.slice(0, i).join('/'));
+        }
+      });
+      return next;
+    });
+  }, [files]);
   
   // Poll for war room and build updates
   useEffect(() => {
@@ -454,14 +474,7 @@ const ProjectWorkspace = () => {
                 // Auto-execute delegations from COMMANDER — isChainCall=true keeps sending=true throughout
                 if (data.delegations && data.delegations.length > 0) {
                   console.log('[Pipeline] COMMANDER issued delegations:', data.delegations.map(d => d.agent));
-                  for (const delegation of data.delegations) {
-                    toast.info(`Delegating to ${delegation.agent}...`);
-                    try {
-                      await executeDelegation(delegation.agent, delegation.task, true);
-                    } catch (e) {
-                      console.error('[Pipeline] Delegation chain error:', e);
-                    }
-                  }
+                  await runPipelinePhased(data.delegations);
                   toast.success('Pipeline complete');
                 }
                 setAgents(prev => prev.map(a => ({ ...a, status: "idle" })));
@@ -615,6 +628,109 @@ const ProjectWorkspace = () => {
     } finally {
       if (!isChainCall) setSending(false);
     }
+  };
+
+  // ── Silent delegation: streams response without updating streaming UI ──────
+  // Used for parallel agents so multiple can run without UI state conflicts.
+  const executeDelegationSilent = async (agentName, task) => {
+    setPipelineAgentStatus(prev => ({ ...prev, [agentName]: 'working' }));
+    try {
+      const response = await fetch(`${API}/delegate/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: projectId, message: task, delegate_to: agentName })
+      });
+      if (!response.ok) throw new Error(`${agentName} returned ${response.status}`);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = "";
+      let currentAgent = null;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        for (const line of decoder.decode(value).split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.type === 'start') {
+              currentAgent = data.agent;
+              setAgents(prev => prev.map(a => a.id === data.agent.id ? { ...a, status: "working" } : a));
+            } else if (data.type === 'content') {
+              fullContent += data.content; // accumulate silently
+            } else if (data.type === 'done') {
+              const delegationRegex = /\[DELEGATE:(\w+)\]([\s\S]*?)\[\/DELEGATE\]/g;
+              const parsed = [];
+              let m;
+              while ((m = delegationRegex.exec(fullContent)) !== null) {
+                parsed.push({ agent: m[1].toUpperCase(), task: m[2].trim() });
+              }
+              const chainDelegations = data.delegations?.length > 0 ? data.delegations : parsed;
+
+              setMessages(prev => [...prev, {
+                id: `parallel-${Date.now()}-${agentName}`,
+                project_id: projectId,
+                agent_id: currentAgent?.id,
+                agent_name: currentAgent?.name || agentName,
+                agent_role: currentAgent?.role,
+                content: fullContent,
+                code_blocks: data.code_blocks || [],
+                delegations: chainDelegations,
+                timestamp: new Date().toISOString()
+              }]);
+              setAgents(prev => prev.map(a => a.id === currentAgent?.id ? { ...a, status: "idle" } : a));
+
+              if (data.code_blocks?.length > 0) {
+                await saveCodeBlocks(data.code_blocks, currentAgent);
+              }
+            } else if (data.type === 'error') {
+              throw new Error(data.error);
+            }
+          } catch (e) { /* skip malformed lines */ }
+        }
+      }
+      setPipelineAgentStatus(prev => ({ ...prev, [agentName]: 'done' }));
+    } catch (error) {
+      console.error(`[Parallel] ${agentName} failed:`, error);
+      toast.error(`${agentName} failed: ${error.message}`);
+      setPipelineAgentStatus(prev => ({ ...prev, [agentName]: 'error' }));
+    }
+  };
+
+  // Phased pipeline: NEXUS/ATLAS first (sequential+streaming), builders in parallel,
+  // SENTINEL/PROBE last (sequential+streaming)
+  const DESIGN_AGENTS = new Set(['NEXUS', 'ATLAS']);
+  const REVIEW_AGENTS = new Set(['SENTINEL', 'PROBE']);
+
+  const runPipelinePhased = async (delegations) => {
+    const phase1 = delegations.filter(d => DESIGN_AGENTS.has(d.agent.toUpperCase()));
+    const phase3 = delegations.filter(d => REVIEW_AGENTS.has(d.agent.toUpperCase()));
+    const phase2 = delegations.filter(d =>
+      !DESIGN_AGENTS.has(d.agent.toUpperCase()) && !REVIEW_AGENTS.has(d.agent.toUpperCase())
+    );
+
+    // Phase 1: Design (sequential with streaming)
+    for (const d of phase1) await executeDelegation(d.agent, d.task, true);
+
+    // Phase 2: Builders in parallel (batches of 4 to respect rate limits)
+    if (phase2.length > 0) {
+      const status = {};
+      phase2.forEach(d => { status[d.agent] = 'pending'; });
+      setPipelineAgentStatus(status);
+      toast.info(`Running ${phase2.length} agents in parallel...`);
+      const BATCH = 4;
+      for (let i = 0; i < phase2.length; i += BATCH) {
+        await Promise.all(phase2.slice(i, i + BATCH).map(d => executeDelegationSilent(d.agent, d.task)));
+      }
+      // Final file refresh after all parallel agents complete
+      const filesRes = await axios.get(`${API}/files?project_id=${projectId}&limit=500`);
+      setFiles(filesRes.data);
+      setPipelineAgentStatus({});
+    }
+
+    // Phase 3: Review (sequential with streaming)
+    for (const d of phase3) await executeDelegation(d.agent, d.task, true);
   };
 
   // ========== SIMULATION MODE ==========
@@ -1044,233 +1160,22 @@ const ProjectWorkspace = () => {
         </div>
       </header>
 
-      {/* Dialogs */}
-      <Dialog open={simulationDialog} onOpenChange={setSimulationDialog}>
-              <DialogTrigger asChild><Button variant="outline" size="sm" className="border-cyan-700 text-cyan-400 hover:bg-cyan-500/10" data-testid="simulation-btn"><Radio className="w-4 h-4 mr-1" />Simulate</Button></DialogTrigger>
-              <DialogContent className="bg-[#18181b] border-zinc-700 max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader><DialogTitle className="font-rajdhani text-white flex items-center gap-2"><Radio className="w-5 h-5 text-cyan-400" />Build Simulation (Dry Run)</DialogTitle></DialogHeader>
-                <div className="py-4 space-y-4">
-                  {/* Engine Selection */}
-                  <div className="flex gap-4">
-                    <Button variant={targetEngine === "unreal" ? "default" : "outline"} className={targetEngine === "unreal" ? "bg-blue-500" : "border-zinc-700"} onClick={() => setTargetEngine("unreal")}>Unreal Engine 5</Button>
-                    <Button variant={targetEngine === "unity" ? "default" : "outline"} className={targetEngine === "unity" ? "bg-blue-500" : "border-zinc-700"} onClick={() => setTargetEngine("unity")}>Unity</Button>
-                  </div>
-
-                  {/* System Selection */}
-                  <div>
-                    <h4 className="text-sm font-medium text-white mb-3">Select Game Systems</h4>
-                    <div className="grid grid-cols-3 gap-2">
-                      {openWorldSystems.map((system) => {
-                        const Icon = SYSTEM_ICONS[system.id] || Sparkles;
-                        const isSelected = selectedSystems.includes(system.id);
-                        return (
-                          <button key={system.id} onClick={() => toggleSystem(system.id)}
-                            className={`p-3 rounded-lg border text-left transition-all ${isSelected ? 'bg-cyan-500/20 border-cyan-500/50' : 'bg-zinc-900 border-zinc-700 hover:border-zinc-600'}`}>
-                            <div className="flex items-center gap-2 mb-1">
-                              <Icon className={`w-4 h-4 ${isSelected ? 'text-cyan-400' : 'text-zinc-500'}`} />
-                              <span className={`text-sm font-medium ${isSelected ? 'text-cyan-400' : 'text-zinc-300'}`}>{system.name}</span>
-                            </div>
-                            <p className="text-[10px] text-zinc-500 line-clamp-1">{system.description}</p>
-                            <div className="flex gap-2 mt-2 text-[10px] text-zinc-600">
-                              <span>{system.files_estimate} files</span>
-                              <span>~{system.time_estimate_minutes}m</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <p className="text-xs text-zinc-500 mt-2">{selectedSystems.length} systems selected</p>
-                  </div>
-
-                  {/* Run Simulation Button */}
-                  <Button onClick={runSimulation} disabled={simulating || selectedSystems.length === 0} className="w-full bg-cyan-500 hover:bg-cyan-600">
-                    {simulating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Simulating...</> : <><Radio className="w-4 h-4 mr-2" />Run Simulation</>}
-                  </Button>
-
-                  {/* Simulation Results */}
-                  {simulationResult && (
-                    <div className="space-y-4 border-t border-zinc-700 pt-4">
-                      <h4 className="font-rajdhani font-bold text-white">Simulation Results</h4>
-                      
-                      {/* Stats Grid */}
-                      <div className="grid grid-cols-4 gap-3">
-                        <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
-                          <Clock className="w-5 h-5 text-blue-400 mb-1" />
-                          <p className="text-lg font-bold text-white">{simulationResult.estimated_build_time}</p>
-                          <p className="text-[10px] text-zinc-500">Build Time</p>
-                        </div>
-                        <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
-                          <FileCode className="w-5 h-5 text-emerald-400 mb-1" />
-                          <p className="text-lg font-bold text-white">{simulationResult.file_count}</p>
-                          <p className="text-[10px] text-zinc-500">Files</p>
-                        </div>
-                        <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
-                          <Package className="w-5 h-5 text-amber-400 mb-1" />
-                          <p className="text-lg font-bold text-white">{simulationResult.total_size_kb}KB</p>
-                          <p className="text-[10px] text-zinc-500">Total Size</p>
-                        </div>
-                        <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
-                          <Sparkles className="w-5 h-5 text-purple-400 mb-1" />
-                          <p className="text-lg font-bold text-white">{simulationResult.feasibility_score}%</p>
-                          <p className="text-[10px] text-zinc-500">Feasibility</p>
-                        </div>
-                      </div>
-
-                      {/* Warnings */}
-                      {simulationResult.warnings.length > 0 && (
-                        <div className="space-y-2">
-                          <h5 className="text-sm font-medium text-amber-400 flex items-center gap-2"><AlertTriangle className="w-4 h-4" />Warnings ({simulationResult.warnings.length})</h5>
-                          {simulationResult.warnings.map((warning, i) => (
-                            <div key={i} className={`p-3 rounded border ${warning.severity === 'high' ? 'bg-red-500/10 border-red-500/30' : warning.severity === 'medium' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-zinc-800 border-zinc-700'}`}>
-                              <p className="text-sm text-zinc-200">{warning.message}</p>
-                              <p className="text-xs text-zinc-500 mt-1">{warning.suggestion}</p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Architecture Summary */}
-                      <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
-                        <h5 className="text-sm font-medium text-white mb-2">Architecture Summary</h5>
-                        <p className="text-xs text-zinc-400">{simulationResult.architecture_summary}</p>
-                      </div>
-
-                      {/* Schedule Build Option */}
-                      {simulationResult.ready_to_build && (
-                        <div className="p-4 rounded-lg bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30">
-                          <div className="flex items-center gap-2 mb-3">
-                            <input type="checkbox" id="schedule-build" checked={scheduleBuild} onChange={(e) => setScheduleBuild(e.target.checked)} className="rounded" />
-                            <label htmlFor="schedule-build" className="text-sm text-white flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-purple-400" />
-                              Schedule for tonight (12+ hour build)
-                            </label>
-                          </div>
-                          {scheduleBuild && (
-                            <div className="mt-3">
-                              <label className="text-xs text-zinc-400 mb-2 block">Start build at:</label>
-                              <Input 
-                                type="datetime-local" 
-                                value={scheduleTime} 
-                                onChange={(e) => setScheduleTime(e.target.value)} 
-                                className="bg-zinc-900 border-zinc-700" 
-                                data-testid="schedule-time-input"
-                              />
-                              <p className="text-[10px] text-zinc-500 mt-2">💤 Set it before bed and wake up to a complete project!</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Start Build Buttons */}
-                      <div className="flex gap-2">
-                        {scheduleBuild ? (
-                          <Button onClick={() => startAutonomousBuild(true)} disabled={!simulationResult.ready_to_build || buildRunning || !scheduleTime}
-                            className={`flex-1 ${simulationResult.ready_to_build && scheduleTime ? 'bg-purple-500 hover:bg-purple-600' : 'bg-zinc-700 cursor-not-allowed'}`}>
-                            {buildRunning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scheduling...</> : 
-                              <><Clock className="w-4 h-4 mr-2" />Schedule Overnight Build</>}
-                          </Button>
-                        ) : (
-                          <Button onClick={() => startAutonomousBuild(false)} disabled={!simulationResult.ready_to_build || buildRunning}
-                            className={`flex-1 ${simulationResult.ready_to_build ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-zinc-700 cursor-not-allowed'}`}>
-                            {buildRunning ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Starting Build...</> : 
-                              simulationResult.ready_to_build ? <><Rocket className="w-4 h-4 mr-2" />Start Build Now</> :
-                              <><AlertTriangle className="w-4 h-4 mr-2" />Resolve Warnings First</>}
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            {/* Current Build Status */}
-            {currentBuild && currentBuild.status === "scheduled" && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/50">
-                <Clock className="w-4 h-4 text-purple-400" />
-                <span className="text-xs text-purple-400">Scheduled {currentBuild.scheduled_at ? new Date(currentBuild.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : ''}</span>
-                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={startScheduledBuildNow} title="Start Now"><Play className="w-3 h-3" /></Button>
-                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={cancelBuild} title="Cancel"><X className="w-3 h-3" /></Button>
-              </div>
-            )}
-            {currentBuild && currentBuild.status === "running" && (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/50">
-                <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
-                <span className="text-xs text-blue-400">Building {currentBuild.progress_percent}%</span>
-                <Button variant="ghost" size="icon" className="h-5 w-5" onClick={pauseBuild}><Pause className="w-3 h-3" /></Button>
-              </div>
-            )}
-
-            {/* Playable Demo Button */}
-            {currentDemo && currentDemo.status === "ready" && (
-              <Dialog open={demoDialogOpen} onOpenChange={setDemoDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="border-emerald-700 text-emerald-400 hover:bg-emerald-500/10" data-testid="demo-btn">
-                    <Gamepad2 className="w-4 h-4 mr-1" />Play Demo
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-[#18181b] border-zinc-700 max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle className="font-rajdhani text-white flex items-center gap-2">
-                      <Gamepad2 className="w-5 h-5 text-emerald-400" />Playable Demo Ready!
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="py-4 space-y-4">
-                    {/* Demo Options */}
-                    <div className="grid grid-cols-2 gap-4">
-                      {/* Web Demo */}
-                      <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Globe className="w-6 h-6 text-blue-400" />
-                          <h4 className="font-rajdhani font-bold text-white">Web Demo</h4>
-                        </div>
-                        <p className="text-xs text-zinc-400 mb-4">Play instantly in your browser. HTML5/WebGL based.</p>
-                        <Button onClick={openWebDemo} className="w-full bg-blue-500 hover:bg-blue-600">
-                          <Play className="w-4 h-4 mr-2" />Play in Browser
-                        </Button>
-                      </div>
-                      
-                      {/* Executable Demo */}
-                      <div className="p-4 rounded-lg bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Monitor className="w-6 h-6 text-purple-400" />
-                          <h4 className="font-rajdhani font-bold text-white">Executable</h4>
-                        </div>
-                        <p className="text-xs text-zinc-400 mb-4">Download build configs for {currentDemo.target_engine?.toUpperCase() || 'UE5'}.</p>
-                        <Button variant="outline" className="w-full border-purple-500 text-purple-400" onClick={() => { setRightTab("code"); setDemoDialogOpen(false); const demoFile = files.find(f => f.filepath?.includes("demo/")); if (demoFile) { setSelectedFile(demoFile); setEditorContent(demoFile.content); } }}>
-                          <FileCode className="w-4 h-4 mr-2" />View Demo Files
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Demo Features */}
-                    {currentDemo.demo_features?.length > 0 && (
-                      <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
-                        <h5 className="text-sm font-medium text-white mb-2">Demo Features</h5>
-                        <div className="flex flex-wrap gap-2">
-                          {currentDemo.demo_features.map((feature, i) => (
-                            <Badge key={i} variant="outline" className="text-xs border-zinc-700 text-zinc-400">{feature}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Controls Guide */}
-                    {currentDemo.controls_guide && (
-                      <div className="p-3 rounded bg-zinc-900 border border-zinc-800">
-                        <h5 className="text-sm font-medium text-white mb-2">Controls</h5>
-                        <pre className="text-xs text-zinc-400 whitespace-pre-wrap max-h-32 overflow-y-auto">{currentDemo.controls_guide.slice(0, 500)}</pre>
-                      </div>
-                    )}
-
-                    {/* Regenerate Button */}
-                    <Button variant="outline" className="w-full border-zinc-700" onClick={regenerateDemo} disabled={regeneratingDemo}>
-                      {regeneratingDemo ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Regenerating...</> : <><RefreshCw className="w-4 h-4 mr-2" />Regenerate Demo</>}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
+      {/* Dialogs — extracted to WorkspaceDialogs component */}
+      <WorkspaceDialogs
+        simulationDialog={simulationDialog} setSimulationDialog={setSimulationDialog}
+        openWorldSystems={openWorldSystems} targetEngine={targetEngine} setTargetEngine={setTargetEngine}
+        selectedSystems={selectedSystems} toggleSystem={toggleSystem} simulating={simulating}
+        simulationResult={simulationResult} runSimulation={runSimulation}
+        scheduleBuild={scheduleBuild} setScheduleBuild={setScheduleBuild}
+        scheduleTime={scheduleTime} setScheduleTime={setScheduleTime}
+        buildRunning={buildRunning} startAutonomousBuild={startAutonomousBuild}
+        currentBuild={currentBuild} startScheduledBuildNow={startScheduledBuildNow}
+        cancelBuild={cancelBuild} pauseBuild={pauseBuild}
+        demoDialogOpen={demoDialogOpen} setDemoDialogOpen={setDemoDialogOpen}
+        currentDemo={currentDemo} openWebDemo={openWebDemo} files={files}
+        setRightTab={setRightTab} setSelectedFile={setSelectedFile} setEditorContent={setEditorContent}
+        regenerateDemo={regenerateDemo} regeneratingDemo={regeneratingDemo}
+      />
 
       {/* Main - Fully Resizable Layout */}
       <div className="flex-1 overflow-hidden min-h-0">
@@ -1342,6 +1247,28 @@ const ProjectWorkspace = () => {
               <ResizablePanel defaultSize={75} minSize={30}>
                 <div className="h-full flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
                   {chainProgress && <div className="px-4 py-2 border-b flex-shrink-0" style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 10%, transparent)', borderColor: 'color-mix(in srgb, var(--accent) 30%, transparent)' }}><div className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /><span className="text-xs" style={{ color: 'var(--accent)' }}>Step {chainProgress.step}/{chainProgress.total}: {chainProgress.agent}</span></div></div>}
+
+                  {/* Parallel pipeline progress bar */}
+                  {Object.keys(pipelineAgentStatus).length > 0 && (
+                    <div className="px-4 py-2 border-b flex-shrink-0 bg-zinc-900/80">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] text-zinc-500 mr-1">Parallel:</span>
+                        {Object.entries(pipelineAgentStatus).map(([agent, status]) => (
+                          <div key={agent} className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
+                            status === 'done'    ? 'bg-emerald-500/20 text-emerald-400' :
+                            status === 'working' ? 'bg-blue-500/20 text-blue-400' :
+                            status === 'error'   ? 'bg-red-500/20 text-red-400' :
+                                                  'bg-zinc-800 text-zinc-500'
+                          }`}>
+                            {status === 'done'    && <Check className="w-2.5 h-2.5" />}
+                            {status === 'working' && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
+                            {status === 'error'   && <span>✕</span>}
+                            {agent}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex-1 flex flex-col overflow-hidden">
 

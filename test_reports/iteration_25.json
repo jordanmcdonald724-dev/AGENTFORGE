@@ -1,0 +1,77 @@
+{
+  "summary": "Tested WorkspaceDialogs extraction, file tree auto-expand, and parallel pipeline structure. All UI features work correctly EXCEPT the simulation Run button fails because POST /api/simulate returns 404 (endpoint missing). File tree auto-expands deeply nested AbyssalShores/Source/AbyssalShores/Player/CppClasses paths on load. WorkspaceDialogs Simulate button opens correctly but stretches full-width due to flex layout. Pipeline phase structure (NEXUS/ATLAS → parallel builders → SENTINEL/PROBE) is correctly implemented in code.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/simulate",
+        "issue": "Returns 404 - endpoint missing. Frontend calls this URL in runSimulation() but no route handler exists. The route was supposed to be extracted to routes/build_operations.py (see comment at server.py line 1479-1483) but was never implemented. routes/builds.py has POST /builds/simulate (different URL, uses query params, and that router is not even included). Result: clicking 'Run Simulation' always shows 'Simulation failed' toast.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "GET /api/systems/open-world",
+        "issue": "THREE implementations exist: server.py api_router stub (returns simplified dict, wrong format), routes/refactor.py, routes/build_operations.py (correct - returns list). Working due to build_operations_router being included before api_router. The stub in server.py (lines 1524-1534) is dead/shadow code and should be removed to avoid confusion.",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "WorkspaceDialogs (Simulate button)",
+        "issue": "Simulate button renders in a full-width strip (1920px width) between header and main content because WorkspaceDialogs is placed inside the h-screen flex-col div and flex children stretch to fill cross-axis. The button technically works but the layout is odd - it creates a dedicated 32px-high row spanning the full page width just for the Simulate button. Position: x=0, y=63, width=1920, height=32.",
+        "selector": "[data-testid='simulation-btn']",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Run Simulation",
+        "issue": "Clicking 'Run Simulation' in dialog fails with 'Simulation failed' toast - POST /api/simulate returns 404. Backend endpoint missing.",
+        "affected_selectors": ["button:has-text('Run Simulation')"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Workspace - Simulate button strip",
+        "issues": [
+          "Simulate button renders as a full-width horizontal strip between header tabs and Quick Actions panel. Should be positioned inside the header (e.g., alongside the Settings gear button) or wrapped in a div with 'flex items-center justify-end px-4' to avoid the full-width stretched appearance.",
+          "Missing aria-describedby on DialogContent (console warnings: 'Missing Description or aria-describedby={undefined} for {DialogContent}')"
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_v49_workspace_dialogs_pipeline.py",
+    "/app/test_reports/pytest/pytest_v49_workspace_dialogs.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Add POST /api/simulate endpoint to routes/build_operations.py. The body should accept {project_id, build_type, target_engine, include_systems[]} and return {estimated_build_time, file_count, total_size_kb, feasibility_score, warnings, architecture_summary, ready_to_build}. Reference: server.py OPEN_WORLD_SYSTEMS dict and SimulationRequest model. The routes/builds.py /builds/simulate is a skeleton but not wired up.",
+    "MEDIUM: Fix WorkspaceDialogs placement - the Simulate button strip should not span full page width. Wrap <WorkspaceDialogs> in a div with flex layout that prevents button stretching, OR move the Simulate trigger to the header (next to the Settings gear button in the right side of header).",
+    "LOW: Remove dead stub @api_router.get('/systems/open-world') at server.py lines 1524-1534 since the real implementation is in routes/build_operations.py and the stub would shadow it if route order changes.",
+    "LOW: Add aria-describedby or DialogDescription to WorkspaceDialogs DialogContent elements to fix console warnings."
+  ],
+  "critical_code_review_comments": [
+    "CRITICAL BUG: POST /api/simulate is referenced in server.py line 1483 as a comment ('# - POST /api/simulate') indicating it was supposed to be extracted but never implemented. The frontend runSimulation() function (ProjectWorkspace.jsx line 741) calls this endpoint. Fix: add the route to routes/build_operations.py with SimulationRequest body handling.",
+    "DESIGN: WorkspaceDialogs is placed at top-level flex-col container (line 1163 in ProjectWorkspace.jsx), causing its trigger button to stretch full-width. The component renders correctly but positionally it's outside the header and creates a redundant row.",
+    "CODE QUALITY: routes/builds.py POST /builds/simulate (lines 17-43) is a properly implemented simulation endpoint but uses a different URL and query params instead of JSON body. It's also not included in the app router. Either remove it or refactor it to match what frontend expects.",
+    "VERIFIED: File tree auto-expand useEffect (lines 233-245) correctly expands all parent paths when files load. AbyssalShores/Source/AbyssalShores/Player/CppClasses structure verified visually and via DOM.",
+    "VERIFIED: runPipelinePhased() (lines 706-734) correctly implements 3-phase pipeline: Phase1=DESIGN_AGENTS (NEXUS/ATLAS sequential), Phase2=others (parallel batches of 4), Phase3=REVIEW_AGENTS (SENTINEL/PROBE sequential). pipelineAgentStatus state drives the progress bar UI correctly.",
+    "VERIFIED: ProjectWorkspace.jsx is 1473 lines (under 1480 limit). WorkspaceDialogs extraction is clean - all props correctly passed."
+  ],
+  "rca_of_simulate_bug": {
+    "root_cause": "POST /api/simulate was documented as extracted to routes/build_operations.py (server.py line 1479 comment) but the extraction was incomplete. build_operations.py has refactor, war-room, open-world-systems routes but the /simulate POST handler was never added.",
+    "reproduction": "1. Navigate to any project workspace. 2. Click 'Simulate' button. 3. Select any system. 4. Click 'Run Simulation'. 5. See 'Simulation failed' toast.",
+    "mitigation": "Add @router.post('/simulate') to routes/build_operations.py. The SimulationRequest model exists in server.py. The OPEN_WORLD_SYSTEMS data is importable via get_systems(). Logic should calculate estimated_build_time based on selected systems' time_estimate_minutes, total files from files_estimate, and return a SimulationResult."
+  },
+  "updated_files": [],
+  "success_rate": {
+    "backend": "75% (15/20 tests pass - 5 simulate endpoint tests fail due to 404)",
+    "frontend": "85% (dialog UI, auto-expand, tabs all work; simulation run fails due to backend 404)"
+  },
+  "seed_data_creation": "",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Project 878a623f OceanMapSurvivalGame has 3 C++ files (AbyssalShores/Source/...). Auto-expand works. WorkspaceDialogs Simulate button opens dialog correctly (data-testid='simulation-btn', y=63 just below header). 15 game systems shown in dialog grid. Run Simulation fails with 404. Pipeline progress bar (pipelineAgentStatus) correctly hidden when no pipeline running. Backend 27 core tests still passing. The main fix needed is POST /api/simulate in routes/build_operations.py."
+}
