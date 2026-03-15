@@ -45,6 +45,8 @@ import HardwarePanel from "@/components/HardwarePanel";
 import ResearchPanel from "@/components/ResearchPanel";
 import FileDropZone from "@/components/FileDropZone";
 import WarRoomPanel from "@/pages/workspace/WarRoomPanel";
+import WorkspaceChatPanel from "@/pages/workspace/WorkspaceChatPanel";
+import WorkspaceCodeEditor from "@/pages/workspace/WorkspaceCodeEditor";
 
 const PHASE_CONFIG = {
   clarification: { label: "Clarification", color: "bg-amber-500/20 text-amber-400", icon: MessageSquare },
@@ -238,7 +240,7 @@ const ProjectWorkspace = () => {
       const [projectRes, agentsRes, messagesRes, tasksRes, filesRes, imagesRes, actionsRes, customRes, memRes, systemsRes] = await Promise.all([
         axios.get(`${API}/projects/${projectId}`),
         axios.get(`${API}/agents`),
-        axios.get(`${API}/messages?project_id=${projectId}`),
+        axios.get(`${API}/messages?project_id=${projectId}&limit=500`),
         axios.get(`${API}/tasks?project_id=${projectId}`),
         axios.get(`${API}/files?project_id=${projectId}`),
         axios.get(`${API}/images?project_id=${projectId}`).catch(() => ({ data: [] })),
@@ -1352,103 +1354,23 @@ const ProjectWorkspace = () => {
 
                 {/* Chat Panel - When active */}
                 {activeTab === "chat" && (
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="flex-1 overflow-y-auto p-4" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                      <div className="space-y-4 pb-4">
-                    {messages.length === 0 && !streamingContent ? (<div className="text-center py-12"><Sparkles className="w-12 h-12 mx-auto mb-4" style={{ color: 'color-mix(in srgb, var(--accent) 50%, transparent)' }} /><h3 className="font-rajdhani text-xl mb-2" style={{ color: 'var(--text-primary)' }}>Ready to Build</h3><p className="text-sm max-w-md mx-auto mb-4" style={{ color: 'var(--text-muted)' }}>Describe your project or use Quick Actions above.</p></div>) : (<>
-                      {messages.map((msg) => {
-                        const isUser = msg.agent_role === "user";
-                        const AgentIcon = getAgentIcon(msg.agent_role);
-                        const agent = agents.find(a => a.id === msg.agent_id);
-                        return (<motion.div key={msg.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>{!isUser && <Avatar className="w-8 h-8 flex-shrink-0 mt-1" style={{ borderColor: 'var(--border-color)' }}><AvatarImage src={agent?.avatar} /><AvatarFallback style={{ backgroundColor: 'var(--bg-tertiary)' }}><AgentIcon className={`w-4 h-4 ${getAgentColor(msg.agent_role)}`} /></AvatarFallback></Avatar>}<div className={`max-w-[85%] ${isUser ? 'ml-auto' : ''}`}>{!isUser && <div className="flex items-center gap-2 mb-1"><span className="font-rajdhani font-bold text-sm" style={{ color: 'var(--accent)' }}>{msg.agent_name}</span><Badge variant="outline" className="text-[10px]" style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)' }}>{msg.agent_role}</Badge></div>}<div className="rounded-lg px-4 py-3" style={{ backgroundColor: isUser ? 'var(--accent)' : 'var(--bg-secondary)', borderColor: 'var(--border-color)', color: isUser ? 'white' : 'var(--text-primary)' }}>{isUser ? <p className="text-sm whitespace-pre-wrap">{msg.content}</p> : parseMessageContent(msg.content, msg.id, msg.delegations)}</div></div></motion.div>);
-                      })}
-                      {streamingContent && streamingAgent && (<motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3"><Avatar className="w-8 h-8 mt-1" style={{ borderColor: 'var(--border-color)' }}><AvatarFallback style={{ backgroundColor: 'var(--bg-tertiary)' }}><Bot className="w-4 h-4 animate-pulse" style={{ color: 'var(--accent)' }} /></AvatarFallback></Avatar><div className="max-w-[85%]"><div className="flex items-center gap-2 mb-1"><span className="font-rajdhani font-bold text-sm" style={{ color: 'var(--accent)' }}>{streamingAgent.name}</span><Badge className="text-[10px] animate-pulse" style={{ backgroundColor: 'color-mix(in srgb, var(--warning) 20%, transparent)', color: 'var(--warning)' }}>streaming</Badge></div><div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)' }}>{parseMessageContent(streamingContent, 'streaming')}</div></div></motion.div>)}
-                    </>)}
-                    {sending && !streamingContent && <div className="flex gap-3"><div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-tertiary)' }}><Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--accent)' }} /></div><div className="rounded-lg px-4 py-3" style={{ backgroundColor: 'var(--bg-secondary)' }}><div className="typing-indicator"><span></span><span></span><span></span></div></div></div>}
-                    <div ref={chatEndRef} />
-                    </div>
-                  </div>
-                  <div className="flex-shrink-0 p-4 border-t" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-secondary)' }}>
-                    {selectedAgent && <div className="mb-2 flex items-center gap-2"><span className="text-xs" style={{ color: 'var(--text-muted)' }}>Speaking to:</span><Badge style={{ backgroundColor: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)' }}>{agents.find(a => a.id === selectedAgent)?.name}</Badge><Button variant="ghost" size="sm" className="h-5 px-2" onClick={() => setSelectedAgent(null)}><X className="w-3 h-3" /></Button></div>}
-                    
-                    {/* Attached Files Display */}
-                    {attachedFiles.length > 0 && (
-                      <div className="mb-3 flex flex-wrap gap-2">
-                        {attachedFiles.map((file, idx) => (
-                          <div 
-                            key={idx}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm"
-                            style={{ backgroundColor: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}
-                          >
-                            <FileCode className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                            <span className="max-w-[150px] truncate" style={{ color: 'var(--text-secondary)' }}>{file.name}</span>
-                            <button
-                              onClick={() => setAttachedFiles(prev => prev.filter((_, i) => i !== idx))}
-                              className="p-0.5 rounded hover:bg-zinc-700/50 transition-colors"
-                            >
-                              <X className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    <FileDropZone 
-                      onFilesAdded={(newFiles) => setAttachedFiles(prev => [...prev, ...newFiles])}
-                      className="rounded-lg"
-                    >
-                      <div className="flex gap-3">
-                        <div className="flex-1 relative">
-                          <textarea 
-                            placeholder={project?.phase === "clarification" ? "Describe your project..." : "What would you like to build?"} 
-                            value={chatInput} 
-                            onChange={(e) => setChatInput(e.target.value)} 
-                            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessageStreaming(); }}} 
-                            className="w-full min-h-[120px] text-sm rounded-lg p-4 pb-12 outline-none focus:ring-2"
-                            style={{ 
-                              backgroundColor: 'var(--bg-tertiary)', 
-                              border: '2px solid var(--border-color)',
-                              color: 'var(--text-primary)',
-                              resize: 'vertical',
-                              maxHeight: '400px'
-                            }}
-                            data-testid="chat-input" 
-                          />
-                          {/* Attach button - bottom left corner */}
-                          <button
-                            type="button"
-                            onClick={() => document.getElementById('file-input-chat')?.click()}
-                            className="absolute bottom-3 left-1 p-2 rounded-lg transition-colors hover:bg-zinc-700/50"
-                            style={{ color: 'var(--text-muted)' }}
-                            title="Attach files"
-                          >
-                            <Plus className="w-5 h-5" />
-                          </button>
-                          <input
-                            id="file-input-chat"
-                            type="file"
-                            multiple
-                            className="hidden"
-                            onChange={(e) => {
-                              if (e.target.files) {
-                                setAttachedFiles(prev => [...prev, ...Array.from(e.target.files)]);
-                              }
-                            }}
-                          />
-                        </div>
-                        <Button 
-                          onClick={sendMessageStreaming} 
-                          disabled={sending || !chatInput.trim()} 
-                          className="self-end h-14 px-6 rounded-lg text-white font-medium"
-                          style={{ backgroundColor: 'var(--accent)' }}
-                          data-testid="send-btn"
-                        >
-                          {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-5 h-5 mr-2" />Send</>}
-                        </Button>
-                      </div>
-                    </FileDropZone>
-                  </div>
-                  </div>
+                  <WorkspaceChatPanel
+                    messages={messages}
+                    streamingContent={streamingContent}
+                    streamingAgent={streamingAgent}
+                    sending={sending}
+                    agents={agents}
+                    project={project}
+                    selectedAgent={selectedAgent}
+                    chatInput={chatInput}
+                    attachedFiles={attachedFiles}
+                    chatEndRef={chatEndRef}
+                    onSendMessage={sendMessageStreaming}
+                    onSetAttachedFiles={setAttachedFiles}
+                    onSetChatInput={setChatInput}
+                    onClearSelectedAgent={() => setSelectedAgent(null)}
+                    parseContent={parseMessageContent}
+                  />
                 )}
 
                 {/* Other tabs - Using conditional rendering */}
@@ -1604,19 +1526,23 @@ const ProjectWorkspace = () => {
 
           {/* Right Panel - Files/Code */}
           <ResizablePanel defaultSize={45} minSize={25} maxSize={70}>
-            <div className="h-full flex flex-col bg-[#0d0d0f]">
-              <div className="flex-shrink-0 border-b border-zinc-800 bg-[#0a0a0c]"><div className="flex items-center justify-between px-4 py-2"><Tabs value={rightTab} onValueChange={setRightTab} className="w-full"><TabsList className="bg-transparent"><TabsTrigger value="code" className="data-[state=active]:bg-zinc-800"><Code2 className="w-4 h-4 mr-2" />Code{files.length > 0 && <Badge variant="secondary" className="ml-2 text-xs">{files.length}</Badge>}</TabsTrigger>{isWebProject && <TabsTrigger value="preview" className="data-[state=active]:bg-zinc-800" onClick={loadPreview}><Eye className="w-4 h-4 mr-2" />Preview</TabsTrigger>}</TabsList></Tabs>{selectedFile && rightTab === "code" && <div className="flex items-center gap-2">{unsavedChanges && <Badge className="bg-amber-500/20 text-amber-400 text-xs">Unsaved</Badge>}<Button size="sm" variant="outline" className="h-7 border-zinc-700" onClick={saveFile} disabled={!unsavedChanges}><Save className="w-3 h-3 mr-1" />Save</Button></div>}</div></div>
-
-              {rightTab === "code" ? (
-                <ResizablePanelGroup direction="horizontal" className="flex-1">
-                  <ResizablePanel defaultSize={25} minSize={15} maxSize={40}><div className="h-full flex flex-col bg-[#0a0a0c] border-r border-zinc-800"><div className="flex-shrink-0 px-3 py-2 border-b border-zinc-800"><h4 className="text-xs text-zinc-500 uppercase tracking-wider">Files</h4></div><ScrollArea className="flex-1"><div className="py-2">{files.length === 0 ? <div className="px-4 py-8 text-center"><Folder className="w-8 h-8 mx-auto mb-2 text-zinc-700" /><p className="text-xs text-zinc-600">No files</p></div> : renderFileTree(buildFileTree())}</div></ScrollArea></div></ResizablePanel>
-                  <ResizableHandle className="bg-zinc-800" />
-                  <ResizablePanel defaultSize={75}><div className="h-full flex flex-col">{selectedFile ? (<><div className="flex-shrink-0 px-4 py-2 border-b border-zinc-800 bg-[#0d0d0f] flex items-center gap-2"><FileCode className="w-4 h-4 text-zinc-500" /><span className="text-sm text-zinc-300 font-mono">{selectedFile.filepath}</span><Badge variant="outline" className="text-[10px] border-zinc-700 ml-auto">v{selectedFile.version || 1}</Badge></div><div className="flex-1"><Editor height="100%" language={LANGUAGE_MAP[selectedFile.language] || selectedFile.language} value={editorContent} onChange={(v) => { setEditorContent(v || ""); setUnsavedChanges(v !== selectedFile.content); }} theme="vs-dark" options={{ minimap: { enabled: true }, fontSize: 13, fontFamily: "'JetBrains Mono', monospace", lineNumbers: 'on', scrollBeyondLastLine: false, automaticLayout: true, tabSize: 2, wordWrap: 'on', padding: { top: 12 }}} /></div></>) : (<div className="h-full flex items-center justify-center text-center"><div><FileCode className="w-16 h-16 mx-auto mb-4 text-zinc-800" /><h3 className="font-rajdhani text-lg text-zinc-600 mb-2">No File Selected</h3><p className="text-sm text-zinc-700">Select a file or use Quick Actions</p></div></div>)}</div></ResizablePanel>
-                </ResizablePanelGroup>
-              ) : (
-                <div className="flex-1 flex flex-col"><div className="flex-shrink-0 px-4 py-2 border-b border-zinc-800 flex items-center justify-between"><span className="text-sm text-zinc-400">Live Preview</span><Button size="sm" variant="outline" className="h-7 border-zinc-700" onClick={loadPreview}><Play className="w-3 h-3 mr-1" />Refresh</Button></div><div className="flex-1 bg-white">{previewHtml ? <iframe srcDoc={previewHtml} className="w-full h-full border-0" sandbox="allow-scripts" title="Preview" /> : <div className="h-full flex items-center justify-center bg-zinc-900"><p className="text-zinc-500">Click Refresh</p></div>}</div></div>
-              )}
-            </div>
+            <WorkspaceCodeEditor
+              files={files}
+              selectedFile={selectedFile}
+              editorContent={editorContent}
+              unsavedChanges={unsavedChanges}
+              rightTab={rightTab}
+              previewHtml={previewHtml}
+              isWebProject={isWebProject}
+              expandedFolders={expandedFolders}
+              onFileSelect={(f) => { setSelectedFile(f); setEditorContent(f.content); setUnsavedChanges(false); }}
+              onEditorChange={(v) => { setEditorContent(v); setUnsavedChanges(v !== selectedFile?.content); }}
+              onSave={saveFile}
+              onDeleteFile={deleteFile}
+              onLoadPreview={loadPreview}
+              setRightTab={setRightTab}
+              toggleFolder={toggleFolder}
+            />
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>

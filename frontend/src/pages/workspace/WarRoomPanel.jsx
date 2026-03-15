@@ -6,7 +6,7 @@
  * Supports resizable split-pane layout.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Radio, Bot, Zap, Code, Shield, Palette, 
@@ -241,9 +241,69 @@ const WarRoomPanel = ({
   activeAgents = []
 }) => {
   const scrollRef = useRef(null);
+  const audioCtxRef = useRef(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [speakingAgent, setSpeakingAgent] = useState(null);
   const [layout, setLayout] = useState('stacked'); // 'stacked', 'horizontal', 'agents-only', 'messages-only'
+
+  // ── Web Audio helpers ──────────────────────────────────────────────────────
+  const getAudioCtx = useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    return audioCtxRef.current;
+  }, []);
+
+  const playTone = useCallback((freq, duration, type = 'sine', volume = 0.08) => {
+    if (!soundEnabled) return;
+    try {
+      const ctx = getAudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(volume, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
+    } catch (e) { /* audio not supported */ }
+  }, [soundEnabled, getAudioCtx]);
+
+  // New message → radar blip
+  const playMessageSound = useCallback(() => {
+    playTone(880, 0.08, 'sine', 0.07);
+    setTimeout(() => playTone(1100, 0.05, 'sine', 0.05), 80);
+  }, [playTone]);
+
+  // Agent starts working → low sweep
+  const playAgentStartSound = useCallback(() => {
+    if (!soundEnabled) return;
+    try {
+      const ctx = getAudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+    } catch (e) { /* audio not supported */ }
+  }, [soundEnabled, getAudioCtx]);
+
+  // Pipeline complete → triumphant 3-note chime
+  const playCompleteSound = useCallback(() => {
+    if (!soundEnabled) return;
+    [523, 659, 784].forEach((freq, i) => {
+      setTimeout(() => playTone(freq, 0.3, 'triangle', 0.1), i * 120);
+    });
+  }, [soundEnabled, playTone]);
+  // ──────────────────────────────────────────────────────────────────────────
   
   // Determine which agents are currently active based on messages
   const getActiveAgents = () => {
@@ -264,16 +324,30 @@ const WarRoomPanel = ({
     }
   }, [messages]);
   
-  // Update speaking agent based on latest message
+  // Update speaking agent based on latest message + play sound
   useEffect(() => {
     if (messages.length > 0) {
       const latest = messages[messages.length - 1];
       setSpeakingAgent(latest.from_agent);
+      playMessageSound();
       // Clear speaking after 3 seconds
       const timer = setTimeout(() => setSpeakingAgent(null), 3000);
       return () => clearTimeout(timer);
     }
-  }, [messages]);
+  }, [messages, playMessageSound]);
+
+  // Play sound when a build starts
+  const prevBuildStatus = useRef(null);
+  useEffect(() => {
+    if (!currentBuild) return;
+    if (currentBuild.status === 'running' && prevBuildStatus.current !== 'running') {
+      playAgentStartSound();
+    }
+    if (currentBuild.status === 'completed' && prevBuildStatus.current === 'running') {
+      playCompleteSound();
+    }
+    prevBuildStatus.current = currentBuild.status;
+  }, [currentBuild?.status, playAgentStartSound, playCompleteSound]);
   
   const currentActiveAgents = getActiveAgents();
 
@@ -439,6 +513,7 @@ const WarRoomPanel = ({
               variant="ghost" 
               size="icon" 
               className="h-8 w-8"
+              data-testid="sound-toggle-btn"
               onClick={() => setSoundEnabled(!soundEnabled)}
             >
               {soundEnabled ? <Volume2 className="w-4 h-4 text-cyan-400" /> : <VolumeX className="w-4 h-4 text-zinc-500" />}
