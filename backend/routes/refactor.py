@@ -16,103 +16,11 @@ import re
 router = APIRouter(prefix="/refactor", tags=["refactor"])
 
 
-@router.post("/preview")
-async def preview_refactor(
-    project_id: str,
-    refactor_type: str,
-    target: str,
-    new_value: str = None,
-    file_ids: List[str] = None
-):
-    """Preview a refactoring operation"""
-    if file_ids:
-        files = await db.files.find({"id": {"$in": file_ids}}, {"_id": 0}).to_list(100)
-    else:
-        files = await db.files.find({"project_id": project_id}, {"_id": 0}).to_list(500)
-    
-    changes = []
-    
-    for f in files:
-        content = f.get("content", "")
-        filepath = f.get("filepath", "")
-        
-        if refactor_type == "rename":
-            if target in content:
-                new_content = content.replace(target, new_value) if new_value else content
-                line_changes = []
-                for i, line in enumerate(content.split("\n")):
-                    if target in line:
-                        line_changes.append({
-                            "line": i + 1,
-                            "before": line,
-                            "after": line.replace(target, new_value) if new_value else line
-                        })
-                if line_changes:
-                    changes.append({
-                        "file_id": f["id"],
-                        "filepath": filepath,
-                        "changes": line_changes,
-                        "occurrences": content.count(target)
-                    })
-        
-        elif refactor_type == "find_replace":
-            pattern = target
-            matches = list(re.finditer(pattern, content))
-            if matches:
-                changes.append({
-                    "file_id": f["id"],
-                    "filepath": filepath,
-                    "occurrences": len(matches),
-                    "pattern": pattern
-                })
-    
-    return {
-        "refactor_type": refactor_type,
-        "target": target,
-        "new_value": new_value,
-        "files_affected": len(changes),
-        "total_occurrences": sum(c.get("occurrences", 0) for c in changes),
-        "changes": changes
-    }
-
-
-@router.post("/apply")
-async def apply_refactor(
-    project_id: str,
-    refactor_type: str,
-    target: str,
-    new_value: str,
-    file_ids: List[str] = None
-):
-    """Apply a refactoring operation"""
-    if file_ids:
-        files = await db.files.find({"id": {"$in": file_ids}}).to_list(100)
-    else:
-        files = await db.files.find({"project_id": project_id}).to_list(500)
-    
-    modified = []
-    
-    for f in files:
-        content = f.get("content", "")
-        
-        if target in content:
-            new_content = content.replace(target, new_value)
-            await db.files.update_one(
-                {"id": f["id"]},
-                {"$set": {
-                    "content": new_content,
-                    "version": f.get("version", 1) + 1,
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }}
-            )
-            modified.append(f.get("filepath", f["id"]))
-    
-    return {
-        "success": True,
-        "modified_files": modified,
-        "count": len(modified)
-    }
-
+# NOTE: /preview, /apply, and /ai-suggest are intentionally removed here.
+# They are implemented in routes/build_operations.py (registered after this router).
+# Since FastAPI uses first-match routing, the implementations in build_operations.py
+# would be shadowed if duplicate routes were defined here with query-param signatures.
+# The frontend sends JSON body, so only build_operations.py's dict-body handlers work.
 
 @router.post("/ai-suggest")
 async def ai_suggest_refactoring(project_id: str):

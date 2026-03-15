@@ -1,0 +1,77 @@
+{
+  "summary": "Tested Find & Replace dialog, refactor preview/apply backend endpoints, War Room API (POST/GET), and simulate endpoint. Fixed critical duplicate route conflict that blocked /api/refactor/preview — routes/refactor.py shadowed build_operations.py with a query-param signature. After fix: 11/11 backend tests pass, all dialog UI elements verified working end-to-end.",
+
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/refactor/preview",
+        "issue": "FIXED by T1: routes/refactor.py (registered at line 5724) had preview_refactor() with query-param signature (project_id: str, refactor_type: str, target: str as query params), which shadowed build_operations.py's dict-body implementation (registered at line 5758). FastAPI first-match routing caused the query-param version to win, returning 422 for all JSON body calls. Fix: removed /preview and /apply routes from routes/refactor.py, letting build_operations.py serve them.",
+        "priority": "CRITICAL",
+        "status": "FIXED"
+      }
+    ],
+    "minor": []
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Find & Replace dialog Cancel button",
+        "issue": "Cancel button resets refactorPreview to null (correct) but does NOT reset refactorData (target/new_value fields). Re-opening dialog after Cancel shows previous search terms. Minor UX issue.",
+        "selector": "[role='dialog'] button:has-text('Cancel')",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Find & Replace dialog",
+        "issues": ["Dialog renders correctly: type selector, Find Text / Replace With inputs, Preview Changes button (orange border), Apply to N File(s) button, Cancel button. Before/after diff view with red/green panels is clear and well-styled."]
+      }
+    ]
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_v27_refactor_warroom.py",
+    "/app/test_reports/pytest/pytest_v27_results.xml"
+  ],
+
+  "action_items": [
+    "LOW: Reset refactorData (target/new_value) when Cancel is clicked in Find & Replace dialog. Add setRefactorData({ type: 'find_replace', target: '', new_value: '' }) to Cancel onClick in WorkspaceDialogs.jsx line 503.",
+    "INFO: War Room currently shows only T1 test messages (TEST_AGENT, FORGE from pytest run). No pipeline agent completion messages exist yet — these will appear after the next full pipeline run."
+  ],
+
+  "critical_code_review_comments": [
+    "FIXED CRITICAL: /api/refactor/preview route conflict — routes/refactor.py's preview_refactor(project_id: str, refactor_type: str, target: str, ...) was registered as query-param endpoint, shadowing build_operations.py's dict-body implementation. Fix: removed conflicting /preview and /apply routes from routes/refactor.py.",
+    "VERIFY: routes/refactor.py still has POST /ai-suggest with project_id as query param — this also conflicts with build_operations.py's /refactor/ai-suggest (same path pattern). Not critical since frontend doesn't call this, but worth cleaning up.",
+    "VERIFIED CLEAN: refactorData and refactorPreview are properly restored as state variables (line 202-203 of ProjectWorkspace.jsx). previewRefactor() calls /api/refactor/preview with JSON body. applyRefactor() calls /api/refactor/apply.",
+    "VERIFIED: executeDelegationSilent() posts war room message via POST /api/war-room/message with params: project_id, from_agent, content, message_type='progress' after each parallel agent completes. API working correctly.",
+    "CARRY-OVER: POST /api/simulate is now WORKING (was 404 in iter_26, now returns 200 with feasibility metrics)."
+  ],
+
+  "updated_files": [
+    "/app/backend/routes/refactor.py"
+  ],
+
+  "success_rate": {
+    "backend": "100% (11/11 tests pass)",
+    "frontend": "95% (all flows working; minor Cancel button state-reset issue)"
+  },
+
+  "test_credentials": "No auth needed. Project: 878a623f-111e-45df-a837-7821bace9c1a (OceanMapSurvivalGame)",
+
+  "seed_data_creation": "2 war room messages created during backend tests: TEST_AGENT progress message and FORGE persistence check message.",
+
+  "retest_needed": false,
+
+  "main_agent_can_self_test": true,
+
+  "context_for_next_testing_agent": "Find & Replace dialog fully working: type selector, target input (data-testid='refactor-target-input'), new value input, Preview Changes button, Apply to N File(s) (disabled until preview, enabled after). Preview against AbyssalShores returns 3 files affected / 5 scanned with before/after diff. War Room tab works, POST /api/war-room/message and GET /api/war-room/{project_id} both work. POST /api/simulate also works (fixed in iter_26, confirmed in iter_27). Settings dropdown has exactly 7 items. Only remaining minor issue: Cancel button doesn't reset refactorData state.",
+
+  "rca_of_issue": {
+    "bug": "POST /api/refactor/preview returned 422 for all JSON body requests",
+    "root_cause": "Two route handlers registered for same path /api/refactor/preview. routes/refactor.py (registered first, line 5724) defined preview_refactor(project_id: str, refactor_type: str, target: str, ...) — FastAPI treats str params without Body annotation as query parameters. routes/build_operations.py (registered second, line 5758) defined preview_refactor(request: dict) — FastAPI treats dict as JSON body. FastAPI first-match routing caused query-param version to always win, returning 422 validation error when frontend sent JSON body.",
+    "fix": "Removed /preview and /apply route handlers from routes/refactor.py so build_operations.py's dict-body implementations handle these paths.",
+    "affected_file": "/app/backend/routes/refactor.py"
+  }
+}

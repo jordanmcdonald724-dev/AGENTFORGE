@@ -199,7 +199,8 @@ const ProjectWorkspace = () => {
   const [customActionDialog, setCustomActionDialog] = useState(false);
   const [newCustomAction, setNewCustomAction] = useState({ name: "", description: "", prompt: "", chain: ["COMMANDER", "FORGE"], icon: "sparkles", is_global: false });
   const [refactorDialog, setRefactorDialog] = useState(false);
-  // refactorData and refactorPreview removed — refactor dialog is now via Quick Actions chain
+  const [refactorData, setRefactorData] = useState({ type: "find_replace", target: "", new_value: "" });
+  const [refactorPreview, setRefactorPreview] = useState(null);
   const [memoryDialog, setMemoryDialog] = useState(false);
   const [duplicateDialog, setDuplicateDialog] = useState(false);
   const [duplicateName, setDuplicateName] = useState("");
@@ -683,6 +684,27 @@ const ProjectWorkspace = () => {
               if (data.code_blocks?.length > 0) {
                 await saveCodeBlocks(data.code_blocks, currentAgent);
               }
+
+              // Post War Room build log entry for this agent's completion
+              const fileCount = data.code_blocks?.length || 0;
+              const summary = fileCount > 0
+                ? `Completed parallel task — generated ${fileCount} file(s): ${data.code_blocks.map(b => b.filepath?.split('/').pop() || b.filename).filter(Boolean).slice(0, 3).join(', ')}${fileCount > 3 ? ` +${fileCount - 3} more` : ''}`
+                : `Completed task: ${task.substring(0, 100)}${task.length > 100 ? '...' : ''}`;
+              try {
+                await axios.post(`${API}/war-room/message`, null, {
+                  params: { project_id: projectId, from_agent: agentName, content: summary, message_type: "progress" }
+                });
+                // Refresh War Room so the new entry is visible
+                const wr = await axios.get(`${API}/war-room/${projectId}`);
+                const seen = new Set();
+                const deduped = wr.data.filter(msg => {
+                  const key = `${msg.from_agent}-${msg.message_type}-${msg.content}`;
+                  if (seen.has(key)) return false;
+                  seen.add(key);
+                  return true;
+                });
+                setWarRoomMessages(deduped);
+              } catch (e) { /* non-critical — war room log failure shouldn't break pipeline */ }
             } else if (data.type === 'error') {
               throw new Error(data.error);
             }
@@ -849,8 +871,30 @@ const ProjectWorkspace = () => {
     setCustomActions(customActions.filter(a => a.id !== id));
   };
 
-  const previewRefactor = async () => {}; // kept for future use
-  const applyRefactor = async () => {};   // kept for future use
+  const previewRefactor = async () => {
+    if (!refactorData.target) { toast.error("Enter a search target"); return; }
+    try {
+      const res = await axios.post(`${API}/refactor/preview`, {
+        project_id: projectId, refactor_type: refactorData.type,
+        target: refactorData.target, new_value: refactorData.new_value
+      });
+      setRefactorPreview(res.data);
+    } catch (error) { toast.error("Preview failed"); }
+  };
+
+  const applyRefactor = async () => {
+    try {
+      const res = await axios.post(`${API}/refactor/apply`, {
+        project_id: projectId, refactor_type: refactorData.type,
+        target: refactorData.target, new_value: refactorData.new_value
+      });
+      toast.success(`Updated ${res.data.files_updated} file(s)`);
+      setRefactorDialog(false);
+      setRefactorPreview(null);
+      setRefactorData({ type: "find_replace", target: "", new_value: "" });
+      fetchProjectData();
+    } catch (error) { toast.error("Refactor failed"); }
+  };
 
   const extractMemories = async () => {
     try {
@@ -1133,6 +1177,10 @@ const ProjectWorkspace = () => {
                   <Image className="w-4 h-4 mr-2" />
                   Generate Asset
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRefactorDialog(true)}>
+                  <Search className="w-4 h-4 mr-2 text-orange-400" />
+                  Find & Replace
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setDuplicateDialog(true)}>
                   <CopyPlus className="w-4 h-4 mr-2 text-blue-400" />
                   Duplicate Project
@@ -1177,6 +1225,10 @@ const ProjectWorkspace = () => {
           memories={memories} extractMemories={extractMemories} deleteMemory={deleteMemory}
           duplicateDialog={duplicateDialog} setDuplicateDialog={setDuplicateDialog}
           duplicateName={duplicateName} setDuplicateName={setDuplicateName} duplicateProject={duplicateProject}
+          refactorDialog={refactorDialog} setRefactorDialog={setRefactorDialog}
+          refactorData={refactorData} setRefactorData={setRefactorData}
+          refactorPreview={refactorPreview} setRefactorPreview={setRefactorPreview}
+          previewRefactor={previewRefactor} applyRefactor={applyRefactor}
         />
       </div>
 

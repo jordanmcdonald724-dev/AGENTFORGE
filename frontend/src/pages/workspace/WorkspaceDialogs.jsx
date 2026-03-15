@@ -5,7 +5,7 @@
  */
 import { Loader2, Radio, Sparkles, FileCode, Clock, AlertTriangle, Rocket,
   Gamepad2, Globe, Monitor, Play, RefreshCw, Package, Github, Image,
-  Brain, CopyPlus, Trash2, Download } from "lucide-react";
+  Brain, CopyPlus, Trash2, Search, Replace, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -56,6 +56,11 @@ export default function WorkspaceDialogs({
   // ── Duplicate project ─────────────────────────────────────────────────
   duplicateDialog, setDuplicateDialog,
   duplicateName, setDuplicateName, duplicateProject,
+  // ── Code refactor (find/replace) ──────────────────────────────────────
+  refactorDialog, setRefactorDialog,
+  refactorData, setRefactorData,
+  refactorPreview, setRefactorPreview,
+  previewRefactor, applyRefactor,
 }) {
   return (
     <>
@@ -391,6 +396,118 @@ export default function WorkspaceDialogs({
             <Button variant="outline" className="border-zinc-700" onClick={() => setDuplicateDialog(false)}>Cancel</Button>
             <Button onClick={duplicateProject} disabled={!duplicateName.trim()} className="bg-blue-500 hover:bg-blue-600" data-testid="duplicate-project-btn">
               <CopyPlus className="w-4 h-4 mr-2" />Duplicate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Code Refactor Dialog (Find & Replace / Rename) ────────────── */}
+      <Dialog open={refactorDialog} onOpenChange={(open) => { setRefactorDialog(open); if (!open) setRefactorPreview(null); }}>
+        <DialogContent className="bg-[#18181b] border-zinc-700 max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-rajdhani text-white flex items-center gap-2">
+              <Search className="w-5 h-5 text-orange-400" />Code Refactor
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {/* Type selector */}
+            <div>
+              <label className="text-xs text-zinc-400 mb-1.5 block">Refactor Type</label>
+              <Select value={refactorData?.type} onValueChange={(v) => { setRefactorData(d => ({ ...d, type: v })); setRefactorPreview(null); }}>
+                <SelectTrigger className="bg-zinc-900 border-zinc-700">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-700">
+                  <SelectItem value="find_replace">Find & Replace (exact text)</SelectItem>
+                  <SelectItem value="rename">Rename Symbol (class/function)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Target + New Value */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 block">
+                  {refactorData?.type === 'rename' ? 'Symbol to Rename' : 'Find Text'}
+                </label>
+                <Input
+                  placeholder={refactorData?.type === 'rename' ? "PlayerController" : "TODO: fix this"}
+                  value={refactorData?.target || ''}
+                  onChange={(e) => { setRefactorData(d => ({ ...d, target: e.target.value })); setRefactorPreview(null); }}
+                  className="bg-zinc-900 border-zinc-700 font-mono text-sm"
+                  data-testid="refactor-target-input"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-zinc-400 mb-1.5 block">
+                  {refactorData?.type === 'rename' ? 'New Name' : 'Replace With'}
+                </label>
+                <Input
+                  placeholder={refactorData?.type === 'rename' ? "CharacterController" : "FIXME: fixed"}
+                  value={refactorData?.new_value || ''}
+                  onChange={(e) => { setRefactorData(d => ({ ...d, new_value: e.target.value })); setRefactorPreview(null); }}
+                  className="bg-zinc-900 border-zinc-700 font-mono text-sm"
+                  data-testid="refactor-newvalue-input"
+                />
+              </div>
+            </div>
+
+            <Button onClick={previewRefactor} disabled={!refactorData?.target?.trim()} variant="outline" className="border-orange-500/50 text-orange-400 hover:bg-orange-500/10" data-testid="refactor-preview-btn">
+              <Search className="w-4 h-4 mr-2" />Preview Changes
+            </Button>
+
+            {/* Preview Results */}
+            {refactorPreview && (
+              <div className="space-y-3 border-t border-zinc-700 pt-4">
+                <div className="flex items-center justify-between">
+                  <h5 className="text-sm font-medium text-white flex items-center gap-2">
+                    <Replace className="w-4 h-4 text-orange-400" />
+                    {refactorPreview.files_affected} file(s) will change
+                    <span className="text-zinc-500 text-xs">/ {refactorPreview.total_files_scanned} scanned</span>
+                  </h5>
+                  {refactorPreview.files_affected === 0 && (
+                    <Badge className="bg-zinc-800 text-zinc-400 text-xs">No matches found</Badge>
+                  )}
+                </div>
+
+                {refactorPreview.changes?.length > 0 && (
+                  <ScrollArea className="h-48">
+                    <div className="space-y-2 pr-2">
+                      {refactorPreview.changes.map((change, i) => (
+                        <div key={i} className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-mono text-zinc-300">{change.filepath}</span>
+                            <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-400">
+                              {change.occurrences} occurrence{change.occurrences !== 1 ? 's' : ''}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                            <div className="p-2 rounded bg-red-500/10 border border-red-500/20">
+                              <span className="text-red-400 block mb-1">— before</span>
+                              <span className="text-zinc-400 line-clamp-2 whitespace-pre-wrap">{change.preview?.before?.substring(0, 120)}</span>
+                            </div>
+                            <div className="p-2 rounded bg-emerald-500/10 border border-emerald-500/20">
+                              <span className="text-emerald-400 block mb-1">+ after</span>
+                              <span className="text-zinc-400 line-clamp-2 whitespace-pre-wrap">{change.preview?.after?.substring(0, 120)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-zinc-700" onClick={() => { setRefactorDialog(false); setRefactorPreview(null); }}>Cancel</Button>
+            <Button
+              onClick={applyRefactor}
+              disabled={!refactorPreview || refactorPreview.files_affected === 0}
+              className="bg-orange-500 hover:bg-orange-600"
+              data-testid="refactor-apply-btn"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />Apply to {refactorPreview?.files_affected || 0} File(s)
             </Button>
           </DialogFooter>
         </DialogContent>
