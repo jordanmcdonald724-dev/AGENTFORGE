@@ -836,14 +836,7 @@ const ProjectWorkspace = () => {
   const deleteFile = async (fileId) => { await axios.delete(`${API}/files/${fileId}`); setFiles(files.filter(f => f.id !== fileId)); if (selectedFile?.id === fileId) { setSelectedFile(null); setEditorContent(""); } };
   const toggleFolder = (path) => { const n = new Set(expandedFolders); n.has(path) ? n.delete(path) : n.add(path); setExpandedFolders(n); };
 
-  const buildFileTree = () => { const tree = {}; files.forEach(f => { const parts = f.filepath.split('/').filter(Boolean); let cur = tree; parts.forEach((p, i) => { if (i === parts.length - 1) cur[p] = f; else { if (!cur[p]) cur[p] = {}; cur = cur[p]; }}); }); return tree; };
-
-  const renderFileTree = (node, path = "", depth = 0) => Object.entries(node).map(([name, value]) => {
-    const fullPath = path ? `${path}/${name}` : name;
-    const isFile = value?.id;
-    if (isFile) return (<div key={value.id} className={`flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-zinc-800 rounded text-sm group ${selectedFile?.id === value.id ? 'bg-blue-500/20 text-blue-400' : 'text-zinc-400'}`} style={{ paddingLeft: `${depth * 12 + 8}px` }} onClick={() => { setSelectedFile(value); setEditorContent(value.content); setUnsavedChanges(false); }}><FileCode className="w-4 h-4" /><span className="truncate flex-1">{name}</span><Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); deleteFile(value.id); }}><Trash2 className="w-3 h-3 text-red-400" /></Button></div>);
-    return (<div key={fullPath}><div className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-zinc-800 rounded text-sm text-zinc-300" style={{ paddingLeft: `${depth * 12 + 8}px` }} onClick={() => toggleFolder(fullPath)}>{expandedFolders.has(fullPath) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}{expandedFolders.has(fullPath) ? <FolderOpen className="w-4 h-4 text-amber-400" /> : <Folder className="w-4 h-4 text-amber-400" />}<span>{name}</span></div>{expandedFolders.has(fullPath) && renderFileTree(value, fullPath, depth + 1)}</div>);
-  });
+  // buildFileTree and renderFileTree live in WorkspaceCodeEditor now
 
   const getAgentIcon = (role) => AGENTS[role]?.icon || Bot;
   const getAgentColor = (role) => AGENTS[role]?.color || "text-zinc-400";

@@ -7,7 +7,38 @@ Build a web application called "AgentForge" that functions as an "AI agent dev t
 
 ## Status: ACTIVE DEVELOPMENT
 
-### Latest Update (March 15, 2026) - FULL 12-AGENT PIPELINE COMPLETE ✅
+### Latest Update (March 15, 2026) - AUDIO + REFACTOR + E2E TEST ✅
+
+**Task 1 — War Room Audio Feedback:**
+- ✅ Web Audio API (no external deps, zero latency, works offline)
+- ✅ New message → radar blip (880Hz + 1100Hz two-tone ping)
+- ✅ Build starts → rising frequency sweep (300Hz→600Hz)
+- ✅ Pipeline complete → triumphant 3-note chime (C-E-G, 523/659/784Hz)
+- ✅ Sound toggle button (VolumeX off → Volume2 on) with `data-testid='sound-toggle-btn'`
+
+**Task 2 — ProjectWorkspace.jsx Refactor:**
+- ✅ `WorkspaceChatPanel.jsx` (210 lines) — all chat messages + input bar extracted
+- ✅ `WorkspaceCodeEditor.jsx` (180 lines) — file tree + Monaco editor + live preview extracted
+- ✅ Dead code removed (`buildFileTree`, `renderFileTree` from ProjectWorkspace)
+- ✅ Lint: 0 errors on all components
+- ✅ Messages limit bug fixed: `limit=100` → `limit=500` to show full pipeline history
+- ProjectWorkspace.jsx: **1628 → 1546 lines** (−82 lines directly; ~500 of extracted code in separate files)
+
+**Task 3 — E2E 12-Agent Quality Test:**
+- ✅ COMMANDER produces 1000+ word detailed task for each of 11 agents (NEXUS, ATLAS, FORGE, TERRA, PRISM, KINETIC, SONIC, VERTEX, CHRONICLE, SENTINEL, PROBE)
+- ✅ Pipeline auto-chains without user intervention (testing agent confirmed)
+- ✅ 27/27 backend tests pass
+- FORGE generated real C++ files (AS_PlayerCharacter.h, HealthComponent.h, HealthComponent.cpp)
+
+**Files Changed:**
+- `frontend/src/pages/workspace/WarRoomPanel.jsx` — Web Audio API sounds
+- `frontend/src/pages/workspace/WorkspaceChatPanel.jsx` — NEW extracted component
+- `frontend/src/pages/workspace/WorkspaceCodeEditor.jsx` — NEW extracted component
+- `frontend/src/pages/ProjectWorkspace.jsx` — uses new components, dead code removed, limit=500
+
+---
+
+### Previous Update (March 15, 2026) - FULL 12-AGENT PIPELINE COMPLETE ✅
 
 **Complete 12-Agent Pipeline Now Functional:**
 - ✅ **COMMANDER** knows all 12 agents with smart project-type routing:
