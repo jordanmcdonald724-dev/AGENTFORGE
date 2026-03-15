@@ -595,6 +595,39 @@ async def update_agent_status(agent_id: str, status: str):
     await db.agents.update_one({"id": agent_id}, {"$set": {"status": status}})
     return {"success": True}
 
+
+@api_router.patch("/agents/{agent_id}")
+async def update_agent(agent_id: str, updates: dict):
+    """Update an agent's system_prompt, model, or other fields"""
+    allowed = {"system_prompt", "model", "specialization", "avatar"}
+    filtered = {k: v for k, v in updates.items() if k in allowed}
+    if not filtered:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    await db.agents.update_one({"id": agent_id}, {"$set": filtered})
+    return {"success": True}
+
+
+@api_router.post("/agents/reset")
+async def reset_agents_from_config():
+    """Wipe and recreate all agents from AGENT_CONFIGS — syncs DB to latest config"""
+    await db.agents.drop()
+    default_agents = []
+    for role, config in AGENT_CONFIGS.items():
+        agent = Agent(
+            name=config["name"],
+            role=config["role"],
+            avatar=config["avatar"],
+            system_prompt=config["system_prompt"],
+            specialization=config["specialization"],
+            model=config.get("model", "google/gemini-2.5-flash")
+        )
+        doc = agent.model_dump()
+        doc['created_at'] = doc['created_at'].isoformat()
+        default_agents.append(doc)
+    await db.agents.insert_many(default_agents)
+    agents = await db.agents.find({}, {"_id": 0}).to_list(100)
+    return {"success": True, "agents_created": len(agents), "agents": [a["name"] for a in agents]}
+
 # Project Routes
 @api_router.post("/projects")
 async def create_project(project_data: ProjectCreate):

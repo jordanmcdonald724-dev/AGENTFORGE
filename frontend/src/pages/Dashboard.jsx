@@ -149,6 +149,12 @@ const Dashboard = () => {
     { name: "SENTINEL", icon: Shield, color: "#f97316" },
     { name: "PROBE", icon: Zap, color: "#8b5cf6" },
     { name: "PRISM", icon: Palette, color: "#ec4899" },
+    { name: "TERRA", icon: Globe, color: "#16a34a" },
+    { name: "KINETIC", icon: Gamepad2, color: "#9333ea" },
+    { name: "SONIC", icon: Settings, color: "#0ea5e9" },
+    { name: "NEXUS", icon: Sparkles, color: "#f59e0b" },
+    { name: "CHRONICLE", icon: Code2, color: "#64748b" },
+    { name: "VERTEX", icon: Zap, color: "#e11d48" },
   ];
 
   return (
@@ -304,7 +310,7 @@ const Dashboard = () => {
               ))}
             </div>
             <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 text-xs">
-              6/6 Available
+              {agents.length}/{agents.length} Available
             </Badge>
           </div>
         </motion.div>
