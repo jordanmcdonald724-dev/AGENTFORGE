@@ -57,23 +57,8 @@ async def call_agent_fn(agent, messages, context):
 
 
 async def broadcast_to_war_room_fn(project_id, from_agent, content, message_type="progress", build_id=None):
-    """Helper to broadcast to war room - with duplicate prevention"""
+    """Helper to broadcast to war room"""
     _, _, WarRoomMessage, _, _, _ = get_models()
-    
-    # Check for recent duplicate (same agent, type, and content within last 30 seconds)
-    recent_cutoff = (datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat()
-    existing = await db.war_room.find_one({
-        "project_id": project_id,
-        "from_agent": from_agent,
-        "content": content,
-        "message_type": message_type,
-        "timestamp": {"$gte": recent_cutoff}
-    })
-    
-    if existing:
-        # Skip duplicate message
-        return None
-    
     message = WarRoomMessage(
         project_id=project_id,
         build_id=build_id,
@@ -260,22 +245,8 @@ async def get_war_room_messages(project_id: str, limit: int = 100):
 
 @router.post("/war-room/message")
 async def post_war_room_message(project_id: str, from_agent: str, content: str, message_type: str = "discussion", to_agent: Optional[str] = None):
-    """Post a message to the war room - with duplicate prevention"""
+    """Post a message to the war room"""
     _, _, WarRoomMessage, _, _, _ = get_models()
-    
-    # Check for recent duplicate
-    recent_cutoff = (datetime.now(timezone.utc) - timedelta(seconds=30)).isoformat()
-    existing = await db.war_room.find_one({
-        "project_id": project_id,
-        "from_agent": from_agent,
-        "content": content,
-        "message_type": message_type,
-        "timestamp": {"$gte": recent_cutoff}
-    })
-    
-    if existing:
-        return serialize_doc(existing)  # Return existing instead of creating duplicate
-    
     message = WarRoomMessage(
         project_id=project_id,
         from_agent=from_agent,
