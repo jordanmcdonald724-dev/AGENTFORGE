@@ -838,7 +838,7 @@ const ProjectWorkspace = () => {
     if (selectedSystems.length === 0) { toast.error("Select at least one system"); return; }
     setSimulating(true);
     try {
-      const res = await axios.post(`${API}/simulate`, {
+      const res = await axios.post(`${API}/builds/simulate`, {
         project_id: projectId,
         build_type: "full",
         target_engine: targetEngine,

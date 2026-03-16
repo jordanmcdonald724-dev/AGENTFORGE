@@ -26,6 +26,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 from core.database import db
 from routes.pipeline import SPECIALIST_AGENTS
+from core.helpers import get_or_create_agents
 import uuid
 import json
 import asyncio
@@ -626,6 +627,18 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
         patterns_avoid = []
         overall_quality_score = 0
         phase_errors = []
+
+        # Fetch all 12 DB agents once — keyed by uppercase name
+        _db_agents = await get_or_create_agents()
+        db_agent_map = {a['name'].upper(): a for a in _db_agents}
+
+        def _get_agent_prompt(db_name: str, fallback_key: str) -> tuple:
+            """Return (display_name, system_prompt) from DB agent or SPECIALIST_AGENTS fallback."""
+            ag = db_agent_map.get(db_name)
+            if ag:
+                return ag['name'], ag['system_prompt']
+            fb = SPECIALIST_AGENTS.get(fallback_key, SPECIALIST_AGENTS["game_engine"])
+            return fb['name'], fb['prompt']
         
         try:
             # Get past learnings
@@ -708,13 +721,21 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
             ACTIVE_BUILDS[build_id]["progress_percent"] = 20
             ACTIVE_BUILDS[build_id]["current_phase"] = "building"
             
-            # ========== PHASE 3-N: SPECIALIST BUILDS ==========
+            # ========== PHASE 3-N: ALL 12 SPECIALIST AGENTS ==========
+            # Each tuple: (display_name, module_key, weight, db_agent_name, specialist_fallback_key)
             build_modules = [
-                ("Player Controller", "player_controller", 15),
-                ("Combat System", "combat_system", 15),
-                ("Inventory System", "inventory_system", 12),
-                ("AI System", "ai_system", 12),
-                ("Save System", "save_system", 10)
+                ("Game Design Document",  "game_design",       10, "NEXUS",     "backend"),
+                ("Player Controller",     "player_controller", 15, "FORGE",     "game_engine"),
+                ("Combat System",         "combat_system",     15, "FORGE",     "game_engine"),
+                ("Inventory System",      "inventory_system",  12, "FORGE",     "game_engine"),
+                ("AI System",             "ai_system",         12, "FORGE",     "game_engine"),
+                ("Save System",           "save_system",       10, "FORGE",     "game_engine"),
+                ("Level Design",          "level_design",      10, "TERRA",     "level_designer"),
+                ("UI & HUD",              "ui_hud",             8, "PRISM",     "frontend"),
+                ("Animation Systems",     "animation",          8, "KINETIC",   "animator"),
+                ("Audio Systems",         "audio",              8, "SONIC",     "ai_engineer"),
+                ("VFX & Shaders",         "vfx",                8, "VERTEX",    "ai_engineer"),
+                ("Narrative & Story",     "narrative",          6, "CHRONICLE", "frontend"),
             ]
             
             total_build_progress = 64  # From 20% to 84%
@@ -733,14 +754,17 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
                 module_progress = 20 + (progress_per_iteration * (iteration - 1))
                 progress_per_module = progress_per_iteration / len(build_modules)
                 
-                for idx, (module_name, module_key, weight) in enumerate(build_modules):
+                for idx, (module_name, module_key, weight, db_agent_name, fallback_key) in enumerate(build_modules):
                     module_start = time.time()
-                    
-                    yield f"data: {json.dumps({'type': 'phase_start', 'phase': module_name, 'agent': 'TITAN', 'iteration': iteration, 'module_index': idx + 1, 'total_modules': len(build_modules)})}\n\n"
+
+                    # Resolve the correct agent: DB agent first, then SPECIALIST_AGENTS fallback
+                    agent_display, agent_system_prompt = _get_agent_prompt(db_agent_name, fallback_key)
+
+                    yield f"data: {json.dumps({'type': 'phase_start', 'phase': module_name, 'agent': agent_display, 'iteration': iteration, 'module_index': idx + 1, 'total_modules': len(build_modules)})}\n\n"
                     
                     try:
                         prompt = get_specialist_prompt(
-                            "game_engine",
+                            fallback_key,
                             module_key,
                             project_name,
                             engine,
@@ -749,33 +773,20 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
                         )
                         
                         full_content = ""
-                        stream = await call_llm_with_retry(
+                        # Use non-streaming to avoid blocking the async event loop
+                        response = await call_llm_with_retry(
                             llm_client,
                             messages=[
-                                {"role": "system", "content": SPECIALIST_AGENTS["game_engine"]["prompt"]},
+                                {"role": "system", "content": agent_system_prompt},
                                 {"role": "user", "content": prompt}
                             ],
-                            max_tokens=12000,
-                            stream=True
+                            max_tokens=8000,
+                            stream=False
                         )
-                        
-                        chunk_count = 0
-                        last_heartbeat = time.time()
-                        for chunk in stream:
-                            if chunk.choices and chunk.choices[0].delta.content:
-                                content = chunk.choices[0].delta.content
-                                full_content += content
-                                chunk_count += 1
-                                
-                                # Stream content in batches and send heartbeat
-                                if chunk_count % 50 == 0:
-                                    yield f"data: {json.dumps({'type': 'content', 'content': content[:100], 'chunk': chunk_count})}\n\n"
-                                
-                                # Heartbeat every 30 chunks or every 10 seconds
-                                current_time = time.time()
-                                if chunk_count % 30 == 0 or (current_time - last_heartbeat) > 10:
-                                    yield f"data: {json.dumps({'type': 'heartbeat', 'chunks': chunk_count, 'time': int(current_time - module_start)})}\n\n"
-                                    last_heartbeat = current_time
+                        full_content = response.choices[0].message.content
+
+                        # Heartbeat so the client knows we're alive
+                        yield f"data: {json.dumps({'type': 'heartbeat', 'module': module_name, 'agent': agent_display})}\n\n"
                         
                         # Extract and save files
                         code_blocks = extract_code_blocks(full_content)
@@ -806,7 +817,7 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
                                 yield f"data: {json.dumps({'type': 'file_saved', 'filepath': filepath, 'module': module_name, 'iteration': iteration})}\n\n"
                         
                         modules_built.append(module_name)
-                        module_quality = 75 + (iteration * 5)  # Quality improves with iterations
+                        module_quality = 75 + (iteration * 5)
                         iteration_quality_scores.append(module_quality)
                         
                         ACTIVE_BUILDS[build_id]["files_generated"] = len(all_files)
@@ -814,26 +825,25 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
                         
                         yield f"data: {json.dumps({'type': 'phase_complete', 'phase': module_name, 'files': files_saved, 'quality': module_quality, 'iteration': iteration})}\n\n"
                         
-                        await record_agent_performance("TITAN", "game_engine", True, module_quality, int(time.time() - module_start))
+                        await record_agent_performance(agent_display, fallback_key, True, module_quality, int(time.time() - module_start))
                         
                     except Exception as e:
                         error_msg = str(e)
                         phase_errors.append({"phase": module_name, "iteration": iteration, "error": error_msg})
                         yield f"data: {json.dumps({'type': 'phase_error', 'phase': module_name, 'error': error_msg, 'recoverable': True, 'iteration': iteration})}\n\n"
-                        await record_agent_performance("TITAN", "game_engine", False, 0, int(time.time() - module_start))
+                        await record_agent_performance(agent_display, fallback_key, False, 0, int(time.time() - module_start))
                         patterns_avoid.append(f"Module {module_name} had issues: {error_msg[:30]}")
                         
-                        # Continue to next module instead of failing entire build
                         await asyncio.sleep(1)
                         continue
                 
-                # ========== REVIEW PHASE ==========
-                if request.auto_review and iteration < request.iterations:
+                # ========== SENTINEL: CODE REVIEW (every iteration) ==========
+                if request.auto_review:
                     review_start = time.time()
-                    yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'Code Review', 'agent': 'SENTINEL', 'iteration': iteration})}\n\n"
+                    sentinel_name, sentinel_prompt = _get_agent_prompt("SENTINEL", "reviewer")
+                    yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'Code Review', 'agent': sentinel_name, 'iteration': iteration})}\n\n"
                     
                     try:
-                        # Get sample of generated code for review
                         recent_files = await db.files.find(
                             {"project_id": request.project_id, "iteration": iteration},
                             {"_id": 0}
@@ -844,7 +854,7 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
                         review_response = await call_llm_with_retry(
                             llm_client,
                             messages=[
-                                {"role": "system", "content": SPECIALIST_AGENTS["reviewer"]["prompt"]},
+                                {"role": "system", "content": sentinel_prompt},
                                 {"role": "user", "content": get_review_prompt(code_sample, iteration)}
                             ],
                             max_tokens=2000
@@ -852,7 +862,6 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
                         
                         review_content = review_response.choices[0].message.content
                         
-                        # Parse review score
                         review_score = 80
                         try:
                             review_json = json.loads(review_content.split("```json")[1].split("```")[0]) if "```json" in review_content else {}
@@ -865,7 +874,7 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
                         yield f"data: {json.dumps({'type': 'review', 'content': review_content, 'iteration': iteration, 'score': review_score})}\n\n"
                         yield f"data: {json.dumps({'type': 'phase_complete', 'phase': 'Code Review', 'score': review_score})}\n\n"
                         
-                        await record_agent_performance("SENTINEL", "reviewer", True, review_score, int(time.time() - review_start))
+                        await record_agent_performance(sentinel_name, "reviewer", True, review_score, int(time.time() - review_start))
                         
                         if review_score >= 85:
                             patterns_worked.append(f"Iteration {iteration} achieved score {review_score}")
@@ -873,7 +882,39 @@ async def god_mode_v2_build_stream(request: GodModeV2Request):
                     except Exception as e:
                         error_msg = str(e)
                         yield f"data: {json.dumps({'type': 'phase_error', 'phase': 'Code Review', 'error': error_msg, 'recoverable': True})}\n\n"
-                        await record_agent_performance("SENTINEL", "reviewer", False, 0, int(time.time() - review_start))
+                        await record_agent_performance(sentinel_name, "reviewer", False, 0, int(time.time() - review_start))
+
+                # ========== PROBE: TESTING (final iteration only) ==========
+                if iteration == request.iterations:
+                    probe_start = time.time()
+                    probe_name, probe_prompt = _get_agent_prompt("PROBE", "tester")
+                    yield f"data: {json.dumps({'type': 'phase_start', 'phase': 'Testing & QA', 'agent': probe_name, 'iteration': iteration})}\n\n"
+                    try:
+                        probe_response = await call_llm_with_retry(
+                            llm_client,
+                            messages=[
+                                {"role": "system", "content": probe_prompt},
+                                {"role": "user", "content": f"Write a comprehensive test suite for {project_name} ({engine}). Cover all built modules: {', '.join(modules_built)}. Include unit tests, integration tests, and edge cases."}
+                            ],
+                            max_tokens=4000
+                        )
+                        probe_content = probe_response.choices[0].message.content
+                        probe_blocks = extract_code_blocks(probe_content)
+                        probe_files = 0
+                        for block in probe_blocks:
+                            if block.get('filepath'):
+                                await db.files.update_one(
+                                    {"project_id": request.project_id, "filepath": block['filepath']},
+                                    {"$set": {"id": str(uuid.uuid4()), "project_id": request.project_id, "filepath": block['filepath'], "filename": block.get('filename'), "language": block.get('language', 'cpp'), "content": block['content'], "iteration": iteration, "module": "Testing", "created_at": datetime.now(timezone.utc).isoformat()}},
+                                    upsert=True
+                                )
+                                all_files.append(block['filepath'])
+                                probe_files += 1
+                                yield f"data: {json.dumps({'type': 'file_saved', 'filepath': block['filepath'], 'module': 'Testing', 'iteration': iteration})}\n\n"
+                        yield f"data: {json.dumps({'type': 'phase_complete', 'phase': 'Testing & QA', 'files': probe_files})}\n\n"
+                        await record_agent_performance(probe_name, "tester", True, 85, int(time.time() - probe_start))
+                    except Exception as e:
+                        yield f"data: {json.dumps({'type': 'phase_error', 'phase': 'Testing & QA', 'error': str(e), 'recoverable': True})}\n\n"
                 
                 # Calculate iteration quality
                 if iteration_quality_scores:
