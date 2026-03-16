@@ -1,203 +1,31 @@
-# 🎮 AgentForge - 12-Agent Luxury Development Studio
+# AgentForgeOS
 
-**Your complete AI development team for building AAA games, full-stack apps, and everything in between.**
+AgentForgeOS is a clean, layered architecture for AI-assisted development. It rebuilds the previous system with minimal, modular components and clear separation of concerns.
 
----
+## Layers
+- **engine/**: FastAPI runtime, config loader, database bootstrap, worker system.
+- **providers/**: Interfaces for LLM, image, and TTS providers.
+- **services/**: Internal orchestration (agents, memory, embeddings, vector search, pattern extraction, project intelligence).
+- **control/**: AI control layer (routing, file guard, supervision, permission matrix).
+- **apps/**: Feature modules (studio, builds, research, assets, deployment, sandbox).
+- **bridge/**: Local machine integrations.
+- **knowledge/**: Shared knowledge utilities.
+- **desktop/**: Tauri desktop wrapper placeholder.
+- **frontend/**: Web UI placeholder (init with React/Vite).
+- **config/**: Environment configuration.
 
-## 🌟 What's New
-
-### ✨ 12-Agent Development Team (Upgraded from 6)
-All agents configured for **100% COMPLETE, LUXURY-TIER** output:
-
-**Original 6 (Enhanced):**
-1. **COMMANDER** - Project Lead & Coordination
-2. **ATLAS** - Systems Architect
-3. **FORGE** - Elite Developer
-4. **SENTINEL** - Code Reviewer
-5. **PROBE** - QA/Testing Specialist
-6. **PRISM** - Artist & UI Designer
-
-**New 6 Specialists:**
-7. **SONIC** - Audio Engineer (Music, SFX, spatial audio)
-8. **NEXUS** - Game Designer (Mechanics, balancing, progression)
-9. **CHRONICLE** - Writer/Narrative (Story, dialogue, lore)
-10. **VERTEX** - Technical Artist (VFX, shaders, particles)
-11. **TERRA** - Level Designer (World building, environments)
-12. **KINETIC** - Animator (Character animation, cinematics)
-
-### 🚀 9 FREE Deployment Platforms
-Deploy to any platform with one click:
-
-**Web Hosting (FREE):**
-- ✅ Vercel - Best for React/Next.js
-- ✅ Railway - Full-stack + databases
-- ✅ Netlify - 100GB bandwidth/month
-- ✅ Render - Free web services
-- ✅ GitHub Pages - Unlimited static hosting
-- ✅ Cloudflare Pages - Unlimited sites & requests
-- ✅ Fly.io - 3 free VMs
-- ✅ Surge.sh - Simple static sites
-
-**Game Distribution:**
-- ✅ Itch.io - Free game hosting
-
-**Local Development:**
-- ✅ Local Bridge - Push to Unreal/Unity
-
----
-
-## 🎯 Features
-
-### Premium OS Style UI
-- Modern, professional interface
-- Ubisoft + Apple + Linear inspired design
-- Dark theme with smooth animations
-- Fully responsive
-
-### Dual Build Modes
-
-**1. Normal Build Mode (Conversational)**
-- AI asks clarifying questions
-- Architecture simulation
-- User approval required
-- Step-by-step code generation
-- Perfect for collaborative development
-
-**2. God Mode (Autonomous)**
-- Fully autonomous builds
-- No questions asked
-- Direct-to-code generation
-- Accessible via sidebar
-
-### 12 Specialized AI Agents
-Each agent delivers:
-- 100% complete implementations
-- Zero placeholders or TODOs
-- Production-ready quality
-- Premium polish and detail
-- Think: Apple polish + Ubisoft depth
-
-### Complete Deployment Suite
-- 9 FREE platforms (no credit card)
-- One-click deployment
-- Automatic HTTPS
-- Custom domains supported
-- Global CDN delivery
-
----
-
-## 🚀 Quick Start
-
-### 1. Access Your Studio
-```
-Landing Page → Sidebar Options:
-- Studio: Main workspace
-- God Mode: Autonomous builds
-- Research Lab: Academic research
+## Quick Start
+```bash
+cd AgentForgeOS
+python -m uvicorn engine.server:app --reload --port 8001
+# frontend: initialize Vite/React in AgentForgeOS/frontend then npm run dev
 ```
 
-### 2. Create a Project
-```
-Dashboard → New Project
-- Choose engine (Unreal 5.7, Unity 2022 LTS, etc.)
-- Enter project details
-- Start building
-```
-
-### 3. Build with AI
-```
-Normal Mode:
-- Describe what you want
-- AI asks clarifying questions
-- Review architecture
-- Approve and generate
-
-God Mode:
-- Describe what you want
-- AI builds everything autonomously
-- Get complete implementation
-```
-
-### 4. Deploy
-```
-Project Workspace → Push button
-- Select platform (Vercel, Netlify, etc.)
-- Enter project name
-- Deploy in seconds
-- Get live URL
-```
-
----
-
-## 📋 Deployment Setup
-
-See `DEPLOYMENT_SETUP_GUIDE.md` for step-by-step instructions on getting API keys for all 9 platforms.
-
-**Quick summary:**
-- Takes ~20 minutes total
-- All platforms 100% FREE
-- No credit card required for most
-
----
-
-## 🎨 What AI Agents Build
-
-### For Games:
-- Complete character controllers with state machines
-- Full inventory systems (categories, stacking, UI, persistence)
-- Combat systems (combos, damage types, VFX, sounds)
-- AI with behavior trees and perception
-- Level layouts with enemy placement and lighting
-- Animation state machines with blending
-- Audio systems with spatial sound
-- VFX and particle effects optimized for performance
-
-### For Web Apps:
-- Complete component libraries with state management
-- Full authentication flows with security
-- API integration with error handling
-- Responsive designs for all screen sizes
-- Loading, error, and empty states
-- Animations and micro-interactions
-- Accessibility compliance (ARIA, keyboard nav)
-
-### Quality Standards:
-- ✅ 100% complete (no placeholders)
-- ✅ Production-ready code
-- ✅ All edge cases handled
-- ✅ Professional error handling
-- ✅ Optimized performance
-- ✅ Clean, documented code
-
----
-
-## 🔧 Technical Stack
-
-**Frontend:**
-- React 18
-- TailwindCSS
-- Framer Motion
-- shadcn/ui components
-
-**Backend:**
-- FastAPI (Python)
-- MongoDB
-- FAL.ai (LLM provider)
-
-**Game Integration:**
-- Local Bridge system
-- Unreal Engine 5.7
-- Unity 2022 LTS
-- Browser extension for local file access
-
----
-
-## 📚 Documentation
-
-- `DEPLOYMENT_SETUP_GUIDE.md` - Get API keys for all platforms
-- `/app/memory/PRD.md` - Product requirements and specifications
-
----
+## Documentation
+- ARCHITECTURE.md
+- SYSTEM_OVERVIEW.md
+- DEVELOPMENT_GUIDE.md
+- BOOTSTRAP_REPORT.md
 
 ## 🎯 Use Cases
 

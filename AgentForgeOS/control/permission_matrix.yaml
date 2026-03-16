@@ -1,0 +1,13 @@
+protected:
+  - engine/**
+  - services/**
+  - providers/**
+  - control/**
+read_only:
+  - knowledge/**
+  - config/**
+modifiable:
+  - apps/**
+  - bridge/**
+  - desktop/**
+  - frontend/**
