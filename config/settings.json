@@ -1,0 +1,8 @@
+{
+  "app_name": "AgentForgeOS",
+  "environment": "development",
+  "host": "0.0.0.0",
+  "port": 8000,
+  "database_url": "sqlite:///./data/agentforgeos.db",
+  "worker_concurrency": 2
+}
