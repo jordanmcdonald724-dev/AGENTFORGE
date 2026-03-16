@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from control.file_guard import FileGuard
@@ -19,9 +20,5 @@ def test_file_guard_blocks_protected_directory(tmp_path):
     protected_file = tmp_path / "secret.txt"
     protected_file.write_text("data")
     assert guard.is_allowed(str(protected_file)) is False
-    try:
+    with pytest.raises(PermissionError):
         guard.ensure_allowed(str(protected_file))
-        raised = False
-    except PermissionError:
-        raised = True
-    assert raised is True

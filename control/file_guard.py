@@ -24,10 +24,9 @@ class FileGuard:
 
     def is_allowed(self, target: str) -> bool:
         path = Path(target).resolve()
-        return not any(str(path).startswith(str(protected)) for protected in self.protected)
+        return not any(path.is_relative_to(protected) for protected in self.protected)
 
     def ensure_allowed(self, target: str) -> None:
         if not self.is_allowed(target):
             logger.warning("Access denied to %s", target)
             raise PermissionError(f"Write operations are blocked for {target}")
-

@@ -32,10 +32,9 @@ class VectorStore:
         self._records.append(VectorRecord(vector=vector, metadata=metadata))
 
     def search(self, query: List[float], top_k: int = 5) -> List[Tuple[float, Dict[str, Any]]]:
-        scored = [( _cosine_similarity(query, record.vector), record.metadata) for record in self._records]
+        scored = [(_cosine_similarity(query, record.vector), record.metadata) for record in self._records]
         scored.sort(key=lambda item: item[0], reverse=True)
         return scored[:top_k]
 
     def clear(self) -> None:
         self._records.clear()
-

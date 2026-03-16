@@ -11,6 +11,5 @@ class PatternExtractor:
 
     def extract(self, text: str) -> Dict[str, List[str]]:
         tags = [match.group(1).upper() for match in self.CODE_PATTERN.finditer(text)]
-        headings = re.findall(r"^#+\\s+(.+)$", text, flags=re.MULTILINE)
+        headings = re.findall(r"^#+\s+(.+)$", text, flags=re.MULTILINE)
         return {"signals": tags, "headings": headings}
-

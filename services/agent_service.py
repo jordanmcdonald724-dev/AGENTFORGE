@@ -29,9 +29,8 @@ class AgentService:
                 response = await self.llm_provider.chat([{"role": "user", "content": prompt}])
             self.memory.remember(agent_id, response)
 
-        await asyncio.gather(_execute())
+        await _execute()
         return {"agent_id": agent_id, "status": "scheduled"}
 
     async def broadcast(self, agent_ids: List[str], prompt: str) -> List[Dict[str, str]]:
         return await asyncio.gather(*(self.dispatch_task(agent, prompt) for agent in agent_ids))
-
