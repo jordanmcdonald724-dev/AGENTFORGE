@@ -1,0 +1,7 @@
+protected_directories:
+  - engine
+  - services
+  - providers
+  - control
+  - config
+  - knowledge
